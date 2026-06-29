@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GEST_MG — Versão 0.2</title>
+  <meta name="theme-color" content="#111827" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1220;
+      --panel: #111827;
+      --panel-2: #0f172a;
+      --border: #263247;
+      --text: #f8fafc;
+      --muted: #aab5c5;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --offline: #64748b;
+      --error: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 20px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .container {
+      width: min(920px, 100%);
+      margin: 0 auto;
+    }
+
+    .header-card,
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, .25);
+    }
+
+    .header-card { padding: 22px; }
+    .panel { margin-top: 16px; padding: 18px; }
+
+    h1 { margin: 0 0 6px; font-size: 26px; }
+    h2 { margin: 0; font-size: 18px; }
+    .subtitle { margin: 0 0 18px; color: var(--muted); line-height: 1.45; }
+
+    .status {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 13px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel-2);
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      margin-top: 3px;
+      border-radius: 50%;
+      background: var(--warn);
+      flex: 0 0 auto;
+    }
+
+    .status.ok .dot { background: var(--ok); }
+    .status.error .dot { background: var(--error); }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .metric {
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel-2);
+    }
+
+    .metric-label { color: var(--muted); font-size: 14px; }
+    .metric-value { margin-top: 5px; font-size: 28px; font-weight: 700; }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .updated { color: var(--muted); font-size: 12px; text-align: right; }
+
+    .agent-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 12px;
+    }
+
+    .agent-card {
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel-2);
+    }
+
+    .agent-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .agent-name {
+      margin: 0;
+      font-size: 17px;
+      overflow-wrap: anywhere;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex: 0 0 auto;
+      padding: 5px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(100, 116, 139, .18);
+      color: #cbd5e1;
+    }
+
+    .badge::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--offline);
+    }
+
+    .badge.online {
+      background: rgba(34, 197, 94, .15);
+      color: #bbf7d0;
+    }
+
+    .badge.online::before { background: var(--ok); }
+
+    .agent-meta {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 7px 10px;
+      margin-top: 13px;
+      font-size: 13px;
+    }
+
+    .label { color: var(--muted); }
+    .value { text-align: right; overflow-wrap: anywhere; }
+
+    .empty {
+      padding: 18px;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .config-summary {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .footer {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    @media (max-width: 560px) {
+      body { padding: 12px; }
+      .metrics { grid-template-columns: 1fr 1fr; }
+      .panel-header { align-items: flex-start; flex-direction: column; }
+      .updated { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="header-card">
+      <h1>GEST_MG — V0.2</h1>
+      <p class="subtitle">Monitor de presença dos agentes em tempo real. Nesta versão ainda não há mapa nem GPS.</p>
+
+      <section id="statusBox" class="status" aria-live="polite">
+        <span class="dot"></span>
+        <span id="statusTexto">Conectando ao Firebase...</span>
+      </section>
+
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-label">Agentes online</div>
+          <div id="onlineCount" class="metric-value">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Agentes cadastrados nesta versão</div>
+          <div id="totalCount" class="metric-value">0</div>
+        </div>
+      </div>
+
+      <div id="configResumo" class="config-summary">Lendo CONFIG...</div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Agentes</h2>
+        <div id="ultimaLeitura" class="updated">Aguardando primeira leitura...</div>
+      </div>
+      <div id="listaAgentes" class="empty">Nenhum agente da V0.2 registrado ainda.</div>
+    </section>
+
+    <div class="footer">Projeto pilotomg-efe79 • Realtime Database</div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+  <script>
+    'use strict';
+
+    const firebaseConfig = {
+      apiKey: 'AIzaSyCYfLl08iRHnvnbBcKTaJOsONjFHKd2mrA',
+      authDomain: 'pilotomg-efe79.firebaseapp.com',
+      databaseURL: 'https://pilotomg-efe79-default-rtdb.firebaseio.com',
+      projectId: 'pilotomg-efe79',
+      storageBucket: 'pilotomg-efe79.firebasestorage.app',
+      messagingSenderId: '577008586078',
+      appId: '1:577008586078:web:eb8bdd9891418e0777d3cf'
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const statusBox = document.getElementById('statusBox');
+    const statusTexto = document.getElementById('statusTexto');
+    const onlineCount = document.getElementById('onlineCount');
+    const totalCount = document.getElementById('totalCount');
+    const listaAgentes = document.getElementById('listaAgentes');
+    const ultimaLeitura = document.getElementById('ultimaLeitura');
+    const configResumo = document.getElementById('configResumo');
+
+    function definirStatus(tipo, mensagem) {
+      statusBox.className = `status ${tipo || ''}`.trim();
+      statusTexto.textContent = mensagem;
+    }
+
+    function formatarTimestamp(valor) {
+      if (!valor || !Number.isFinite(Number(valor))) return '—';
+      return new Date(Number(valor)).toLocaleString('pt-BR');
+    }
+
+    function idCurto(id) {
+      return String(id || '').replace(/^ag_/, '').slice(0, 8) || '—';
+    }
+
+    function criarTexto(classe, texto) {
+      const elemento = document.createElement('div');
+      elemento.className = classe;
+      elemento.textContent = texto;
+      return elemento;
+    }
+
+    function criarCartaoAgente(agente) {
+      const card = document.createElement('article');
+      card.className = 'agent-card';
+
+      const topo = document.createElement('div');
+      topo.className = 'agent-top';
+
+      const nome = document.createElement('h3');
+      nome.className = 'agent-name';
+      nome.textContent = agente.nome || 'Sem nome';
+
+      const badge = document.createElement('span');
+      badge.className = `badge ${agente.online ? 'online' : ''}`.trim();
+      badge.textContent = agente.online ? 'ONLINE' : 'OFFLINE';
+
+      topo.append(nome, badge);
+
+      const meta = document.createElement('div');
+      meta.className = 'agent-meta';
+
+      const linhas = [
+        ['ID', idCurto(agente.idFirebase)],
+        ['Entrada', formatarTimestamp(agente.entrada)],
+        ['Última atualização', formatarTimestamp(agente.ultimaAtualizacao)]
+      ];
+
+      linhas.forEach(([rotulo, valor]) => {
+        meta.append(
+          criarTexto('label', rotulo),
+          criarTexto('value', valor)
+        );
+      });
+
+      card.append(topo, meta);
+      return card;
+    }
+
+    db.ref('.info/connected').on('value', (snapshot) => {
+      if (snapshot.val() === true) {
+        definirStatus('ok', 'Gestão conectada ao Firebase e acompanhando agentes.');
+      } else {
+        definirStatus('', 'Conectando ao Firebase...');
+      }
+    });
+
+    db.ref('CONFIG').on('value', (snapshot) => {
+      const config = snapshot.val();
+      if (!config) {
+        configResumo.textContent = 'CONFIG não encontrada.';
+        return;
+      }
+
+      configResumo.textContent =
+        `CONFIG: GPS ${config.gpsAtualizacaoSegundos} s • ` +
+        `movimento mínimo ${config.gpsDistanciaMinima} m • ` +
+        `raio de liberação ${config.raioLiberacao} m • ` +
+        `raio do PRÓXIMO ${config.raioProximo} m`;
+    });
+
+    db.ref('AGENTES_ONLINE').on('value', (snapshot) => {
+      const dados = snapshot.val() || {};
+
+      const agentes = Object.entries(dados)
+        .filter(([id, valor]) =>
+          id !== 'TEMP' &&
+          id !== 'TESTE_V01' &&
+          valor &&
+          valor.fase === 'V0.2'
+        )
+        .map(([id, valor]) => ({
+          ...valor,
+          idFirebase: id
+        }))
+        .sort((a, b) => {
+          if (Boolean(a.online) !== Boolean(b.online)) return a.online ? -1 : 1;
+          return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+        });
+
+      const online = agentes.filter((agente) => agente.online === true).length;
+      onlineCount.textContent = String(online);
+      totalCount.textContent = String(agentes.length);
+      ultimaLeitura.textContent = `Atualizado em ${new Date().toLocaleTimeString('pt-BR')}`;
+
+      listaAgentes.replaceChildren();
+
+      if (!agentes.length) {
+        listaAgentes.className = 'empty';
+        listaAgentes.textContent = 'Nenhum agente da V0.2 registrado ainda.';
+        return;
+      }
+
+      listaAgentes.className = 'agent-list';
+      agentes.forEach((agente) => listaAgentes.appendChild(criarCartaoAgente(agente)));
+    }, (erro) => {
+      console.error(erro);
+      definirStatus('error', `Erro ao ler agentes: ${erro.message}`);
+    });
+  </script>
+</body>
+</html>
