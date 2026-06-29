@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-  <title>PILOTOMG — V0.4.3 Pontos</title>
+  <title>PILOTOMG — V0.4.5 Pontos</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <style>
     
@@ -91,7 +91,7 @@ button{cursor:pointer}
 <body>
 <div class="app">
   <header>
-    <h1>PILOTOMG — V0.4.3</h1>
+    <h1>PILOTOMG — V0.4.5</h1>
     <p>GPS atual, pontos por CNPJ e status sincronizados em tempo real.</p>
   </header>
 
@@ -322,12 +322,57 @@ button{cursor:pointer}
     `;
   }
 
-  function refreshPointMarker(cnpj) {
-    const marker = markersByCnpj.get(cnpj);
+  function isCompletedStatus(status) {
+    return STATUS_OPTIONS.includes(String(status || ""));
+  }
+
+  function createPointMarker(cnpj, feature) {
+    const [lng,lat] = feature.geometry.coordinates;
+
+    const marker = L.circleMarker(
+      [lat,lng],
+      markerStyle(statusFor(cnpj,feature.properties || {}))
+    ).addTo(map);
+
+    marker.bindPopup(buildPopup(cnpj),{maxWidth:330,autoPan:true});
+
+    marker.on("click", () => {
+      marker.setPopupContent(buildPopup(cnpj));
+      marker.openPopup();
+    });
+
+    markersByCnpj.set(cnpj,marker);
+    return marker;
+  }
+
+  function syncPointVisibility(cnpj) {
     const feature = featuresByCnpj.get(cnpj);
-    if(!marker || !feature) return;
+    if(!feature) return;
+
+    const savedStatus = pointStatus.get(cnpj)?.status || "";
+    const marker = markersByCnpj.get(cnpj);
+
+    // Nos mapas dos agentes, qualquer ponto preenchido desaparece
+    // e deixa de poder ser acessado.
+    if(isCompletedStatus(savedStatus)) {
+      if(marker) {
+        map.removeLayer(marker);
+        markersByCnpj.delete(cnpj);
+      }
+      return;
+    }
+
+    if(!marker) {
+      createPointMarker(cnpj,feature);
+      return;
+    }
+
     marker.setStyle(markerStyle(statusFor(cnpj,feature.properties || {})));
     marker.setPopupContent(buildPopup(cnpj));
+  }
+
+  function refreshPointMarker(cnpj) {
+    syncPointVisibility(cnpj);
   }
 
   function refreshUpdatedCount() {
@@ -386,11 +431,12 @@ button{cursor:pointer}
         agenteId,
         hora:Date.now()
       });
-      refreshPointMarker(cnpj);
+
+      map.closePopup();
+      syncPointVisibility(cnpj);
       refreshUpdatedCount();
 
-      setNotice("PONTO SALVO", "ok");
-      map.closePopup();
+      setNotice("PONTO SALVO E REMOVIDO", "ok");
       return true;
 
     } catch(error) {
@@ -406,28 +452,30 @@ button{cursor:pointer}
     }
   }
 
-  // Impede que toque/clique nos controles do popup seja tratado como gesto do mapa.
+  // Liga o botão diretamente ao popup aberto.
+  // A versão anterior bloqueava a propagação do clique no popup e, ao mesmo
+  // tempo, tentava capturá-lo no document; por isso o salvamento não disparava.
   map.on("popupopen", event => {
     const node = event.popup.getElement();
     if(!node) return;
+
     L.DomEvent.disableClickPropagation(node);
     L.DomEvent.disableScrollPropagation(node);
-  });
 
-  // Delegação única e estável: funciona mesmo quando o conteúdo do popup é recriado.
-  document.addEventListener("click", async event => {
-    const button = event.target.closest("[data-save-status]");
-    if(!button) return;
+    const button = node.querySelector("[data-save-status]");
+    const select = node.querySelector("[data-status-select]");
 
-    event.preventDefault();
-    event.stopPropagation();
+    if(!button || !select) return;
 
-    const popup = button.closest(".leaflet-popup");
-    const select = popup?.querySelector("[data-status-select]");
-    const cnpj = button.dataset.cnpj || "";
-    const status = select?.value || "";
+    button.addEventListener("click", async clickEvent => {
+      clickEvent.preventDefault();
+      clickEvent.stopPropagation();
 
-    await saveStatus(cnpj,status,button);
+      const cnpj = button.dataset.cnpj || "";
+      const status = select.value || "";
+
+      await saveStatus(cnpj,status,button);
+    }, { once:true });
   });
 
   async function loadGeoJson() {
@@ -446,20 +494,9 @@ button{cursor:pointer}
       featuresByCnpj.set(cnpj,feature);
       bounds.push([lat,lng]);
 
-      const marker = L.circleMarker(
-        [lat,lng],
-        markerStyle(statusFor(cnpj,feature.properties || {}))
-      ).addTo(map);
-
-      marker.bindPopup(buildPopup(cnpj),{maxWidth:330,autoPan:true});
-
-      marker.on("click", () => {
-        marker.setPopupContent(buildPopup(cnpj));
-        marker.openPopup();
-      });
-
-
-      markersByCnpj.set(cnpj,marker);
+      if(!isCompletedStatus(pointStatus.get(cnpj)?.status)) {
+        createPointMarker(cnpj,feature);
+      }
     }
 
     el.totalPontos.textContent = featuresByCnpj.size;
@@ -576,11 +613,17 @@ button{cursor:pointer}
   onValue(ref(db,"STATUS_PONTOS"), snap => {
     pointStatus.clear();
     const raw=snap.val()||{};
+
     for(const [cnpj,value] of Object.entries(raw)) {
       if(cnpj==="TEMP" || !value) continue;
       pointStatus.set(cnpj,value);
-      refreshPointMarker(cnpj);
     }
+
+    // Sincroniza todos os pontos: preenchidos somem em todos os mapas dos agentes.
+    for(const cnpj of featuresByCnpj.keys()) {
+      syncPointVisibility(cnpj);
+    }
+
     refreshUpdatedCount();
   });
 
