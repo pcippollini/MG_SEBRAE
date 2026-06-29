@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-  <title>PILOTOMG — V0.4 Pontos</title>
+  <title>PILOTOMG — V0.4.1 Pontos</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <style>
     
@@ -39,38 +39,59 @@ button{cursor:pointer}
   background:#17253d;color:#fff
 }
 .legend{
-  background:rgba(9,18,33,.94);color:#fff;padding:10px 11px;border-radius:10px;
-  border:1px solid #30415f;box-shadow:0 3px 14px rgba(0,0,0,.25);font-size:12px;line-height:1.4
+  background:rgba(9,18,33,.90);color:#fff;padding:5px 6px;border-radius:7px;
+  border:1px solid #30415f;box-shadow:0 2px 8px rgba(0,0,0,.22);font-size:9px;line-height:1.15
 }
-.legend-row{display:flex;align-items:center;gap:7px;margin:4px 0}
-.legend-dot{width:11px;height:11px;border-radius:50%;border:1px solid rgba(255,255,255,.7)}
+.legend-row{display:flex;align-items:center;gap:4px;margin:2px 0}
+.legend-dot{width:7px;height:7px;border-radius:50%;border:1px solid rgba(255,255,255,.65)}
 
     .app{display:grid;grid-template-rows:auto auto 1fr;height:100%}
-    header{padding:12px 15px;background:var(--panel);border-bottom:1px solid var(--line)}
-    h1{margin:0 0 4px;font-size:22px}
-    header p{margin:0;color:var(--muted);font-size:13px}
-    .controls{padding:10px 14px;background:var(--panel-2);border-bottom:1px solid var(--line);display:grid;gap:9px}
-    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    input{flex:1 1 210px;min-width:0;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:#1a2942;color:#fff}
-    .btn{padding:11px 13px;border:0;border-radius:9px;font-weight:700}
+    header{padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line)}
+    h1{margin:0;font-size:16px;line-height:1.15}
+    header p{display:none}
+    .controls{
+      padding:5px 8px;background:var(--panel-2);border-bottom:1px solid var(--line);
+      display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center
+    }
+    .row{display:flex;gap:6px;align-items:center;min-width:0}
+    input{
+      flex:1 1 auto;min-width:0;padding:8px 10px;border-radius:8px;border:1px solid var(--line);
+      background:#1a2942;color:#fff;font-size:14px
+    }
+    .btn{padding:8px 10px;border:0;border-radius:8px;font-weight:700;font-size:13px;white-space:nowrap}
     .primary{background:var(--blue);color:#fff}
     .danger{background:#3a1822;color:#fecdd3;border:1px solid #7f1d1d}
     .btn:disabled{opacity:.5;cursor:not-allowed}
-    .notice{display:flex;align-items:center;gap:8px;min-height:40px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--muted);font-size:14px}
-    .dot{width:10px;height:10px;border-radius:50%;background:var(--amber);flex:0 0 auto}
+    .notice{
+      display:flex;align-items:center;justify-content:center;gap:6px;min-height:32px;
+      padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);
+      color:#dce7f7;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+    }
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);flex:0 0 auto}
     .dot.ok{background:var(--green)} .dot.err{background:var(--red)}
-    .stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
-    .stat{padding:8px 9px;background:var(--panel);border:1px solid var(--line);border-radius:9px;min-width:0}
-    .stat-label{font-size:11px;color:var(--muted)} .stat-value{margin-top:3px;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .stats{display:none}
     #map{width:100%;min-height:320px}
     .agent-pin{width:17px;height:17px;border-radius:50%;background:#22c55e;border:3px solid #fff;box-shadow:0 0 0 4px rgba(34,197,94,.28)}
-    @media(max-width:760px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.row .btn{flex:1 1 150px}h1{font-size:20px}}
+    body.connected #nome,body.connected #entrar{display:none}
+    body.connected .controls{grid-template-columns:1fr auto}
+    body.connected .row{order:2}
+    body.connected .notice{order:1}
+    body.connected #sair{display:block}
+    @media(max-width:760px){
+      header{padding:5px 8px}
+      h1{font-size:14px}
+      .controls{padding:4px 6px}
+      .row{gap:4px}
+      input{padding:7px 8px;font-size:13px}
+      .btn{padding:7px 8px;font-size:12px}
+      .notice{min-height:29px;padding:5px 7px;font-size:11px}
+    }
   </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <h1>PILOTOMG — V0.4</h1>
+    <h1>PILOTOMG — V0.4.1</h1>
     <p>GPS atual, pontos por CNPJ e status sincronizados em tempo real.</p>
   </header>
 
@@ -143,7 +164,7 @@ button{cursor:pointer}
   };
 
   const map = L.map("map", {preferCanvas:true}).setView([-20.2,-44.2],8);
-  const pointRenderer = L.canvas({padding:.5});
+  const pointRenderer = L.canvas({padding:.5, tolerance:14});
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom:19, attribution:"&copy; OpenStreetMap"
@@ -227,11 +248,13 @@ button{cursor:pointer}
     const color = STATUS_COLORS[status] || STATUS_COLORS.PENDENTE;
     return {
       renderer:pointRenderer,
-      radius:5,
+      radius:7,
       color:"#ffffff",
-      weight:1,
+      weight:1.5,
       fillColor:color,
-      fillOpacity:.9
+      fillOpacity:.95,
+      interactive:true,
+      bubblingMouseEvents:false
     };
   }
 
@@ -358,16 +381,29 @@ button{cursor:pointer}
       featuresByCnpj.set(cnpj,feature);
       bounds.push([lat,lng]);
 
-      const marker = L.circleMarker([lat,lng],markerStyle(statusFor(cnpj,feature.properties || {})))
-        .addTo(map)
-        .bindPopup(() => buildPopup(cnpj),{maxWidth:330});
+      const marker = L.circleMarker(
+        [lat,lng],
+        markerStyle(statusFor(cnpj,feature.properties || {}))
+      ).addTo(map);
+
+      marker.bindPopup(buildPopup(cnpj),{maxWidth:330,autoPan:true});
+
+      marker.on("click", () => {
+        marker.setPopupContent(buildPopup(cnpj));
+        marker.openPopup();
+      });
+
+      marker.on("touchstart", () => {
+        marker.setPopupContent(buildPopup(cnpj));
+        marker.openPopup();
+      });
 
       markersByCnpj.set(cnpj,marker);
     }
 
     el.totalPontos.textContent = featuresByCnpj.size;
     if(bounds.length) map.fitBounds(bounds,{padding:[20,20],maxZoom:10});
-    setNotice(`${featuresByCnpj.size} pontos carregados. Ative o GPS.`, "ok");
+    setNotice("PRONTO", "ok");
   }
 
   async function loadConfig() {
@@ -383,7 +419,7 @@ button{cursor:pointer}
     const latlng=[position.lat,position.lng];
     if(!ownMarker) {
       ownMarker=L.marker(latlng,{icon:agentIcon}).addTo(map).bindPopup("Minha localização");
-      ownAccuracy=L.circle(latlng,{radius:position.accuracy||0,weight:1,fillOpacity:.06}).addTo(map);
+      ownAccuracy=L.circle(latlng,{radius:position.accuracy||0,weight:1,fillOpacity:.06,interactive:false}).addTo(map);
       map.setView(latlng,16);
     } else {
       ownMarker.setLatLng(latlng);
@@ -412,7 +448,8 @@ button{cursor:pointer}
 
     lastSentAt=now;
     lastSentPosition={...currentPosition};
-    setNotice("GPS ativo e posição enviada à gestão.", "ok");
+    setNotice("CONECTADO", "ok");
+    document.body.classList.add("connected");
   }
 
   async function startSession() {
@@ -464,7 +501,8 @@ button{cursor:pointer}
     try {
       if(disconnectHandler) await disconnectHandler.cancel();
       if(agentRef) await update(agentRef,{online:false,ultimaAtualizacao:serverTimestamp()});
-      setNotice("Sessão encerrada. Você está offline.","ok");
+      setNotice("OFFLINE","ok");
+      document.body.classList.remove("connected");
     } catch(error) {
       console.error(error);
       setNotice("Sessão encerrada localmente.","err");
