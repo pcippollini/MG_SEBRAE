@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PILOTOMG — Versão 0.1</title>
+  <meta name="theme-color" content="#111827" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1220;
+      --panel: #111827;
+      --border: #263247;
+      --text: #f8fafc;
+      --muted: #aab5c5;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --error: #ef4444;
+      --button: #2563eb;
+      --button-hover: #1d4ed8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .card {
+      width: min(520px, 100%);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, .35);
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 24px;
+    }
+
+    .subtitle {
+      margin: 0 0 22px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 7px;
+      font-weight: 700;
+    }
+
+    input {
+      width: 100%;
+      height: 46px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0 12px;
+      background: #0f172a;
+      color: var(--text);
+      font-size: 16px;
+      outline: none;
+    }
+
+    input:focus { border-color: #60a5fa; }
+
+    button {
+      width: 100%;
+      min-height: 48px;
+      margin-top: 14px;
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 16px;
+      background: var(--button);
+      color: white;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover { background: var(--button-hover); }
+    button:disabled { opacity: .55; cursor: wait; }
+
+    .status {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-top: 18px;
+      padding: 13px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #0f172a;
+      line-height: 1.4;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      margin-top: 3px;
+      border-radius: 50%;
+      background: var(--warn);
+      flex: 0 0 auto;
+    }
+
+    .status.ok .dot { background: var(--ok); }
+    .status.error .dot { background: var(--error); }
+
+    .details {
+      margin-top: 16px;
+      padding: 13px;
+      border-radius: 10px;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .footer {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>PILOTOMG — V0.1</h1>
+    <p class="subtitle">Teste isolado de leitura e escrita no Firebase. Nesta versão não há mapa nem GPS.</p>
+
+    <label for="nomeAgente">Nome do agente</label>
+    <input id="nomeAgente" type="text" maxlength="50" autocomplete="name" placeholder="Ex.: Pedro" />
+
+    <button id="btnTestar" type="button">Testar conexão com o Firebase</button>
+
+    <section id="statusBox" class="status" aria-live="polite">
+      <span class="dot"></span>
+      <span id="statusTexto">Aguardando teste.</span>
+    </section>
+
+    <section id="detalhes" class="details">CONFIG ainda não lida.</section>
+
+    <div class="footer">Projeto pilotomg-efe79 • Realtime Database</div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+  <script>
+    'use strict';
+
+    const firebaseConfig = {
+      apiKey: 'AIzaSyCYfLl08iRHnvnbBcKTaJOsONjFHKd2mrA',
+      authDomain: 'pilotomg-efe79.firebaseapp.com',
+      databaseURL: 'https://pilotomg-efe79-default-rtdb.firebaseio.com',
+      projectId: 'pilotomg-efe79',
+      storageBucket: 'pilotomg-efe79.firebasestorage.app',
+      messagingSenderId: '577008586078',
+      appId: '1:577008586078:web:eb8bdd9891418e0777d3cf'
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const nomeInput = document.getElementById('nomeAgente');
+    const btnTestar = document.getElementById('btnTestar');
+    const statusBox = document.getElementById('statusBox');
+    const statusTexto = document.getElementById('statusTexto');
+    const detalhes = document.getElementById('detalhes');
+
+    function definirStatus(tipo, mensagem) {
+      statusBox.className = `status ${tipo || ''}`.trim();
+      statusTexto.textContent = mensagem;
+    }
+
+    function normalizarNome(nome) {
+      return nome.replace(/\s+/g, ' ').trim();
+    }
+
+    function formatarDataHora(data = new Date()) {
+      return new Intl.DateTimeFormat('pt-BR', {
+        dateStyle: 'short',
+        timeStyle: 'medium'
+      }).format(data);
+    }
+
+    db.ref('.info/connected').on('value', (snapshot) => {
+      if (snapshot.val() === true) {
+        definirStatus('ok', 'Firebase acessível. Informe o nome e execute o teste.');
+      } else {
+        definirStatus('', 'Conectando ao Firebase...');
+      }
+    });
+
+    btnTestar.addEventListener('click', async () => {
+      const nome = normalizarNome(nomeInput.value);
+
+      if (!nome) {
+        definirStatus('error', 'Informe o nome do agente antes de testar.');
+        nomeInput.focus();
+        return;
+      }
+
+      btnTestar.disabled = true;
+      definirStatus('', 'Lendo CONFIG e gravando o teste...');
+
+      try {
+        const configSnapshot = await db.ref('CONFIG').once('value');
+        const config = configSnapshot.val();
+
+        if (!config) {
+          throw new Error('O nó CONFIG não foi encontrado no Realtime Database.');
+        }
+
+        const registro = {
+          nome,
+          online: true,
+          fase: 'V0.1',
+          hora: formatarDataHora(),
+          timestamp: firebase.database.ServerValue.TIMESTAMP
+        };
+
+        await db.ref('AGENTES_ONLINE/TESTE_V01').set(registro);
+
+        definirStatus('ok', 'Conexão confirmada. Leitura e escrita concluídas.');
+        detalhes.textContent =
+          `CONFIG recebida:\n` +
+          `• raioLiberacao: ${config.raioLiberacao} m\n` +
+          `• raioProximo: ${config.raioProximo} m\n` +
+          `• gpsAtualizacaoSegundos: ${config.gpsAtualizacaoSegundos} s\n` +
+          `• gpsDistanciaMinima: ${config.gpsDistanciaMinima} m\n\n` +
+          `Registro gravado em:\nAGENTES_ONLINE/TESTE_V01\n\n` +
+          `Agente: ${nome}`;
+      } catch (erro) {
+        console.error(erro);
+        definirStatus('error', `Falha no teste: ${erro.message}`);
+        detalhes.textContent =
+          'Verifique se o Realtime Database está ativo e se as regras permitem leitura e escrita durante o teste.';
+      } finally {
+        btnTestar.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

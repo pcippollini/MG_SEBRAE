@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GEST_MG — Versão 0.1</title>
+  <meta name="theme-color" content="#111827" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1220;
+      --panel: #111827;
+      --border: #263247;
+      --text: #f8fafc;
+      --muted: #aab5c5;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --error: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .card {
+      width: min(620px, 100%);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, .35);
+    }
+
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    .subtitle { margin: 0 0 20px; color: var(--muted); line-height: 1.45; }
+
+    .status {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 13px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #0f172a;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      margin-top: 3px;
+      border-radius: 50%;
+      background: var(--warn);
+      flex: 0 0 auto;
+    }
+
+    .status.ok .dot { background: var(--ok); }
+    .status.error .dot { background: var(--error); }
+
+    .panel {
+      margin-top: 16px;
+      padding: 15px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #0f172a;
+    }
+
+    .panel h2 { margin: 0 0 12px; font-size: 17px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 14px;
+    }
+
+    .label { color: var(--muted); }
+    .value { text-align: right; overflow-wrap: anywhere; }
+
+    .empty { color: var(--muted); line-height: 1.5; }
+
+    .footer {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    @media (max-width: 480px) {
+      .grid { grid-template-columns: 1fr; }
+      .value { text-align: left; margin-bottom: 7px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>GEST_MG — V0.1</h1>
+    <p class="subtitle">Monitor do teste de conexão. Nesta versão não há mapa nem GPS.</p>
+
+    <section id="statusBox" class="status" aria-live="polite">
+      <span class="dot"></span>
+      <span id="statusTexto">Conectando ao Firebase...</span>
+    </section>
+
+    <section class="panel">
+      <h2>CONFIG lida do Firebase</h2>
+      <div id="configConteudo" class="empty">Aguardando dados...</div>
+    </section>
+
+    <section class="panel">
+      <h2>Último teste recebido em tempo real</h2>
+      <div id="testeConteudo" class="empty">
+        Abra o PILOTOMG_V01.html, informe um nome e execute o teste.
+      </div>
+    </section>
+
+    <div class="footer">Projeto pilotomg-efe79 • Realtime Database</div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+  <script>
+    'use strict';
+
+    const firebaseConfig = {
+      apiKey: 'AIzaSyCYfLl08iRHnvnbBcKTaJOsONjFHKd2mrA',
+      authDomain: 'pilotomg-efe79.firebaseapp.com',
+      databaseURL: 'https://pilotomg-efe79-default-rtdb.firebaseio.com',
+      projectId: 'pilotomg-efe79',
+      storageBucket: 'pilotomg-efe79.firebasestorage.app',
+      messagingSenderId: '577008586078',
+      appId: '1:577008586078:web:eb8bdd9891418e0777d3cf'
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const statusBox = document.getElementById('statusBox');
+    const statusTexto = document.getElementById('statusTexto');
+    const configConteudo = document.getElementById('configConteudo');
+    const testeConteudo = document.getElementById('testeConteudo');
+
+    function definirStatus(tipo, mensagem) {
+      statusBox.className = `status ${tipo || ''}`.trim();
+      statusTexto.textContent = mensagem;
+    }
+
+    function renderizarGrade(elemento, linhas) {
+      elemento.className = 'grid';
+      elemento.innerHTML = linhas
+        .map(([rotulo, valor]) =>
+          `<div class="label">${rotulo}</div><div class="value">${String(valor ?? '—')}</div>`
+        )
+        .join('');
+    }
+
+    db.ref('.info/connected').on('value', (snapshot) => {
+      if (snapshot.val() === true) {
+        definirStatus('ok', 'Gestão conectada ao Firebase e escutando alterações.');
+      } else {
+        definirStatus('', 'Conectando ao Firebase...');
+      }
+    });
+
+    db.ref('CONFIG').on('value', (snapshot) => {
+      const config = snapshot.val();
+      if (!config) {
+        configConteudo.className = 'empty';
+        configConteudo.textContent = 'CONFIG não encontrada.';
+        return;
+      }
+
+      renderizarGrade(configConteudo, [
+        ['Raio de liberação', `${config.raioLiberacao} m`],
+        ['Raio do PRÓXIMO', `${config.raioProximo} m`],
+        ['Atualização do GPS', `${config.gpsAtualizacaoSegundos} s`],
+        ['Distância mínima', `${config.gpsDistanciaMinima} m`]
+      ]);
+    }, (erro) => {
+      definirStatus('error', `Erro ao ler CONFIG: ${erro.message}`);
+    });
+
+    db.ref('AGENTES_ONLINE/TESTE_V01').on('value', (snapshot) => {
+      const teste = snapshot.val();
+      if (!teste) {
+        testeConteudo.className = 'empty';
+        testeConteudo.textContent = 'Nenhum teste recebido ainda.';
+        return;
+      }
+
+      const dataServidor = teste.timestamp
+        ? new Date(teste.timestamp).toLocaleString('pt-BR')
+        : '—';
+
+      renderizarGrade(testeConteudo, [
+        ['Agente', teste.nome],
+        ['Fase', teste.fase],
+        ['Online informado', teste.online ? 'SIM' : 'NÃO'],
+        ['Hora enviada', teste.hora],
+        ['Timestamp servidor', dataServidor]
+      ]);
+    }, (erro) => {
+      definirStatus('error', `Erro ao escutar o teste: ${erro.message}`);
+    });
+  </script>
+</body>
+</html>
