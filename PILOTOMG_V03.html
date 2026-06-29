@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>PILOTOMG — V0.3 GPS</title>
+
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        crossorigin="">
+
+  <style>
+    :root {
+      --bg:#07111f;
+      --panel:#101a2d;
+      --panel-2:#0b1527;
+      --line:#263653;
+      --text:#f7f9fc;
+      --muted:#b9c6dc;
+      --blue:#2f5be7;
+      --green:#20c86a;
+      --red:#ef4444;
+      --amber:#f59e0b;
+    }
+
+    * { box-sizing:border-box; }
+
+    html, body {
+      margin:0;
+      width:100%;
+      height:100%;
+      font-family:Arial, Helvetica, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    .app {
+      display:grid;
+      grid-template-rows:auto auto 1fr;
+      height:100%;
+      min-height:100%;
+    }
+
+    header {
+      padding:14px 16px 11px;
+      background:var(--panel);
+      border-bottom:1px solid var(--line);
+    }
+
+    h1 {
+      margin:0 0 5px;
+      font-size:23px;
+    }
+
+    header p {
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.35;
+    }
+
+    .controls {
+      padding:12px 16px;
+      background:var(--panel-2);
+      border-bottom:1px solid var(--line);
+      display:grid;
+      gap:10px;
+    }
+
+    .row {
+      display:flex;
+      align-items:center;
+      gap:9px;
+      flex-wrap:wrap;
+    }
+
+    input {
+      flex:1 1 220px;
+      min-width:0;
+      padding:12px 13px;
+      border-radius:10px;
+      border:1px solid var(--line);
+      background:#1a2942;
+      color:#fff;
+      font-size:16px;
+      outline:none;
+    }
+
+    button {
+      padding:12px 14px;
+      border-radius:10px;
+      border:0;
+      font-size:15px;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    button:disabled {
+      opacity:.55;
+      cursor:not-allowed;
+    }
+
+    .primary {
+      background:var(--blue);
+      color:#fff;
+    }
+
+    .danger {
+      color:#fecdd3;
+      background:#3a1822;
+      border:1px solid #7f1d1d;
+    }
+
+    .notice {
+      display:flex;
+      align-items:center;
+      gap:9px;
+      min-height:42px;
+      padding:10px 12px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      background:var(--panel);
+      color:var(--muted);
+      line-height:1.35;
+    }
+
+    .dot {
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:var(--amber);
+      flex:0 0 auto;
+    }
+
+    .dot.ok { background:var(--green); }
+    .dot.err { background:var(--red); }
+
+    .stats {
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0, 1fr));
+      gap:8px;
+    }
+
+    .stat {
+      min-width:0;
+      padding:9px 10px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      background:var(--panel);
+    }
+
+    .stat-label {
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .stat-value {
+      margin-top:4px;
+      font-size:14px;
+      font-weight:700;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    #map {
+      width:100%;
+      min-height:320px;
+    }
+
+    .leaflet-popup-content-wrapper,
+    .leaflet-popup-tip {
+      background:#101a2d;
+      color:#fff;
+    }
+
+    .leaflet-control-attribution {
+      font-size:9px;
+    }
+
+    @media (max-width:720px) {
+      h1 { font-size:20px; }
+      .stats { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+      .row button { flex:1 1 170px; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="app">
+  <header>
+    <h1>PILOTOMG — V0.3</h1>
+    <p>Compartilha somente a posição GPS atual. Não cria histórico de trajeto.</p>
+  </header>
+
+  <section class="controls">
+    <div class="row">
+      <input id="nome" maxlength="60" autocomplete="name" placeholder="Nome do agente">
+      <button id="entrar" class="primary">Entrar e ativar GPS</button>
+      <button id="sair" class="danger" disabled>Encerrar sessão</button>
+    </div>
+
+    <div class="notice">
+      <span id="dot" class="dot"></span>
+      <span id="mensagem">Informe o nome e ative o GPS.</span>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Latitude</div>
+        <div id="latitude" class="stat-value">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Longitude</div>
+        <div id="longitude" class="stat-value">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Precisão</div>
+        <div id="precisao" class="stat-value">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Último envio</div>
+        <div id="ultimoEnvio" class="stat-value">—</div>
+      </div>
+    </div>
+  </section>
+
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+<script type="module">
+  import { initializeApp } from
+    "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+
+  import {
+    getDatabase,
+    ref,
+    get,
+    set,
+    update,
+    onDisconnect,
+    serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+
+  const firebaseConfig = {
+  apiKey: "AIzaSyCYfLl08iRHnvnbBcKTaJOsONjFHKd2mrA",
+  authDomain: "pilotomg-efe79.firebaseapp.com",
+  databaseURL: "https://pilotomg-efe79-default-rtdb.firebaseio.com",
+  projectId: "pilotomg-efe79",
+  storageBucket: "pilotomg-efe79.firebasestorage.app",
+  messagingSenderId: "577008586078",
+  appId: "1:577008586078:web:eb8bdd9891418e0777d3cf"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const el = {
+    nome: document.getElementById("nome"),
+    entrar: document.getElementById("entrar"),
+    sair: document.getElementById("sair"),
+    dot: document.getElementById("dot"),
+    mensagem: document.getElementById("mensagem"),
+    latitude: document.getElementById("latitude"),
+    longitude: document.getElementById("longitude"),
+    precisao: document.getElementById("precisao"),
+    ultimoEnvio: document.getElementById("ultimoEnvio")
+  };
+
+  const map = L.map("map").setView([-19.92, -43.94], 12);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom:19,
+    attribution:"&copy; OpenStreetMap"
+  }).addTo(map);
+
+  let myMarker = null;
+  let accuracyCircle = null;
+  let watchId = null;
+  let timerId = null;
+  let agentRef = null;
+  let disconnectHandler = null;
+  let currentPosition = null;
+  let lastSentPosition = null;
+  let lastSentAt = 0;
+
+  const config = {
+    gpsAtualizacaoSegundos:60,
+    gpsDistanciaMinima:100
+  };
+
+  const agentIdKey = "pilotomg_v03_agent_id";
+  const agentNameKey = "pilotomg_v03_agent_name";
+
+  let agentId = localStorage.getItem(agentIdKey);
+
+  if (!agentId) {
+    const randomId = crypto.randomUUID().replaceAll("-", "").slice(0, 12);
+    agentId = `ag_${randomId}`;
+    localStorage.setItem(agentIdKey, agentId);
+  }
+
+  const savedName = localStorage.getItem(agentNameKey);
+  if (savedName) el.nome.value = savedName;
+
+  function setNotice(text, type = "wait") {
+    el.mensagem.textContent = text;
+    el.dot.className = "dot";
+
+    if (type === "ok") el.dot.classList.add("ok");
+    if (type === "err") el.dot.classList.add("err");
+  }
+
+  function haversineMeters(a, b) {
+    if (!a || !b) return Infinity;
+
+    const R = 6371000;
+    const rad = value => value * Math.PI / 180;
+    const dLat = rad(b.lat - a.lat);
+    const dLng = rad(b.lng - a.lng);
+    const lat1 = rad(a.lat);
+    const lat2 = rad(b.lat);
+
+    const h =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1) * Math.cos(lat2) *
+      Math.sin(dLng / 2) ** 2;
+
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  function drawCurrentPosition(position) {
+    const latLng = [position.lat, position.lng];
+
+    if (!myMarker) {
+      myMarker = L.marker(latLng)
+        .addTo(map)
+        .bindPopup("Minha localização atual");
+
+      accuracyCircle = L.circle(latLng, {
+        radius:position.accuracy || 0,
+        weight:1,
+        fillOpacity:.08
+      }).addTo(map);
+
+      map.setView(latLng, 17);
+      myMarker.openPopup();
+      return;
+    }
+
+    myMarker.setLatLng(latLng);
+    accuracyCircle
+      .setLatLng(latLng)
+      .setRadius(position.accuracy || 0);
+  }
+
+  async function loadConfig() {
+    const snapshot = await get(ref(db, "CONFIG"));
+
+    if (!snapshot.exists()) return;
+
+    const data = snapshot.val() || {};
+
+    config.gpsAtualizacaoSegundos =
+      Number(data.gpsAtualizacaoSegundos) || 60;
+
+    config.gpsDistanciaMinima =
+      Number(data.gpsDistanciaMinima) || 100;
+  }
+
+  async function sendPosition(force = false) {
+    if (!agentRef || !currentPosition) return;
+
+    const now = Date.now();
+    const intervalMs = config.gpsAtualizacaoSegundos * 1000;
+    const elapsedMs = now - lastSentAt;
+    const movedMeters = haversineMeters(lastSentPosition, currentPosition);
+
+    const timeReached = elapsedMs >= intervalMs;
+    const distanceReached = movedMeters >= config.gpsDistanciaMinima;
+
+    if (!force && !timeReached && !distanceReached) return;
+
+    await update(agentRef, {
+      fase:"V0.3",
+      id:agentId,
+      nome:el.nome.value.trim(),
+      online:true,
+      lat:Number(currentPosition.lat.toFixed(7)),
+      lng:Number(currentPosition.lng.toFixed(7)),
+      precisao:Math.round(currentPosition.accuracy || 0),
+      ultimaAtualizacao:serverTimestamp()
+    });
+
+    lastSentAt = now;
+    lastSentPosition = { ...currentPosition };
+    el.ultimoEnvio.textContent =
+      new Date().toLocaleTimeString("pt-BR");
+
+    setNotice("GPS ativo e posição atual enviada à gestão.", "ok");
+  }
+
+  function handleGeolocationError(error) {
+    const messages = {
+      1:"Permissão de localização negada.",
+      2:"Localização indisponível no momento.",
+      3:"Tempo esgotado ao obter a localização."
+    };
+
+    setNotice(
+      messages[error.code] || "Não foi possível obter o GPS.",
+      "err"
+    );
+  }
+
+  async function startSession() {
+    const name = el.nome.value.trim();
+
+    if (!name) {
+      setNotice("Informe o nome do agente.", "err");
+      el.nome.focus();
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setNotice("Este navegador não oferece geolocalização.", "err");
+      return;
+    }
+
+    el.entrar.disabled = true;
+    setNotice("Conectando ao Firebase e solicitando o GPS...");
+
+    try {
+      await loadConfig();
+      localStorage.setItem(agentNameKey, name);
+
+      agentRef = ref(db, `AGENTES_ONLINE/${agentId}`);
+      disconnectHandler = onDisconnect(agentRef);
+
+      await disconnectHandler.update({
+        online:false,
+        ultimaAtualizacao:serverTimestamp()
+      });
+
+      await set(agentRef, {
+        fase:"V0.3",
+        id:agentId,
+        nome:name,
+        online:true,
+        entrada:serverTimestamp(),
+        ultimaAtualizacao:serverTimestamp()
+      });
+
+      watchId = navigator.geolocation.watchPosition(
+        async geoPosition => {
+          currentPosition = {
+            lat:geoPosition.coords.latitude,
+            lng:geoPosition.coords.longitude,
+            accuracy:geoPosition.coords.accuracy
+          };
+
+          el.latitude.textContent = currentPosition.lat.toFixed(6);
+          el.longitude.textContent = currentPosition.lng.toFixed(6);
+          el.precisao.textContent =
+            `${Math.round(currentPosition.accuracy)} m`;
+
+          drawCurrentPosition(currentPosition);
+
+          try {
+            await sendPosition(lastSentPosition === null);
+          } catch (error) {
+            console.error(error);
+            setNotice("GPS obtido, mas o envio ao Firebase falhou.", "err");
+          }
+        },
+        handleGeolocationError,
+        {
+          enableHighAccuracy:true,
+          maximumAge:10000,
+          timeout:25000
+        }
+      );
+
+      timerId = window.setInterval(() => {
+        sendPosition(false).catch(error => {
+          console.error(error);
+          setNotice("Falha temporária ao atualizar a posição.", "err");
+        });
+      }, 5000);
+
+      el.sair.disabled = false;
+
+    } catch (error) {
+      console.error(error);
+      el.entrar.disabled = false;
+      setNotice(
+        "Não foi possível iniciar a sessão no Firebase.",
+        "err"
+      );
+    }
+  }
+
+  async function endSession() {
+    el.sair.disabled = true;
+    setNotice("Encerrando a sessão...");
+
+    if (watchId !== null) {
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+    }
+
+    if (timerId !== null) {
+      window.clearInterval(timerId);
+      timerId = null;
+    }
+
+    try {
+      if (disconnectHandler) {
+        await disconnectHandler.cancel();
+      }
+
+      if (agentRef) {
+        await update(agentRef, {
+          online:false,
+          ultimaAtualizacao:serverTimestamp()
+        });
+      }
+
+      setNotice("Sessão encerrada. Você está offline.", "ok");
+
+    } catch (error) {
+      console.error(error);
+      setNotice(
+        "Sessão encerrada localmente; confirme o status na gestão.",
+        "err"
+      );
+    }
+
+    el.entrar.disabled = false;
+  }
+
+  el.entrar.addEventListener("click", startSession);
+  el.sair.addEventListener("click", endSession);
+</script>
+</body>
+</html>

@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GEST_MG — V0.3 GPS</title>
+
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        crossorigin="">
+
+  <style>
+    :root {
+      --bg:#07111f;
+      --panel:#101a2d;
+      --panel-2:#0b1527;
+      --line:#263653;
+      --text:#f7f9fc;
+      --muted:#b9c6dc;
+      --green:#20c86a;
+      --red:#ef4444;
+      --blue:#2f5be7;
+    }
+
+    * { box-sizing:border-box; }
+
+    html, body {
+      margin:0;
+      min-height:100%;
+      font-family:Arial, Helvetica, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    .page {
+      max-width:1500px;
+      margin:0 auto;
+      padding:22px;
+    }
+
+    .panel {
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:24px;
+      margin-bottom:18px;
+    }
+
+    h1 {
+      margin:0 0 7px;
+      font-size:38px;
+    }
+
+    h2 {
+      margin:0;
+      font-size:26px;
+    }
+
+    p {
+      color:var(--muted);
+      line-height:1.4;
+    }
+
+    .notice {
+      display:flex;
+      align-items:center;
+      gap:11px;
+      min-height:58px;
+      margin-top:22px;
+      padding:15px 18px;
+      background:var(--panel-2);
+      border:1px solid var(--line);
+      border-radius:14px;
+      font-size:19px;
+    }
+
+    .dot {
+      width:13px;
+      height:13px;
+      border-radius:50%;
+      background:var(--green);
+      flex:0 0 auto;
+    }
+
+    .summary {
+      display:grid;
+      grid-template-columns:repeat(3, minmax(0, 1fr));
+      gap:14px;
+      margin-top:20px;
+    }
+
+    .summary-card {
+      background:var(--panel-2);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:18px;
+    }
+
+    .summary-label {
+      color:var(--muted);
+      font-size:17px;
+    }
+
+    .summary-value {
+      margin-top:6px;
+      font-size:38px;
+      font-weight:700;
+    }
+
+    #map {
+      width:100%;
+      height:520px;
+      border-radius:14px;
+      overflow:hidden;
+      margin-top:18px;
+    }
+
+    .section-head {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:16px;
+      margin-bottom:16px;
+    }
+
+    #updatedAt {
+      color:var(--muted);
+    }
+
+    .agents {
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:14px;
+    }
+
+    .agent-card {
+      background:var(--panel-2);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:18px;
+    }
+
+    .agent-top {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:13px;
+    }
+
+    .agent-name {
+      font-size:22px;
+      font-weight:700;
+      overflow-wrap:anywhere;
+    }
+
+    .badge {
+      display:inline-flex;
+      align-items:center;
+      gap:7px;
+      padding:7px 11px;
+      border-radius:999px;
+      font-weight:700;
+      font-size:14px;
+    }
+
+    .badge.online {
+      color:#a7f3d0;
+      background:#0b3b34;
+    }
+
+    .badge.offline {
+      color:#dbe4f2;
+      background:#243149;
+    }
+
+    .badge-dot {
+      width:9px;
+      height:9px;
+      border-radius:50%;
+      background:currentColor;
+    }
+
+    .data-row {
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:15px;
+      margin-top:8px;
+      color:var(--muted);
+    }
+
+    .data-row strong {
+      color:var(--text);
+      font-weight:500;
+      text-align:right;
+    }
+
+    .empty {
+      padding:28px;
+      border:1px dashed var(--line);
+      border-radius:14px;
+      color:var(--muted);
+      text-align:center;
+    }
+
+    .agent-marker {
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      background:#20c86a;
+      border:3px solid #fff;
+      box-shadow:0 0 0 4px rgba(32,200,106,.28);
+    }
+
+    .leaflet-popup-content-wrapper,
+    .leaflet-popup-tip {
+      background:#101a2d;
+      color:#fff;
+    }
+
+    @media (max-width:900px) {
+      .page { padding:12px; }
+      .panel { padding:17px; }
+      h1 { font-size:29px; }
+      .summary { grid-template-columns:1fr; }
+      .agents { grid-template-columns:1fr; }
+      #map { height:430px; }
+    }
+  </style>
+</head>
+
+<body>
+<main class="page">
+  <section class="panel">
+    <h1>GEST_MG — V0.3</h1>
+    <p>Posição GPS atual dos agentes em tempo real. Não há histórico de trajeto.</p>
+
+    <div class="notice">
+      <span class="dot"></span>
+      <span>Gestão conectada ao Firebase e acompanhando o GPS.</span>
+    </div>
+
+    <div class="summary">
+      <div class="summary-card">
+        <div class="summary-label">Agentes online</div>
+        <div id="onlineCount" class="summary-value">0</div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-label">Agentes desta versão</div>
+        <div id="totalCount" class="summary-value">0</div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-label">Com GPS disponível</div>
+        <div id="gpsCount" class="summary-value">0</div>
+      </div>
+    </div>
+
+    <div id="map"></div>
+  </section>
+
+  <section class="panel">
+    <div class="section-head">
+      <h2>Agentes</h2>
+      <span id="updatedAt">Aguardando dados...</span>
+    </div>
+
+    <div id="agents" class="agents">
+      <div class="empty">Nenhum agente da V0.3 registrado ainda.</div>
+    </div>
+  </section>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+<script type="module">
+  import { initializeApp } from
+    "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+
+  import {
+    getDatabase,
+    ref,
+    onValue
+  } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+
+  const firebaseConfig = {
+  apiKey: "AIzaSyCYfLl08iRHnvnbBcKTaJOsONjFHKd2mrA",
+  authDomain: "pilotomg-efe79.firebaseapp.com",
+  databaseURL: "https://pilotomg-efe79-default-rtdb.firebaseio.com",
+  projectId: "pilotomg-efe79",
+  storageBucket: "pilotomg-efe79.firebasestorage.app",
+  messagingSenderId: "577008586078",
+  appId: "1:577008586078:web:eb8bdd9891418e0777d3cf"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const onlineCountEl = document.getElementById("onlineCount");
+  const totalCountEl = document.getElementById("totalCount");
+  const gpsCountEl = document.getElementById("gpsCount");
+  const agentsEl = document.getElementById("agents");
+  const updatedAtEl = document.getElementById("updatedAt");
+
+  const map = L.map("map").setView([-19.92, -43.94], 10);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom:19,
+    attribution:"&copy; OpenStreetMap"
+  }).addTo(map);
+
+  const markers = new Map();
+
+  const markerIcon = L.divIcon({
+    className:"",
+    html:'<div class="agent-marker"></div>',
+    iconSize:[24, 24],
+    iconAnchor:[12, 12],
+    popupAnchor:[0, -12]
+  });
+
+  function formatTimestamp(value) {
+    if (!value || !Number.isFinite(Number(value))) return "—";
+
+    return new Date(Number(value)).toLocaleString("pt-BR");
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function removeUnusedMarkers(activeIds) {
+    for (const [id, marker] of markers.entries()) {
+      if (!activeIds.has(id)) {
+        map.removeLayer(marker);
+        markers.delete(id);
+      }
+    }
+  }
+
+  function updateMapMarkers(agents) {
+    const activeIds = new Set();
+    const bounds = [];
+
+    for (const agent of agents) {
+      const hasGps =
+        Number.isFinite(Number(agent.lat)) &&
+        Number.isFinite(Number(agent.lng));
+
+      if (!agent.online || !hasGps) continue;
+
+      activeIds.add(agent.id);
+
+      const latLng = [
+        Number(agent.lat),
+        Number(agent.lng)
+      ];
+
+      bounds.push(latLng);
+
+      const popup = `
+        <strong>${escapeHtml(agent.nome)}</strong><br>
+        Online<br>
+        Precisão: ${escapeHtml(agent.precisao ?? "—")} m<br>
+        Atualizado: ${formatTimestamp(agent.ultimaAtualizacao)}
+      `;
+
+      if (markers.has(agent.id)) {
+        markers.get(agent.id)
+          .setLatLng(latLng)
+          .setPopupContent(popup);
+      } else {
+        const marker = L.marker(latLng, { icon:markerIcon })
+          .addTo(map)
+          .bindPopup(popup);
+
+        markers.set(agent.id, marker);
+      }
+    }
+
+    removeUnusedMarkers(activeIds);
+
+    if (bounds.length === 1) {
+      map.setView(bounds[0], 17);
+    } else if (bounds.length > 1) {
+      map.fitBounds(bounds, { padding:[35, 35], maxZoom:16 });
+    }
+  }
+
+  function renderAgents(agents) {
+    const onlineCount = agents.filter(agent => agent.online).length;
+
+    const gpsCount = agents.filter(agent =>
+      Number.isFinite(Number(agent.lat)) &&
+      Number.isFinite(Number(agent.lng))
+    ).length;
+
+    onlineCountEl.textContent = onlineCount;
+    totalCountEl.textContent = agents.length;
+    gpsCountEl.textContent = gpsCount;
+
+    if (agents.length === 0) {
+      agentsEl.innerHTML =
+        '<div class="empty">Nenhum agente da V0.3 registrado ainda.</div>';
+      updateMapMarkers([]);
+      return;
+    }
+
+    agentsEl.innerHTML = agents.map(agent => {
+      const statusClass = agent.online ? "online" : "offline";
+      const statusText = agent.online ? "ONLINE" : "OFFLINE";
+      const latitude = Number.isFinite(Number(agent.lat))
+        ? Number(agent.lat).toFixed(6)
+        : "—";
+      const longitude = Number.isFinite(Number(agent.lng))
+        ? Number(agent.lng).toFixed(6)
+        : "—";
+      const accuracy = agent.precisao ?? "—";
+
+      return `
+        <article class="agent-card">
+          <div class="agent-top">
+            <div class="agent-name">${escapeHtml(agent.nome)}</div>
+            <div class="badge ${statusClass}">
+              <span class="badge-dot"></span>
+              ${statusText}
+            </div>
+          </div>
+
+          <div class="data-row">
+            <span>ID</span>
+            <strong>${escapeHtml(agent.id.slice(-8))}</strong>
+          </div>
+
+          <div class="data-row">
+            <span>Latitude</span>
+            <strong>${latitude}</strong>
+          </div>
+
+          <div class="data-row">
+            <span>Longitude</span>
+            <strong>${longitude}</strong>
+          </div>
+
+          <div class="data-row">
+            <span>Precisão</span>
+            <strong>${escapeHtml(accuracy)} m</strong>
+          </div>
+
+          <div class="data-row">
+            <span>Última atualização</span>
+            <strong>${formatTimestamp(agent.ultimaAtualizacao)}</strong>
+          </div>
+        </article>
+      `;
+    }).join("");
+
+    updateMapMarkers(agents);
+  }
+
+  onValue(ref(db, "AGENTES_ONLINE"), snapshot => {
+    const raw = snapshot.val() || {};
+
+    const agents = Object.values(raw)
+      .filter(item => item && item.fase === "V0.3")
+      .map(item => ({
+        ...item,
+        id:String(item.id || "")
+      }))
+      .sort((a, b) => {
+        if (a.online !== b.online) return a.online ? -1 : 1;
+        return String(a.nome || "").localeCompare(
+          String(b.nome || ""),
+          "pt-BR"
+        );
+      });
+
+    renderAgents(agents);
+
+    updatedAtEl.textContent =
+      `Atualizado em ${new Date().toLocaleTimeString("pt-BR")}`;
+  }, error => {
+    console.error(error);
+    agentsEl.innerHTML =
+      '<div class="empty">Erro ao ler AGENTES_ONLINE no Firebase.</div>';
+  });
+</script>
+</body>
+</html>
