@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Teste Firebase STATUS_PONTOS</title>
+  <style>
+    body{font-family:Arial,sans-serif;background:#07111f;color:#fff;margin:0;padding:24px}
+    .box{max-width:560px;margin:auto;background:#101a2d;border:1px solid #263653;border-radius:14px;padding:20px}
+    button{width:100%;padding:14px;border:0;border-radius:10px;background:#2563eb;color:#fff;font-weight:700;font-size:16px}
+    pre{white-space:pre-wrap;background:#0b1527;border:1px solid #263653;border-radius:10px;padding:14px;min-height:120px}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Teste direto do Firebase</h1>
+    <p>Este teste grava em <code>STATUS_PONTOS/TESTE_MANUAL</code> e lê o registro de volta.</p>
+    <button id="testar">GRAVAR TESTE</button>
+    <pre id="resultado">Aguardando...</pre>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+    import {
+      getDatabase, ref, set, get, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCYfLl08iRHnvnbBcKTaJOsONjFHKd2mrA",
+      authDomain: "pilotomg-efe79.firebaseapp.com",
+      databaseURL: "https://pilotomg-efe79-default-rtdb.firebaseio.com",
+      projectId: "pilotomg-efe79",
+      storageBucket: "pilotomg-efe79.firebasestorage.app",
+      messagingSenderId: "577008586078",
+      appId: "1:577008586078:web:eb8bdd9891418e0777d3cf"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const botao = document.getElementById("testar");
+    const resultado = document.getElementById("resultado");
+
+    botao.addEventListener("click", async () => {
+      botao.disabled = true;
+      resultado.textContent = "1. Enviando gravação...";
+
+      try {
+        const caminho = ref(db, "STATUS_PONTOS/TESTE_MANUAL");
+
+        await set(caminho, {
+          status: "INICIADO",
+          agente: "TESTE",
+          hora: serverTimestamp()
+        });
+
+        resultado.textContent += "\n2. Gravação enviada. Lendo de volta...";
+
+        const snapshot = await get(caminho);
+
+        if (!snapshot.exists()) {
+          throw new Error("Registro não encontrado após a gravação.");
+        }
+
+        resultado.textContent += "\n3. SUCESSO. Registro confirmado:\n\n" +
+          JSON.stringify(snapshot.val(), null, 2);
+
+      } catch (erro) {
+        resultado.textContent += "\n\nERRO:\n" +
+          (erro.code || erro.message || String(erro));
+      } finally {
+        botao.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
