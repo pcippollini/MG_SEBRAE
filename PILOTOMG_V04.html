@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-  <title>PILOTOMG — V0.4.1 Pontos</title>
+  <title>PILOTOMG — V0.4.2 Pontos</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <style>
     
@@ -91,7 +91,7 @@ button{cursor:pointer}
 <body>
 <div class="app">
   <header>
-    <h1>PILOTOMG — V0.4.1</h1>
+    <h1>PILOTOMG — V0.4.2</h1>
     <p>GPS atual, pontos por CNPJ e status sincronizados em tempo real.</p>
   </header>
 
@@ -164,7 +164,25 @@ button{cursor:pointer}
   };
 
   const map = L.map("map", {preferCanvas:true}).setView([-20.2,-44.2],8);
-  const pointRenderer = L.canvas({padding:.5, tolerance:14});
+
+  // Camadas separadas para evitar que GPS e precisão cubram os pontos no celular.
+  map.createPane("gpsAccuracyPane");
+  map.getPane("gpsAccuracyPane").style.zIndex = 350;
+  map.getPane("gpsAccuracyPane").style.pointerEvents = "none";
+
+  map.createPane("agentsPane");
+  map.getPane("agentsPane").style.zIndex = 620;
+  map.getPane("agentsPane").style.pointerEvents = "none";
+
+  map.createPane("pointsPane");
+  map.getPane("pointsPane").style.zIndex = 650;
+  map.getPane("pointsPane").style.pointerEvents = "auto";
+
+  const pointRenderer = L.canvas({
+    pane:"pointsPane",
+    padding:.5,
+    tolerance:18
+  });
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom:19, attribution:"&copy; OpenStreetMap"
@@ -393,10 +411,6 @@ button{cursor:pointer}
         marker.openPopup();
       });
 
-      marker.on("touchstart", () => {
-        marker.setPopupContent(buildPopup(cnpj));
-        marker.openPopup();
-      });
 
       markersByCnpj.set(cnpj,marker);
     }
@@ -418,8 +432,8 @@ button{cursor:pointer}
   function updateOwnMarker(position) {
     const latlng=[position.lat,position.lng];
     if(!ownMarker) {
-      ownMarker=L.marker(latlng,{icon:agentIcon}).addTo(map).bindPopup("Minha localização");
-      ownAccuracy=L.circle(latlng,{radius:position.accuracy||0,weight:1,fillOpacity:.06,interactive:false}).addTo(map);
+      ownMarker=L.marker(latlng,{icon:agentIcon,pane:"agentsPane",interactive:false,keyboard:false}).addTo(map);
+      ownAccuracy=L.circle(latlng,{pane:"gpsAccuracyPane",radius:position.accuracy||0,weight:1,fillOpacity:.06,interactive:false}).addTo(map);
       map.setView(latlng,16);
     } else {
       ownMarker.setLatLng(latlng);
@@ -450,6 +464,7 @@ button{cursor:pointer}
     lastSentPosition={...currentPosition};
     setNotice("CONECTADO", "ok");
     document.body.classList.add("connected");
+    window.setTimeout(() => map.invalidateSize(false), 80);
   }
 
   async function startSession() {
@@ -536,7 +551,7 @@ button{cursor:pointer}
       if(otherAgentMarkers.has(item.id)) {
         otherAgentMarkers.get(item.id).setLatLng([lat,lng]).setPopupContent(popup);
       } else {
-        otherAgentMarkers.set(item.id,L.marker([lat,lng],{icon:agentIcon}).addTo(map).bindPopup(popup));
+        otherAgentMarkers.set(item.id,L.marker([lat,lng],{icon:agentIcon,pane:"agentsPane",interactive:false,keyboard:false}).addTo(map));
       }
     }
 
