@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-  <title>PILOTOMG — V0.4.5 Pontos</title>
+  <title>PILOTOMG — V0.4.6 Pontos</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <style>
     
@@ -72,6 +72,27 @@ button{cursor:pointer}
     .stats{display:none}
     #map{width:100%;min-height:320px}
     .agent-pin{width:17px;height:17px;border-radius:50%;background:#22c55e;border:3px solid #fff;box-shadow:0 0 0 4px rgba(34,197,94,.28)}
+    .action-panel{
+      position:fixed;left:8px;right:8px;bottom:8px;z-index:2000;
+      display:none;padding:10px;background:rgba(9,18,33,.98);
+      border:1px solid #3b4e70;border-radius:12px;
+      box-shadow:0 8px 28px rgba(0,0,0,.42)
+    }
+    .action-panel.show{display:block}
+    .action-title{font-size:14px;font-weight:700;margin-bottom:3px}
+    .action-meta{font-size:11px;color:var(--muted);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .action-row{display:grid;grid-template-columns:1fr auto auto;gap:7px}
+    .action-select{
+      min-width:0;padding:9px;border-radius:8px;border:1px solid #3a4c6d;
+      background:#17253d;color:#fff
+    }
+    .action-save,.action-close{
+      border:0;border-radius:8px;padding:9px 11px;font-weight:700
+    }
+    .action-save{background:#16a34a;color:#fff}
+    .action-close{background:#334155;color:#fff}
+    .action-save:disabled{opacity:.55}
+    .action-feedback{min-height:16px;margin-top:7px;font-size:11px;color:#cbd5e1}
     body.connected #nome,body.connected #entrar{display:none}
     body.connected .controls{grid-template-columns:1fr auto}
     body.connected .row{order:2}
@@ -91,7 +112,7 @@ button{cursor:pointer}
 <body>
 <div class="app">
   <header>
-    <h1>PILOTOMG — V0.4.5</h1>
+    <h1>PILOTOMG — V0.4.6</h1>
     <p>GPS atual, pontos por CNPJ e status sincronizados em tempo real.</p>
   </header>
 
@@ -117,6 +138,24 @@ button{cursor:pointer}
   </section>
 
   <div id="map"></div>
+</div>
+
+<div id="actionPanel" class="action-panel" aria-live="polite">
+  <div id="actionTitle" class="action-title">Ponto selecionado</div>
+  <div id="actionMeta" class="action-meta"></div>
+  <div class="action-row">
+    <select id="actionStatus" class="action-select">
+      <option value="">Selecione o status</option>
+      <option value="RECUSA">RECUSA</option>
+      <option value="INICIADO">INICIADO</option>
+      <option value="RETORNAR">RETORNAR</option>
+      <option value="END_ERRADO">END_ERRADO</option>
+      <option value="NAO_CONHECEM">NAO_CONHECEM</option>
+    </select>
+    <button id="actionSave" type="button" class="action-save">SALVAR</button>
+    <button id="actionClose" type="button" class="action-close">X</button>
+  </div>
+  <div id="actionFeedback" class="action-feedback"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
@@ -160,7 +199,14 @@ button{cursor:pointer}
     longitude:document.getElementById("longitude"),
     precisao:document.getElementById("precisao"),
     totalPontos:document.getElementById("totalPontos"),
-    totalAtualizados:document.getElementById("totalAtualizados")
+    totalAtualizados:document.getElementById("totalAtualizados"),
+    actionPanel:document.getElementById("actionPanel"),
+    actionTitle:document.getElementById("actionTitle"),
+    actionMeta:document.getElementById("actionMeta"),
+    actionStatus:document.getElementById("actionStatus"),
+    actionSave:document.getElementById("actionSave"),
+    actionClose:document.getElementById("actionClose"),
+    actionFeedback:document.getElementById("actionFeedback")
   };
 
   const map = L.map("map", {preferCanvas:true}).setView([-20.2,-44.2],8);
@@ -220,6 +266,7 @@ button{cursor:pointer}
   const markersByCnpj = new Map();
   const pointStatus = new Map();
   const otherAgentMarkers = new Map();
+  let selectedCnpj = "";
 
   const idKey = "pilotomg_v04_agent_id";
   const nameKey = "pilotomg_v04_agent_name";
@@ -302,11 +349,7 @@ button{cursor:pointer}
     } else {
       actionHtml = `
         <div class="popup-line"><strong>Dentro do raio permitido.</strong></div>
-        <select class="popup-select" data-status-select>
-          <option value="">Selecione o status</option>
-          ${STATUS_OPTIONS.map(s=>`<option value="${s}">${s}</option>`).join("")}
-        </select>
-        <button type="button" class="popup-save" data-save-status data-cnpj="${cnpj}">Salvar status</button>
+        <div class="popup-line popup-muted">Preencha o status no painel inferior.</div>
       `;
     }
 
@@ -326,6 +369,43 @@ button{cursor:pointer}
     return STATUS_OPTIONS.includes(String(status || ""));
   }
 
+  function hideActionPanel() {
+    selectedCnpj = "";
+    el.actionPanel.classList.remove("show");
+    el.actionStatus.value = "";
+    el.actionFeedback.textContent = "";
+    el.actionSave.disabled = false;
+    el.actionSave.textContent = "SALVAR";
+  }
+
+  function selectPoint(cnpj) {
+    const feature = featuresByCnpj.get(cnpj);
+    if(!feature) return;
+
+    const props = feature.properties || {};
+    const [lng,lat] = feature.geometry.coordinates;
+    const distance = currentPosition ? haversine(currentPosition,{lat,lng}) : Infinity;
+
+    selectedCnpj = cnpj;
+    el.actionTitle.textContent = props.NOME_FANTASIA || props.RAZAO_SOCIAL || "Ponto";
+    el.actionMeta.textContent = `CNPJ ${cnpj} • ${Number.isFinite(distance) ? Math.round(distance) + " m" : "GPS não ativo"}`;
+    el.actionStatus.value = "";
+    el.actionFeedback.textContent = "";
+
+    if(!currentPosition) {
+      el.actionPanel.classList.remove("show");
+      setNotice("Ative o GPS para preencher.", "err");
+      return;
+    }
+
+    if(distance > radiusRelease) {
+      el.actionPanel.classList.remove("show");
+      return;
+    }
+
+    el.actionPanel.classList.add("show");
+  }
+
   function createPointMarker(cnpj, feature) {
     const [lng,lat] = feature.geometry.coordinates;
 
@@ -339,6 +419,7 @@ button{cursor:pointer}
     marker.on("click", () => {
       marker.setPopupContent(buildPopup(cnpj));
       marker.openPopup();
+      selectPoint(cnpj);
     });
 
     markersByCnpj.set(cnpj,marker);
@@ -359,6 +440,7 @@ button{cursor:pointer}
         map.removeLayer(marker);
         markersByCnpj.delete(cnpj);
       }
+      if(selectedCnpj === cnpj) hideActionPanel();
       return;
     }
 
@@ -415,14 +497,19 @@ button{cursor:pointer}
     };
 
     try {
-      if(button) {
-        button.disabled = true;
-        button.textContent = "SALVANDO...";
-      }
-
+      const saveButton = button || el.actionSave;
+      saveButton.disabled = true;
+      saveButton.textContent = "SALVANDO...";
+      el.actionFeedback.textContent = "Enviando ao Firebase...";
       setNotice("SALVANDO...", "wait");
 
-      await update(ref(db,`STATUS_PONTOS/${cnpj}`),payload);
+      const statusRef = ref(db,`STATUS_PONTOS/${cnpj}`);
+      await set(statusRef,payload);
+
+      const confirmation = await get(statusRef);
+      if(!confirmation.exists() || confirmation.val()?.status !== status) {
+        throw new Error("WRITE_NOT_CONFIRMED");
+      }
 
       // Atualização local imediata; o listener do Firebase confirmará em seguida.
       pointStatus.set(cnpj,{
@@ -436,47 +523,41 @@ button{cursor:pointer}
       syncPointVisibility(cnpj);
       refreshUpdatedCount();
 
+      el.actionFeedback.textContent = "Gravação confirmada.";
       setNotice("PONTO SALVO E REMOVIDO", "ok");
+      hideActionPanel();
       return true;
 
     } catch(error) {
       console.error("Erro ao salvar STATUS_PONTOS:",error);
-      const detail = error?.code ? ` (${error.code})` : "";
-      setNotice(`Não foi possível salvar${detail}.`, "err");
+      const code = error?.code || error?.message || "ERRO_DESCONHECIDO";
+      setNotice(`Falha ao salvar: ${code}`, "err");
+      el.actionFeedback.textContent = `Erro: ${code}`;
 
-      if(button) {
-        button.disabled = false;
-        button.textContent = "Salvar status";
-      }
+      const saveButton = button || el.actionSave;
+      saveButton.disabled = false;
+      saveButton.textContent = "SALVAR";
       return false;
     }
   }
 
-  // Liga o botão diretamente ao popup aberto.
-  // A versão anterior bloqueava a propagação do clique no popup e, ao mesmo
-  // tempo, tentava capturá-lo no document; por isso o salvamento não disparava.
   map.on("popupopen", event => {
     const node = event.popup.getElement();
     if(!node) return;
-
     L.DomEvent.disableClickPropagation(node);
     L.DomEvent.disableScrollPropagation(node);
-
-    const button = node.querySelector("[data-save-status]");
-    const select = node.querySelector("[data-status-select]");
-
-    if(!button || !select) return;
-
-    button.addEventListener("click", async clickEvent => {
-      clickEvent.preventDefault();
-      clickEvent.stopPropagation();
-
-      const cnpj = button.dataset.cnpj || "";
-      const status = select.value || "";
-
-      await saveStatus(cnpj,status,button);
-    }, { once:true });
   });
+
+  el.actionSave.addEventListener("click", async () => {
+    const status = el.actionStatus.value || "";
+    if(!selectedCnpj) {
+      el.actionFeedback.textContent = "Selecione um ponto no mapa.";
+      return;
+    }
+    await saveStatus(selectedCnpj,status,el.actionSave);
+  });
+
+  el.actionClose.addEventListener("click", hideActionPanel);
 
   async function loadGeoJson() {
     const response = await fetch("./MAPA_INICIAL_TESTE_HTML.geojson", {cache:"no-store"});
