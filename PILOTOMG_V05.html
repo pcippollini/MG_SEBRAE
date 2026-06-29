@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+  <title>PILOTOMG — V0.5 PRÓXIMO</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <style>
+    
+:root{
+  --bg:#07111f;
+  --panel:#101a2d;
+  --panel-2:#0b1527;
+  --line:#263653;
+  --text:#f7f9fc;
+  --muted:#b9c6dc;
+  --blue:#2f5be7;
+  --green:#20c86a;
+  --red:#ef4444;
+  --amber:#f59e0b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#101a2d;color:#fff}
+.leaflet-popup-content{margin:13px 15px;min-width:235px}
+.popup-title{font-size:16px;font-weight:700;margin-bottom:5px}
+.popup-line{margin:4px 0;color:#d6e0f0;line-height:1.3}
+.popup-muted{color:#aebbd0;font-size:12px}
+.popup-route,.popup-save{
+  display:block;width:100%;margin-top:10px;padding:10px 12px;border:0;border-radius:9px;
+  text-align:center;text-decoration:none;font-weight:700
+}
+.popup-route{background:#2563eb;color:#fff}
+.popup-save{background:#16a34a;color:#fff}
+.popup-select{
+  width:100%;margin-top:9px;padding:10px;border-radius:8px;border:1px solid #3a4c6d;
+  background:#17253d;color:#fff
+}
+.legend{
+  background:rgba(9,18,33,.90);color:#fff;padding:5px 6px;border-radius:7px;
+  border:1px solid #30415f;box-shadow:0 2px 8px rgba(0,0,0,.22);font-size:9px;line-height:1.15
+}
+.legend-row{display:flex;align-items:center;gap:4px;margin:2px 0}
+.legend-dot{width:7px;height:7px;border-radius:50%;border:1px solid rgba(255,255,255,.65)}
+
+    .app{display:grid;grid-template-rows:auto auto 1fr;height:100%}
+    header{padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line)}
+    h1{margin:0;font-size:16px;line-height:1.15}
+    header p{display:none}
+    .controls{
+      padding:5px 8px;background:var(--panel-2);border-bottom:1px solid var(--line);
+      display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center
+    }
+    .row{display:flex;gap:6px;align-items:center;min-width:0}
+    input{
+      flex:1 1 auto;min-width:0;padding:8px 10px;border-radius:8px;border:1px solid var(--line);
+      background:#1a2942;color:#fff;font-size:14px
+    }
+    .btn{padding:8px 10px;border:0;border-radius:8px;font-weight:700;font-size:13px;white-space:nowrap}
+    .primary{background:var(--blue);color:#fff}
+    .next{background:#0f766e;color:#fff}
+    .danger{background:#3a1822;color:#fecdd3;border:1px solid #7f1d1d}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .notice{
+      display:flex;align-items:center;justify-content:center;gap:6px;min-height:32px;
+      padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);
+      color:#dce7f7;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+    }
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);flex:0 0 auto}
+    .dot.ok{background:var(--green)} .dot.err{background:var(--red)}
+    .stats{display:none}
+    #map{width:100%;min-height:320px}
+    .agent-pin{width:17px;height:17px;border-radius:50%;background:#22c55e;border:3px solid #fff;box-shadow:0 0 0 4px rgba(34,197,94,.28)}
+    .action-panel{
+      position:fixed;left:8px;right:8px;bottom:8px;z-index:10000;
+      display:none;padding:10px;background:rgba(9,18,33,.98);
+      pointer-events:auto;touch-action:manipulation;
+      border:1px solid #3b4e70;border-radius:12px;
+      box-shadow:0 8px 28px rgba(0,0,0,.42)
+    }
+    .action-panel.show{display:block}
+    .action-title{font-size:14px;font-weight:700;margin-bottom:3px}
+    .action-meta{font-size:11px;color:var(--muted);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .action-row{display:grid;grid-template-columns:1fr auto auto;gap:7px}
+    .action-select{
+      min-width:0;padding:9px;border-radius:8px;border:1px solid #3a4c6d;
+      background:#17253d;color:#fff
+    }
+    .action-save,.action-close{
+      border:0;border-radius:8px;padding:9px 11px;font-weight:700
+    }
+    .action-save{background:#16a34a;color:#fff}
+    .action-close{background:#334155;color:#fff}
+    .action-save:disabled{opacity:.55}
+    .action-feedback{min-height:16px;margin-top:7px;font-size:11px;color:#cbd5e1}
+    #proximo{display:none}
+    body.connected #nome,body.connected #entrar{display:none}
+    body.connected .controls{grid-template-columns:1fr auto}
+    body.connected .row{order:2}
+    body.connected .notice{order:1}
+    body.connected #sair,body.connected #proximo{display:block}
+    @media(max-width:760px){
+      header{padding:5px 8px}
+      h1{font-size:14px}
+      .controls{padding:4px 6px}
+      .row{gap:4px}
+      input{padding:7px 8px;font-size:13px}
+      .btn{padding:7px 8px;font-size:12px}
+      .notice{min-height:29px;padding:5px 7px;font-size:11px}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>PILOTOMG — V0.5</h1>
+    <p>GPS, status por CNPJ e busca do ponto pendente mais próximo em até 1 km.</p>
+  </header>
+
+  <section class="controls">
+    <div class="row">
+      <input id="nome" maxlength="60" placeholder="Nome do agente" autocomplete="name">
+      <button id="entrar" class="btn primary">Entrar e ativar GPS</button>
+      <button id="proximo" class="btn next" disabled>PRÓXIMO</button>
+      <button id="sair" class="btn danger" disabled>Encerrar sessão</button>
+    </div>
+
+    <div class="notice">
+      <span id="dot" class="dot"></span>
+      <span id="mensagem">Carregando pontos...</span>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Latitude</div><div id="latitude" class="stat-value">—</div></div>
+      <div class="stat"><div class="stat-label">Longitude</div><div id="longitude" class="stat-value">—</div></div>
+      <div class="stat"><div class="stat-label">Precisão</div><div id="precisao" class="stat-value">—</div></div>
+      <div class="stat"><div class="stat-label">Pontos</div><div id="totalPontos" class="stat-value">0</div></div>
+      <div class="stat"><div class="stat-label">Atualizados</div><div id="totalAtualizados" class="stat-value">0</div></div>
+    </div>
+  </section>
+
+  <div id="map"></div>
+</div>
+
+<form id="actionForm" class="action-panel" aria-live="polite">
+  <div id="actionTitle" class="action-title">Ponto selecionado</div>
+  <div id="actionMeta" class="action-meta"></div>
+  <div class="action-row">
+    <select id="actionStatus" class="action-select" required>
+      <option value="">Selecione o status</option>
+      <option value="RECUSA">RECUSA</option>
+      <option value="INICIADO">INICIADO</option>
+      <option value="RETORNAR">RETORNAR</option>
+      <option value="END_ERRADO">END_ERRADO</option>
+      <option value="NAO_CONHECEM">NAO_CONHECEM</option>
+    </select>
+    <button id="actionSave" type="submit" class="action-save">SALVAR</button>
+    <button id="actionClose" type="button" class="action-close">X</button>
+  </div>
+  <div id="actionFeedback" class="action-feedback">Selecione uma opção e toque em SALVAR.</div>
+</form>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+  import {
+    getDatabase, ref, get, set, update, onValue, onDisconnect, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+
+  const firebaseConfig = {
+  apiKey: "AIzaSyCYfLl08iRHnvnbBcKTaJOsONjFHKd2mrA",
+  authDomain: "pilotomg-efe79.firebaseapp.com",
+  databaseURL: "https://pilotomg-efe79-default-rtdb.firebaseio.com",
+  projectId: "pilotomg-efe79",
+  storageBucket: "pilotomg-efe79.firebasestorage.app",
+  messagingSenderId: "577008586078",
+  appId: "1:577008586078:web:eb8bdd9891418e0777d3cf"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const STATUS_OPTIONS = ["RECUSA","INICIADO","RETORNAR","END_ERRADO","NAO_CONHECEM"];
+  const STATUS_COLORS = {
+    PENDENTE:"#123d68",
+    CARTEIRA:"#123d68",
+    RECUSA:"#b91c1c",
+    INICIADO:"#f59e0b",
+    RETORNAR:"#06b6d4",
+    END_ERRADO:"#6b7280",
+    NAO_CONHECEM:"#7c3aed"
+  };
+
+  const el = {
+    nome:document.getElementById("nome"),
+    entrar:document.getElementById("entrar"),
+    proximo:document.getElementById("proximo"),
+    sair:document.getElementById("sair"),
+    dot:document.getElementById("dot"),
+    mensagem:document.getElementById("mensagem"),
+    latitude:document.getElementById("latitude"),
+    longitude:document.getElementById("longitude"),
+    precisao:document.getElementById("precisao"),
+    totalPontos:document.getElementById("totalPontos"),
+    totalAtualizados:document.getElementById("totalAtualizados"),
+    actionForm:document.getElementById("actionForm"),
+    actionPanel:document.getElementById("actionForm"),
+    actionTitle:document.getElementById("actionTitle"),
+    actionMeta:document.getElementById("actionMeta"),
+    actionStatus:document.getElementById("actionStatus"),
+    actionSave:document.getElementById("actionSave"),
+    actionClose:document.getElementById("actionClose"),
+    actionFeedback:document.getElementById("actionFeedback")
+  };
+
+  const map = L.map("map", {preferCanvas:true}).setView([-20.2,-44.2],8);
+
+  // Camadas separadas para evitar que GPS e precisão cubram os pontos no celular.
+  map.createPane("gpsAccuracyPane");
+  map.getPane("gpsAccuracyPane").style.zIndex = 350;
+  map.getPane("gpsAccuracyPane").style.pointerEvents = "none";
+
+  map.createPane("agentsPane");
+  map.getPane("agentsPane").style.zIndex = 620;
+  map.getPane("agentsPane").style.pointerEvents = "none";
+
+  map.createPane("pointsPane");
+  map.getPane("pointsPane").style.zIndex = 650;
+  map.getPane("pointsPane").style.pointerEvents = "auto";
+
+  const pointRenderer = L.canvas({
+    pane:"pointsPane",
+    padding:.5,
+    tolerance:18
+  });
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom:19, attribution:"&copy; OpenStreetMap"
+  }).addTo(map);
+
+  const legend = L.control({position:"bottomright"});
+  legend.onAdd = () => {
+    const div = L.DomUtil.create("div","legend");
+    div.innerHTML = Object.entries(STATUS_COLORS).filter(([k])=>k!=="CARTEIRA").map(([k,v]) =>
+      `<div class="legend-row"><span class="legend-dot" style="background:${v}"></span>${k}</div>`
+    ).join("");
+    return div;
+  };
+  legend.addTo(map);
+
+  const agentIcon = L.divIcon({
+    className:"", html:'<div class="agent-pin"></div>',
+    iconSize:[23,23], iconAnchor:[11,11], popupAnchor:[0,-11]
+  });
+
+  let ownMarker = null;
+  let ownAccuracy = null;
+  let watchId = null;
+  let timerId = null;
+  let agentRef = null;
+  let disconnectHandler = null;
+  let currentPosition = null;
+  let lastSentPosition = null;
+  let lastSentAt = 0;
+  let radiusRelease = 100;
+  let radiusNext = 1000;
+  let gpsSeconds = 60;
+  let gpsDistance = 100;
+
+  const featuresByCnpj = new Map();
+  const markersByCnpj = new Map();
+  const pointStatus = new Map();
+  const otherAgentMarkers = new Map();
+  let selectedCnpj = "";
+
+  const idKey = "pilotomg_v04_agent_id";
+  const nameKey = "pilotomg_v04_agent_name";
+  let agentId = localStorage.getItem(idKey);
+
+  if (!agentId) {
+    agentId = "ag_" + crypto.randomUUID().replaceAll("-","").slice(0,12);
+    localStorage.setItem(idKey, agentId);
+  }
+
+  const savedName = localStorage.getItem(nameKey);
+  if (savedName) el.nome.value = savedName;
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+  }
+
+  function setNotice(text,type="wait") {
+    el.mensagem.textContent = text;
+    el.dot.className = "dot";
+    if(type==="ok") el.dot.classList.add("ok");
+    if(type==="err") el.dot.classList.add("err");
+  }
+
+  function haversine(a,b) {
+    if(!a || !b) return Infinity;
+    const R=6371000, rad=x=>x*Math.PI/180;
+    const dLat=rad(b.lat-a.lat), dLng=rad(b.lng-a.lng);
+    const h=Math.sin(dLat/2)**2 + Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLng/2)**2;
+    return 2*R*Math.asin(Math.sqrt(h));
+  }
+
+  function normalizeCnpj(props) {
+    return String(props.NROCNPJ_PAD ?? props.CNPJ ?? "").replace(/\D/g,"");
+  }
+
+  function statusFor(cnpj, props) {
+    return pointStatus.get(cnpj)?.status || props.STATUS || "PENDENTE";
+  }
+
+  function markerStyle(status) {
+    const color = STATUS_COLORS[status] || STATUS_COLORS.PENDENTE;
+    return {
+      renderer:pointRenderer,
+      radius:7,
+      color:"#ffffff",
+      weight:1.5,
+      fillColor:color,
+      fillOpacity:.95,
+      interactive:true,
+      bubblingMouseEvents:false
+    };
+  }
+
+  function routeUrl(lat,lng) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+  }
+
+  function buildPopup(cnpj) {
+    const feature = featuresByCnpj.get(cnpj);
+    if(!feature) return "Ponto indisponível.";
+
+    const p = feature.properties || {};
+    const [lng,lat] = feature.geometry.coordinates;
+    const statusData = pointStatus.get(cnpj);
+    const status = statusFor(cnpj,p);
+    const distance = currentPosition ? haversine(currentPosition,{lat,lng}) : Infinity;
+    const distanceText = Number.isFinite(distance) ? `${Math.round(distance)} m` : "GPS não ativo";
+
+    let actionHtml = "";
+    if(!currentPosition) {
+      actionHtml = '<div class="popup-line popup-muted">Ative o GPS para validar a distância.</div>';
+    } else if(distance > radiusRelease) {
+      actionHtml = `
+        <div class="popup-line"><strong>Fora do raio de ${radiusRelease} m.</strong></div>
+        <a class="popup-route" target="_blank" rel="noopener" href="${routeUrl(lat,lng)}">Melhor rota</a>
+      `;
+    } else {
+      actionHtml = `
+        <div class="popup-line"><strong>Dentro do raio permitido.</strong></div>
+        <div class="popup-line popup-muted">Preencha o status no painel inferior.</div>
+      `;
+    }
+
+    return `
+      <div class="popup-title">${escapeHtml(p.NOME_FANTASIA || p.RAZAO_SOCIAL || "Empresa")}</div>
+      <div class="popup-line"><strong>CNPJ:</strong> ${escapeHtml(cnpj)}</div>
+      <div class="popup-line"><strong>Município:</strong> ${escapeHtml(p.MUNICIPIO || "")}</div>
+      <div class="popup-line"><strong>Endereço:</strong> ${escapeHtml(p.ENDEE || "")}</div>
+      <div class="popup-line"><strong>Status:</strong> ${escapeHtml(status)}</div>
+      ${statusData ? `<div class="popup-line popup-muted">Atualizado por ${escapeHtml(statusData.agente || "—")}</div>` : ""}
+      <div class="popup-line"><strong>Distância:</strong> ${distanceText}</div>
+      ${actionHtml}
+    `;
+  }
+
+  function isCompletedStatus(status) {
+    return STATUS_OPTIONS.includes(String(status || ""));
+  }
+
+  function hideActionPanel() {
+    selectedCnpj = "";
+    el.actionPanel.classList.remove("show");
+    el.actionStatus.value = "";
+    el.actionFeedback.textContent = "Selecione uma opção e toque em SALVAR.";
+    el.actionSave.disabled = false;
+    el.actionSave.textContent = "SALVAR";
+  }
+
+  function selectPoint(cnpj) {
+    const feature = featuresByCnpj.get(cnpj);
+    if(!feature) return;
+
+    const props = feature.properties || {};
+    const [lng,lat] = feature.geometry.coordinates;
+    const distance = currentPosition ? haversine(currentPosition,{lat,lng}) : Infinity;
+
+    selectedCnpj = cnpj;
+    el.actionTitle.textContent = props.NOME_FANTASIA || props.RAZAO_SOCIAL || "Ponto";
+    el.actionMeta.textContent = `CNPJ ${cnpj} • ${Number.isFinite(distance) ? Math.round(distance) + " m" : "GPS não ativo"}`;
+    el.actionStatus.value = "";
+    el.actionFeedback.textContent = "Selecione uma opção e toque em SALVAR.";
+
+    if(!currentPosition) {
+      el.actionPanel.classList.remove("show");
+      setNotice("Ative o GPS para preencher.", "err");
+      return;
+    }
+
+    if(distance > radiusRelease) {
+      el.actionPanel.classList.remove("show");
+      return;
+    }
+
+    el.actionPanel.classList.add("show");
+  }
+
+  function createPointMarker(cnpj, feature) {
+    const [lng,lat] = feature.geometry.coordinates;
+
+    const marker = L.circleMarker(
+      [lat,lng],
+      markerStyle(statusFor(cnpj,feature.properties || {}))
+    ).addTo(map);
+
+    marker.bindPopup(buildPopup(cnpj),{maxWidth:330,autoPan:true});
+
+    marker.on("click", () => {
+      marker.setPopupContent(buildPopup(cnpj));
+      marker.openPopup();
+      selectPoint(cnpj);
+    });
+
+    markersByCnpj.set(cnpj,marker);
+    return marker;
+  }
+
+  function syncPointVisibility(cnpj) {
+    const feature = featuresByCnpj.get(cnpj);
+    if(!feature) return;
+
+    const savedStatus = pointStatus.get(cnpj)?.status || "";
+    const marker = markersByCnpj.get(cnpj);
+
+    // Nos mapas dos agentes, qualquer ponto preenchido desaparece
+    // e deixa de poder ser acessado.
+    if(isCompletedStatus(savedStatus)) {
+      if(marker) {
+        map.removeLayer(marker);
+        markersByCnpj.delete(cnpj);
+      }
+      if(selectedCnpj === cnpj) hideActionPanel();
+      return;
+    }
+
+    if(!marker) {
+      createPointMarker(cnpj,feature);
+      return;
+    }
+
+    marker.setStyle(markerStyle(statusFor(cnpj,feature.properties || {})));
+    marker.setPopupContent(buildPopup(cnpj));
+  }
+
+  function refreshPointMarker(cnpj) {
+    syncPointVisibility(cnpj);
+  }
+
+  function refreshUpdatedCount() {
+    const count = [...pointStatus.entries()].filter(([key,val]) =>
+      key !== "TEMP" && val && STATUS_OPTIONS.includes(val.status)
+    ).length;
+    el.totalAtualizados.textContent = count;
+  }
+
+  async function saveStatus(cnpj,status,button=null) {
+    if(!agentRef || !currentPosition) {
+      const msg = "Ative o GPS antes de salvar.";
+      setNotice(msg, "err");
+      el.actionFeedback.textContent = msg;
+      return false;
+    }
+
+    if(!STATUS_OPTIONS.includes(status)) {
+      const msg = "Selecione um status válido.";
+      setNotice(msg, "err");
+      el.actionFeedback.textContent = msg;
+      el.actionStatus.focus();
+      return false;
+    }
+
+    const feature = featuresByCnpj.get(cnpj);
+    if(!feature) {
+      const msg = "Ponto não encontrado no mapa.";
+      setNotice(msg, "err");
+      el.actionFeedback.textContent = msg;
+      return false;
+    }
+
+    const [lng,lat] = feature.geometry.coordinates;
+    const distance = haversine(currentPosition,{lat,lng});
+
+    if(distance > radiusRelease) {
+      const msg = `Você está a ${Math.round(distance)} m. Limite: ${radiusRelease} m.`;
+      setNotice(msg, "err");
+      el.actionFeedback.textContent = msg;
+      return false;
+    }
+
+    try {
+      const saveButton = button || el.actionSave;
+      saveButton.disabled = true;
+      saveButton.textContent = "SALVANDO...";
+      el.actionFeedback.textContent = `1/3 Enviando ${status} para o CNPJ ${cnpj}...`;
+      setNotice("SALVANDO...", "wait");
+
+      // Gravação direta pela API REST do Realtime Database.
+      // Isso elimina qualquer interferência entre o formulário do mapa e o SDK.
+      const databaseBase = firebaseConfig.databaseURL.replace(/\/$/, "");
+      const statusUrl = `${databaseBase}/STATUS_PONTOS/${encodeURIComponent(cnpj)}.json`;
+
+      const restPayload = {
+        status,
+        agente:el.nome.value.trim(),
+        agenteId:agentId,
+        hora:{".sv":"timestamp"}
+      };
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+      const writeResponse = await fetch(statusUrl,{
+        method:"PUT",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(restPayload),
+        signal:controller.signal,
+        cache:"no-store"
+      });
+
+      clearTimeout(timeoutId);
+
+      if(!writeResponse.ok) {
+        const errorText = await writeResponse.text();
+        throw new Error(`HTTP_${writeResponse.status}: ${errorText}`);
+      }
+
+      el.actionFeedback.textContent = "2/3 Gravação enviada. Confirmando...";
+
+      const readResponse = await fetch(`${statusUrl}?t=${Date.now()}`,{
+        method:"GET",
+        cache:"no-store"
+      });
+
+      if(!readResponse.ok) {
+        throw new Error(`CONFIRM_HTTP_${readResponse.status}`);
+      }
+
+      const confirmation = await readResponse.json();
+
+      if(!confirmation || confirmation.status !== status) {
+        throw new Error("WRITE_NOT_CONFIRMED");
+      }
+
+      el.actionFeedback.textContent = "3/3 Gravação confirmada no Firebase.";
+
+      pointStatus.set(cnpj,{
+        status,
+        agente:el.nome.value.trim(),
+        agenteId:agentId,
+        hora:Date.now()
+      });
+
+      map.closePopup();
+      syncPointVisibility(cnpj);
+      refreshUpdatedCount();
+
+      setNotice("PONTO SALVO E REMOVIDO", "ok");
+
+      // Mantém a confirmação visível por um instante antes de ocultar o painel.
+      setTimeout(hideActionPanel, 900);
+      return true;
+
+    } catch(error) {
+      console.error("Erro ao salvar STATUS_PONTOS:",error);
+      const code =
+        error?.name === "AbortError"
+          ? "TEMPO_ESGOTADO"
+          : (error?.code || error?.message || "ERRO_DESCONHECIDO");
+
+      setNotice(`Falha ao salvar: ${code}`, "err");
+      el.actionFeedback.textContent = `ERRO: ${code}`;
+
+      const saveButton = button || el.actionSave;
+      saveButton.disabled = false;
+      saveButton.textContent = "SALVAR";
+      return false;
+    }
+  }
+
+  map.on("popupopen", event => {
+    const node = event.popup.getElement();
+    if(!node) return;
+    L.DomEvent.disableClickPropagation(node);
+    L.DomEvent.disableScrollPropagation(node);
+  });
+
+  el.actionForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    el.actionFeedback.textContent = "Comando SALVAR recebido.";
+
+    if(!selectedCnpj) {
+      el.actionFeedback.textContent = "Selecione um ponto no mapa.";
+      return;
+    }
+
+    const status = el.actionStatus.value || "";
+
+    try {
+      await saveStatus(selectedCnpj,status,el.actionSave);
+    } catch(error) {
+      console.error("Erro não tratado no submit:",error);
+      const code = error?.message || String(error);
+      el.actionFeedback.textContent = `ERRO NO COMANDO: ${code}`;
+      setNotice(`Erro no comando: ${code}`, "err");
+      el.actionSave.disabled = false;
+      el.actionSave.textContent = "SALVAR";
+    }
+  });
+
+  el.actionClose.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    hideActionPanel();
+  });
+
+  el.actionStatus.addEventListener("change", () => {
+    const status = el.actionStatus.value || "";
+    el.actionFeedback.textContent = status
+      ? `Status selecionado: ${status}. Toque em SALVAR.`
+      : "Selecione uma opção.";
+  });
+
+  async function loadGeoJson() {
+    const response = await fetch("./MAPA_INICIAL_TESTE_HTML.geojson", {cache:"no-store"});
+    if(!response.ok) throw new Error(`GeoJSON HTTP ${response.status}`);
+    const data = await response.json();
+    const bounds = [];
+
+    for(const feature of data.features || []) {
+      if(feature?.geometry?.type !== "Point") continue;
+      const cnpj = normalizeCnpj(feature.properties || {});
+      if(!cnpj) continue;
+      const [lng,lat] = feature.geometry.coordinates || [];
+      if(!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) continue;
+
+      featuresByCnpj.set(cnpj,feature);
+      bounds.push([lat,lng]);
+
+      if(!isCompletedStatus(pointStatus.get(cnpj)?.status)) {
+        createPointMarker(cnpj,feature);
+      }
+    }
+
+    el.totalPontos.textContent = featuresByCnpj.size;
+    if(bounds.length) map.fitBounds(bounds,{padding:[20,20],maxZoom:10});
+    setNotice("PRONTO", "ok");
+  }
+
+  function findNearestPendingPoint() {
+    if(!currentPosition) {
+      setNotice("ATIVE O GPS PARA USAR PRÓXIMO", "err");
+      return;
+    }
+
+    let nearest = null;
+
+    for(const [cnpj,feature] of featuresByCnpj.entries()) {
+      const savedStatus = pointStatus.get(cnpj)?.status || "";
+
+      // Ignora qualquer ponto já preenchido.
+      if(isCompletedStatus(savedStatus)) continue;
+
+      const coordinates = feature?.geometry?.coordinates || [];
+      const lng = Number(coordinates[0]);
+      const lat = Number(coordinates[1]);
+
+      if(!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+      const distance = haversine(currentPosition,{lat,lng});
+
+      // Considera somente pontos dentro do raio configurado, atualmente 1 km.
+      if(distance > radiusNext) continue;
+
+      if(!nearest || distance < nearest.distance) {
+        nearest = {cnpj,feature,lat,lng,distance};
+      }
+    }
+
+    if(!nearest) {
+      hideActionPanel();
+      map.closePopup();
+      setNotice(`NENHUM PONTO PENDENTE EM ATÉ ${Math.round(radiusNext)} M`, "err");
+      return;
+    }
+
+    const marker = markersByCnpj.get(nearest.cnpj);
+
+    if(!marker) {
+      setNotice("O PONTO MAIS PRÓXIMO NÃO ESTÁ DISPONÍVEL", "err");
+      return;
+    }
+
+    hideActionPanel();
+    map.closePopup();
+    map.setView([nearest.lat,nearest.lng],18,{animate:true});
+
+    window.setTimeout(() => {
+      marker.setPopupContent(buildPopup(nearest.cnpj));
+      marker.openPopup();
+      selectPoint(nearest.cnpj);
+    },250);
+
+    setNotice(`PRÓXIMO PONTO A ${Math.round(nearest.distance)} M`, "ok");
+  }
+
+  async function loadConfig() {
+    const snap = await get(ref(db,"CONFIG"));
+    if(!snap.exists()) return;
+    const cfg = snap.val() || {};
+    radiusRelease = Number(cfg.raioLiberacao) || 100;
+    radiusNext = Number(cfg.raioProximo) || 1000;
+    gpsSeconds = Number(cfg.gpsAtualizacaoSegundos) || 60;
+    gpsDistance = Number(cfg.gpsDistanciaMinima) || 100;
+  }
+
+  function updateOwnMarker(position) {
+    const latlng=[position.lat,position.lng];
+    if(!ownMarker) {
+      ownMarker=L.marker(latlng,{icon:agentIcon,pane:"agentsPane",interactive:false,keyboard:false}).addTo(map);
+      ownAccuracy=L.circle(latlng,{pane:"gpsAccuracyPane",radius:position.accuracy||0,weight:1,fillOpacity:.06,interactive:false}).addTo(map);
+      map.setView(latlng,16);
+    } else {
+      ownMarker.setLatLng(latlng);
+      ownAccuracy.setLatLng(latlng).setRadius(position.accuracy||0);
+    }
+  }
+
+  async function sendPosition(force=false) {
+    if(!agentRef || !currentPosition) return;
+    const now=Date.now();
+    const elapsed=now-lastSentAt;
+    const moved=haversine(lastSentPosition,currentPosition);
+
+    if(!force && elapsed < gpsSeconds*1000 && moved < gpsDistance) return;
+
+    await update(agentRef,{
+      fase:"V0.4",
+      id:agentId,
+      nome:el.nome.value.trim(),
+      online:true,
+      lat:Number(currentPosition.lat.toFixed(7)),
+      lng:Number(currentPosition.lng.toFixed(7)),
+      precisao:Math.round(currentPosition.accuracy||0),
+      ultimaAtualizacao:serverTimestamp()
+    });
+
+    lastSentAt=now;
+    lastSentPosition={...currentPosition};
+    setNotice("CONECTADO", "ok");
+    document.body.classList.add("connected");
+    window.setTimeout(() => map.invalidateSize(false), 80);
+  }
+
+  async function startSession() {
+    const name=el.nome.value.trim();
+    if(!name) {setNotice("Informe o nome do agente.","err");return;}
+    if(!navigator.geolocation) {setNotice("Geolocalização indisponível.","err");return;}
+
+    el.entrar.disabled=true;
+    setNotice("Conectando e solicitando o GPS...");
+
+    try {
+      await loadConfig();
+      localStorage.setItem(nameKey,name);
+
+      agentRef=ref(db,`AGENTES_ONLINE/${agentId}`);
+      disconnectHandler=onDisconnect(agentRef);
+      await disconnectHandler.update({online:false,ultimaAtualizacao:serverTimestamp()});
+
+      await set(agentRef,{
+        fase:"V0.4",id:agentId,nome:name,online:true,
+        entrada:serverTimestamp(),ultimaAtualizacao:serverTimestamp()
+      });
+
+      watchId=navigator.geolocation.watchPosition(async geo => {
+        currentPosition={lat:geo.coords.latitude,lng:geo.coords.longitude,accuracy:geo.coords.accuracy};
+        el.latitude.textContent=currentPosition.lat.toFixed(6);
+        el.longitude.textContent=currentPosition.lng.toFixed(6);
+        el.precisao.textContent=`${Math.round(currentPosition.accuracy)} m`;
+        updateOwnMarker(currentPosition);
+        await sendPosition(lastSentPosition===null);
+      }, error => {
+        const messages={1:"Permissão de GPS negada.",2:"Localização indisponível.",3:"Tempo esgotado ao obter GPS."};
+        setNotice(messages[error.code]||"Erro no GPS.","err");
+      },{enableHighAccuracy:true,maximumAge:10000,timeout:25000});
+
+      timerId=setInterval(()=>sendPosition(false).catch(console.error),5000);
+      el.sair.disabled=false;
+      el.proximo.disabled=false;
+    } catch(error) {
+      console.error(error);
+      el.entrar.disabled=false;
+      setNotice("Falha ao iniciar a sessão.","err");
+    }
+  }
+
+  async function endSession() {
+    if(watchId!==null) navigator.geolocation.clearWatch(watchId);
+    if(timerId!==null) clearInterval(timerId);
+    watchId=null;timerId=null;
+    try {
+      if(disconnectHandler) await disconnectHandler.cancel();
+      if(agentRef) await update(agentRef,{online:false,ultimaAtualizacao:serverTimestamp()});
+      setNotice("OFFLINE","ok");
+      document.body.classList.remove("connected");
+    } catch(error) {
+      console.error(error);
+      setNotice("Sessão encerrada localmente.","err");
+    }
+    el.entrar.disabled=false;
+    el.proximo.disabled=true;
+    el.sair.disabled=true;
+  }
+
+  onValue(ref(db,"STATUS_PONTOS"), snap => {
+    pointStatus.clear();
+    const raw=snap.val()||{};
+
+    for(const [cnpj,value] of Object.entries(raw)) {
+      if(cnpj==="TEMP" || !value) continue;
+      pointStatus.set(cnpj,value);
+    }
+
+    // Sincroniza todos os pontos: preenchidos somem em todos os mapas dos agentes.
+    for(const cnpj of featuresByCnpj.keys()) {
+      syncPointVisibility(cnpj);
+    }
+
+    refreshUpdatedCount();
+  });
+
+  onValue(ref(db,"AGENTES_ONLINE"), snap => {
+    const raw=snap.val()||{};
+    const active=new Set();
+
+    for(const item of Object.values(raw)) {
+      if(!item || item.fase!=="V0.4" || !item.online || item.id===agentId) continue;
+      const lat=Number(item.lat),lng=Number(item.lng);
+      if(!Number.isFinite(lat)||!Number.isFinite(lng)) continue;
+      active.add(item.id);
+
+      const popup=`<strong>${escapeHtml(item.nome||"Agente")}</strong><br>Online`;
+      if(otherAgentMarkers.has(item.id)) {
+        otherAgentMarkers.get(item.id).setLatLng([lat,lng]).setPopupContent(popup);
+      } else {
+        otherAgentMarkers.set(item.id,L.marker([lat,lng],{icon:agentIcon,pane:"agentsPane",interactive:false,keyboard:false}).addTo(map));
+      }
+    }
+
+    for(const [id,marker] of otherAgentMarkers) {
+      if(!active.has(id)) {map.removeLayer(marker);otherAgentMarkers.delete(id);}
+    }
+  });
+
+  el.entrar.addEventListener("click",startSession);
+  el.proximo.addEventListener("click",findNearestPendingPoint);
+  el.sair.addEventListener("click",endSession);
+
+  loadGeoJson().catch(error => {
+    console.error(error);
+    setNotice("Erro ao carregar o GeoJSON. Use o link do GitHub Pages.","err");
+  });
+</script>
+</body>
+</html>
