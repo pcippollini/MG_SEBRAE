@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-  <title>PILOTOMG — V0.4.2 Pontos</title>
+  <title>PILOTOMG — V0.4.3 Pontos</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <style>
     
@@ -91,7 +91,7 @@ button{cursor:pointer}
 <body>
 <div class="app">
   <header>
-    <h1>PILOTOMG — V0.4.2</h1>
+    <h1>PILOTOMG — V0.4.3</h1>
     <p>GPS atual, pontos por CNPJ e status sincronizados em tempo real.</p>
   </header>
 
@@ -306,7 +306,7 @@ button{cursor:pointer}
           <option value="">Selecione o status</option>
           ${STATUS_OPTIONS.map(s=>`<option value="${s}">${s}</option>`).join("")}
         </select>
-        <button class="popup-save" data-save-status data-cnpj="${cnpj}">Salvar status</button>
+        <button type="button" class="popup-save" data-save-status data-cnpj="${cnpj}">Salvar status</button>
       `;
     }
 
@@ -337,50 +337,97 @@ button{cursor:pointer}
     el.totalAtualizados.textContent = count;
   }
 
-  async function saveStatus(cnpj,status) {
+  async function saveStatus(cnpj,status,button=null) {
     if(!agentRef || !currentPosition) {
       setNotice("Ative o GPS antes de salvar.", "err");
-      return;
+      return false;
     }
+
     if(!STATUS_OPTIONS.includes(status)) {
       setNotice("Selecione um status válido.", "err");
-      return;
+      return false;
     }
 
     const feature = featuresByCnpj.get(cnpj);
-    if(!feature) return;
+    if(!feature) {
+      setNotice("Ponto não encontrado no mapa.", "err");
+      return false;
+    }
+
     const [lng,lat] = feature.geometry.coordinates;
     const distance = haversine(currentPosition,{lat,lng});
 
     if(distance > radiusRelease) {
       setNotice(`Você está a ${Math.round(distance)} m. Aproxime-se do ponto.`, "err");
-      map.closePopup();
-      return;
+      return false;
     }
 
+    const payload = {
+      status,
+      agente:el.nome.value.trim(),
+      agenteId,
+      hora:serverTimestamp()
+    };
+
     try {
-      await set(ref(db,`STATUS_PONTOS/${cnpj}`),{
+      if(button) {
+        button.disabled = true;
+        button.textContent = "SALVANDO...";
+      }
+
+      setNotice("SALVANDO...", "wait");
+
+      await update(ref(db,`STATUS_PONTOS/${cnpj}`),payload);
+
+      // Atualização local imediata; o listener do Firebase confirmará em seguida.
+      pointStatus.set(cnpj,{
         status,
         agente:el.nome.value.trim(),
         agenteId,
-        hora:serverTimestamp()
+        hora:Date.now()
       });
-      setNotice(`Status ${status} salvo para o CNPJ ${cnpj}.`, "ok");
+      refreshPointMarker(cnpj);
+      refreshUpdatedCount();
+
+      setNotice("PONTO SALVO", "ok");
       map.closePopup();
+      return true;
+
     } catch(error) {
-      console.error(error);
-      setNotice("Não foi possível salvar o status.", "err");
+      console.error("Erro ao salvar STATUS_PONTOS:",error);
+      const detail = error?.code ? ` (${error.code})` : "";
+      setNotice(`Não foi possível salvar${detail}.`, "err");
+
+      if(button) {
+        button.disabled = false;
+        button.textContent = "Salvar status";
+      }
+      return false;
     }
   }
 
+  // Impede que toque/clique nos controles do popup seja tratado como gesto do mapa.
   map.on("popupopen", event => {
     const node = event.popup.getElement();
     if(!node) return;
-    const button = node.querySelector("[data-save-status]");
-    const select = node.querySelector("[data-status-select]");
-    if(button && select) {
-      button.addEventListener("click", () => saveStatus(button.dataset.cnpj,select.value), {once:true});
-    }
+    L.DomEvent.disableClickPropagation(node);
+    L.DomEvent.disableScrollPropagation(node);
+  });
+
+  // Delegação única e estável: funciona mesmo quando o conteúdo do popup é recriado.
+  document.addEventListener("click", async event => {
+    const button = event.target.closest("[data-save-status]");
+    if(!button) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const popup = button.closest(".leaflet-popup");
+    const select = popup?.querySelector("[data-status-select]");
+    const cnpj = button.dataset.cnpj || "";
+    const status = select?.value || "";
+
+    await saveStatus(cnpj,status,button);
   });
 
   async function loadGeoJson() {
