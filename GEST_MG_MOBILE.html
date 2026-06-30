@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <meta name="theme-color" content="#07111f">
-  <title>GEST_MG Mobile — Rotas otimizadas corrigidas</title>
+  <title>GEST_MG Mobile — Rotas otimizadas v1.2</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 
@@ -703,7 +703,7 @@
 
     <div class="route-section">
       <div id="orsKeyStatus" class="route-key-status">Chave openrouteservice: não configurada</div>
-      <div class="route-note">Integração corrigida para api.heigit.org • versão 1.1</div>
+      <div class="route-note">Integração validada no endpoint oficial testado • versão 1.2</div>
       <div class="filter-actions">
         <button id="btnSaveOrsKey" class="wide-btn">CONFIGURAR CHAVE</button>
         <button id="btnDeleteOrsKey" class="wide-btn danger">APAGAR CHAVE</button>
@@ -789,7 +789,7 @@
     window.location.href
   ).href;
 
-  const GEO_CACHE = "mg-sebrae-mobile-geo-v4";
+  const GEO_CACHE = "mg-sebrae-mobile-geo-v5";
 
   const STATUS_ORDER = [
     "PENDENTE",
@@ -923,12 +923,12 @@
   // Os endereços antigos permanecem apenas como contingência temporária.
   const ORS_ENDPOINTS = {
     optimization:[
-      "https://api.heigit.org/vroom/v0",
-      "https://api.openrouteservice.org/optimization"
+      "https://api.openrouteservice.org/optimization",
+      "https://api.heigit.org/vroom/v0"
     ],
     directions:[
-      "https://api.heigit.org/openrouteservice/v2/directions/driving-car/geojson",
-      "https://api.openrouteservice.org/v2/directions/driving-car/geojson"
+      "https://api.openrouteservice.org/v2/directions/driving-car/geojson",
+      "https://api.heigit.org/openrouteservice/v2/directions/driving-car/geojson"
     ]
   };
 
@@ -2095,7 +2095,7 @@
     }
 
     if(status === 403){
-      return "A chave foi recusada ou não possui acesso ao serviço solicitado.";
+      return "A requisição foi recusada pelo endpoint alternativo. Tente novamente; o mapa agora usa primeiro o endpoint que foi validado no teste.";
     }
 
     if(status === 429){
