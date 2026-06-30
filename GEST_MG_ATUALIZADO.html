@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GEST_MG — Gestão</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <style>
+    
+:root{
+  --bg:#07111f;
+  --panel:#101a2d;
+  --panel-2:#0b1527;
+  --line:#263653;
+  --text:#f7f9fc;
+  --muted:#b9c6dc;
+  --blue:#2f5be7;
+  --green:#20c86a;
+  --red:#ef4444;
+  --amber:#f59e0b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#101a2d;color:#fff}
+.leaflet-popup-content{margin:13px 15px;min-width:235px}
+.popup-title{font-size:16px;font-weight:700;margin-bottom:5px}
+.popup-line{margin:4px 0;color:#d6e0f0;line-height:1.3}
+.popup-muted{color:#aebbd0;font-size:12px}
+.popup-route,.popup-save{
+  display:block;width:100%;margin-top:10px;padding:10px 12px;border:0;border-radius:9px;
+  text-align:center;text-decoration:none;font-weight:700
+}
+.popup-route{background:#2563eb;color:#fff}
+.popup-save{background:#16a34a;color:#fff}
+.popup-select{
+  width:100%;margin-top:9px;padding:10px;border-radius:8px;border:1px solid #3a4c6d;
+  background:#17253d;color:#fff
+}
+.legend{
+  background:rgba(9,18,33,.94);color:#fff;padding:10px 11px;border-radius:10px;
+  border:1px solid #30415f;box-shadow:0 3px 14px rgba(0,0,0,.25);font-size:12px;line-height:1.4
+}
+.legend-row{display:flex;align-items:center;gap:7px;margin:4px 0}
+.legend-dot{width:11px;height:11px;border-radius:50%;border:1px solid rgba(255,255,255,.7)}
+
+    body{overflow:auto}
+    .page{max-width:1600px;margin:0 auto;padding:18px}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:20px;margin-bottom:16px}
+    h1{margin:0 0 5px;font-size:34px} h2{margin:0;font-size:24px}
+    p{color:var(--muted);margin:5px 0 0}
+    .notice{display:flex;align-items:center;gap:9px;margin-top:17px;padding:13px 15px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2)}
+    .dot{width:11px;height:11px;border-radius:50%;background:var(--green)}
+    .summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-top:16px}
+    .card{padding:15px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px}
+    .card-label{color:var(--muted);font-size:14px} .card-value{margin-top:5px;font-size:30px;font-weight:700}
+    #map{height:590px;border-radius:13px;overflow:hidden;margin-top:16px}
+    .agent-pin{position:relative;width:22px;height:22px;border-radius:50%;background:#39ff14;border:4px solid #fff;box-shadow:0 0 0 6px rgba(57,255,20,.28),0 0 18px rgba(57,255,20,.8)}
+    .agent-pin::after{content:"";position:absolute;inset:-9px;border:2px solid rgba(57,255,20,.65);border-radius:50%;animation:agentPulse 1.7s ease-out infinite}
+    @keyframes agentPulse{0%{transform:scale(.6);opacity:1}100%{transform:scale(1.65);opacity:0}}
+    .section-head{display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:14px}
+    .status-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}
+    .status-card{padding:12px;background:var(--panel-2);border:1px solid var(--line);border-radius:11px}
+    .status-name{font-size:12px;color:var(--muted);overflow-wrap:anywhere} .status-count{font-size:25px;font-weight:700;margin-top:4px}
+    .agents{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+    .agent-card{padding:15px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px}
+    .agent-head{display:flex;justify-content:space-between;gap:12px;align-items:center}
+    .badge{padding:6px 9px;border-radius:999px;font-weight:700;font-size:12px;background:#0b3b34;color:#a7f3d0}
+    .row{display:grid;grid-template-columns:1fr auto;gap:12px;margin-top:7px;color:var(--muted)}
+    .row strong{color:#fff;font-weight:500;text-align:right}
+    .empty{padding:22px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);text-align:center}
+    @media(max-width:1000px){.summary{grid-template-columns:repeat(2,1fr)}.status-grid{grid-template-columns:repeat(3,1fr)}.agents{grid-template-columns:1fr}#map{height:470px}}
+    @media(max-width:600px){.page{padding:9px}.panel{padding:13px}h1{font-size:27px}.summary{grid-template-columns:1fr 1fr}.status-grid{grid-template-columns:repeat(2,1fr)}}
+  </style>
+
+  <!-- Google Analytics GA4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-E59KMQFDEK"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-E59KMQFDEK');
+  </script>
+</head>
+<body>
+<main class="page">
+  <section class="panel">
+    <h1>GEST_MG</h1>
+    <p>Agentes, pontos por CNPJ e status atualizados em tempo real.</p>
+    <div class="notice"><span class="dot"></span><span>Gestão conectada ao Firebase.</span></div>
+
+    <div class="summary">
+      <div class="card"><div class="card-label">Agentes online</div><div id="onlineCount" class="card-value">0</div></div>
+      <div class="card"><div class="card-label">Com GPS</div><div id="gpsCount" class="card-value">0</div></div>
+      <div class="card"><div class="card-label">Pontos carregados</div><div id="pointCount" class="card-value">0</div></div>
+      <div class="card"><div class="card-label">Pontos atualizados</div><div id="updatedCount" class="card-value">0</div></div>
+    </div>
+
+    <div id="map"></div>
+  </section>
+
+  <section class="panel">
+    <div class="section-head"><h2>Totais por status</h2><span id="updatedAt" style="color:var(--muted)">Aguardando...</span></div>
+    <div id="statusGrid" class="status-grid"></div>
+  </section>
+
+  <section class="panel">
+    <div class="section-head"><h2>Agentes online</h2></div>
+    <div id="agents" class="agents"><div class="empty">Nenhum agente V0.4 online.</div></div>
+  </section>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+  import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+
+  const firebaseConfig = {
+  apiKey: "AIzaSyCYfLl08iRHnvnbBcKTaJOsONjFHKd2mrA",
+  authDomain: "pilotomg-efe79.firebaseapp.com",
+  databaseURL: "https://pilotomg-efe79-default-rtdb.firebaseio.com",
+  projectId: "pilotomg-efe79",
+  storageBucket: "pilotomg-efe79.firebasestorage.app",
+  messagingSenderId: "577008586078",
+  appId: "1:577008586078:web:eb8bdd9891418e0777d3cf"
+};
+
+  const app=initializeApp(firebaseConfig);
+  const db=getDatabase(app);
+
+  const STATUS_ORDER=["PENDENTE","RECUSA","INICIADO","RETORNAR","END_ERRADO","NAO_CONHECEM"];
+  const STATUS_COLORS={
+    PENDENTE:"#123d68", CARTEIRA:"#123d68", RECUSA:"#b91c1c",
+    INICIADO:"#f59e0b", RETORNAR:"#06b6d4", END_ERRADO:"#6b7280",
+    NAO_CONHECEM:"#7c3aed"
+  };
+
+  const map=L.map("map",{preferCanvas:true}).setView([-20.2,-44.2],8);
+  const renderer=L.canvas({padding:.5});
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap"}).addTo(map);
+
+  const pointFeatures=new Map();
+  const pointMarkers=new Map();
+  const statuses=new Map();
+  const agentMarkers=new Map();
+
+  const agentIcon=L.divIcon({
+    className:"",html:'<div class="agent-pin"></div>',
+    iconSize:[38,38],iconAnchor:[19,19],popupAnchor:[0,-19]
+  });
+
+  function escapeHtml(value){
+    return String(value??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+  }
+
+  function normalizeCnpj(props){return String(props.NROCNPJ_PAD??props.CNPJ??"").replace(/\D/g,"")}
+  function currentStatus(cnpj,props){return statuses.get(cnpj)?.status || props.STATUS || "PENDENTE"}
+  function markerStyle(status){
+    return {renderer,radius:5,color:"#fff",weight:1,fillColor:STATUS_COLORS[status]||STATUS_COLORS.PENDENTE,fillOpacity:.9};
+  }
+  function formatTime(value){return value&&Number.isFinite(Number(value))?new Date(Number(value)).toLocaleString("pt-BR"):"—"}
+
+  function pointPopup(cnpj){
+    const f=pointFeatures.get(cnpj),p=f?.properties||{},s=statuses.get(cnpj);
+    const status=currentStatus(cnpj,p);
+    return `
+      <div class="popup-title">${escapeHtml(p.NOME_FANTASIA||p.RAZAO_SOCIAL||"Empresa")}</div>
+      <div class="popup-line"><strong>NROCNPJ_PAD:</strong> ${escapeHtml(cnpj)}</div>
+      <div class="popup-line"><strong>NOME_FANTASIA:</strong> ${escapeHtml(p.NOME_FANTASIA||"—")}</div>
+      <div class="popup-line"><strong>RAZAO_SOCIAL:</strong> ${escapeHtml(p.RAZAO_SOCIAL||"—")}</div>
+      <div class="popup-line"><strong>RESPONSAVEL:</strong> ${escapeHtml(p.RESPONSAVEL||p["RESPONSÁVEL"]||"—")}</div>
+      <div class="popup-line"><strong>MUNICIPIO:</strong> ${escapeHtml(p.MUNICIPIO||"—")}</div>
+      <div class="popup-line"><strong>ENDEE:</strong> ${escapeHtml(p.ENDEE||"—")}</div>
+      <div class="popup-line"><strong>STATUS:</strong> ${escapeHtml(status)}</div>
+      ${s?`<div class="popup-line popup-muted"><strong>AGENTE:</strong> ${escapeHtml(s.agente||"—")}<br><strong>DATA/HORA:</strong> ${formatTime(s.hora)}</div>`:""}
+    `;
+  }
+
+  function updatePoint(cnpj){
+    const m=pointMarkers.get(cnpj),f=pointFeatures.get(cnpj);
+    if(!m||!f)return;
+    m.setStyle(markerStyle(currentStatus(cnpj,f.properties||{})));
+    m.setPopupContent(pointPopup(cnpj));
+  }
+
+  function renderStatusCounts(){
+    const counts=Object.fromEntries(STATUS_ORDER.map(s=>[s,0]));
+    for(const [cnpj,f] of pointFeatures){
+      const s=currentStatus(cnpj,f.properties||{});
+      const key=s==="CARTEIRA"?"PENDENTE":s;
+      counts[key]=(counts[key]||0)+1;
+    }
+    document.getElementById("statusGrid").innerHTML=STATUS_ORDER.map(s=>`
+      <div class="status-card">
+        <div class="status-name">${s}</div>
+        <div class="status-count" style="color:${STATUS_COLORS[s]}">${counts[s]||0}</div>
+      </div>
+    `).join("");
+    document.getElementById("updatedCount").textContent=[...statuses.keys()].filter(k=>k!=="TEMP").length;
+  }
+
+  async function loadGeoJson(){
+    const response=await fetch("./MAPA_INICIAL_TESTE_HTML.geojson",{cache:"no-store"});
+    if(!response.ok)throw new Error(`GeoJSON HTTP ${response.status}`);
+    const data=await response.json();
+    const bounds=[];
+
+    for(const f of data.features||[]){
+      if(f?.geometry?.type!=="Point")continue;
+      const cnpj=normalizeCnpj(f.properties||{});
+      const [lng,lat]=f.geometry.coordinates||[];
+      if(!cnpj||!Number.isFinite(Number(lat))||!Number.isFinite(Number(lng)))continue;
+
+      pointFeatures.set(cnpj,f);
+      bounds.push([lat,lng]);
+
+      const marker=L.circleMarker([lat,lng],markerStyle(currentStatus(cnpj,f.properties||{})))
+        .addTo(map).bindPopup(()=>pointPopup(cnpj),{maxWidth:330});
+      pointMarkers.set(cnpj,marker);
+    }
+
+    document.getElementById("pointCount").textContent=pointFeatures.size;
+    if(bounds.length)map.fitBounds(bounds,{padding:[20,20],maxZoom:10});
+    renderStatusCounts();
+  }
+
+  function renderAgents(raw){
+    const agents=Object.values(raw||{}).filter(a=>a&&a.fase==="V0.4"&&a.online);
+    const withGps=agents.filter(a=>Number.isFinite(Number(a.lat))&&Number.isFinite(Number(a.lng)));
+    document.getElementById("onlineCount").textContent=agents.length;
+    document.getElementById("gpsCount").textContent=withGps.length;
+
+    document.getElementById("agents").innerHTML=agents.length?agents.map(a=>`
+      <article class="agent-card">
+        <div class="agent-head"><strong>${escapeHtml(a.nome||"Agente")}</strong><span class="badge">ONLINE</span></div>
+        <div class="row"><span>Latitude</span><strong>${Number.isFinite(Number(a.lat))?Number(a.lat).toFixed(6):"—"}</strong></div>
+        <div class="row"><span>Longitude</span><strong>${Number.isFinite(Number(a.lng))?Number(a.lng).toFixed(6):"—"}</strong></div>
+        <div class="row"><span>Precisão</span><strong>${escapeHtml(a.precisao??"—")} m</strong></div>
+        <div class="row"><span>Atualização</span><strong>${formatTime(a.ultimaAtualizacao)}</strong></div>
+      </article>`).join(""):'<div class="empty">Nenhum agente V0.4 online.</div>';
+
+    const active=new Set();
+    for(const a of withGps){
+      active.add(a.id);
+      const lat=Number(a.lat),lng=Number(a.lng);
+      const popup=`<strong>${escapeHtml(a.nome||"Agente")}</strong><br>Precisão: ${escapeHtml(a.precisao??"—")} m<br>${formatTime(a.ultimaAtualizacao)}`;
+      if(agentMarkers.has(a.id))agentMarkers.get(a.id).setLatLng([lat,lng]).setPopupContent(popup);
+      else agentMarkers.set(a.id,L.marker([lat,lng],{icon:agentIcon}).addTo(map).bindPopup(popup));
+    }
+    for(const [id,m] of agentMarkers)if(!active.has(id)){map.removeLayer(m);agentMarkers.delete(id)}
+  }
+
+  onValue(ref(db,"STATUS_PONTOS"),snap=>{
+    statuses.clear();
+    const raw=snap.val()||{};
+    for(const [cnpj,val] of Object.entries(raw)){
+      if(cnpj==="TEMP"||!val)continue;
+      statuses.set(cnpj,val);
+      updatePoint(cnpj);
+    }
+    renderStatusCounts();
+    document.getElementById("updatedAt").textContent=`Atualizado em ${new Date().toLocaleTimeString("pt-BR")}`;
+  });
+
+  onValue(ref(db,"AGENTES_ONLINE"),snap=>renderAgents(snap.val()||{}));
+
+  loadGeoJson().catch(error=>{
+    console.error(error);
+    document.getElementById("pointCount").textContent="ERRO";
+  });
+</script>
+</body>
+</html>

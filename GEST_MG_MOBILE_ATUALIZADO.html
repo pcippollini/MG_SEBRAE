@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <title>GEST_MG Mobile — Gestão de Campo</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+
+  <style>
+    :root{
+      --bg:#07111f;
+      --panel:#101a2d;
+      --panel2:#0b1527;
+      --line:#2a3a58;
+      --text:#f8fafc;
+      --muted:#b8c5d9;
+      --blue:#2563eb;
+      --green:#16a34a;
+      --red:#dc2626;
+      --amber:#f59e0b;
+      --cyan:#06b6d4;
+      --purple:#7c3aed;
+      --gray:#6b7280;
+      --top-h:48px;
+      --tools-h:50px;
+      --summary-h:30px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{
+      margin:0;
+      width:100%;
+      height:100%;
+      overflow:hidden;
+      font-family:Arial,Helvetica,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    button,input{font:inherit}
+
+    #app{
+      position:relative;
+      width:100%;
+      height:100%;
+      overflow:hidden;
+      background:var(--bg);
+    }
+
+    .topbar{
+      position:absolute;
+      z-index:1500;
+      top:0;
+      left:0;
+      right:0;
+      height:var(--top-h);
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:7px 8px;
+      padding-top:max(7px,env(safe-area-inset-top));
+      background:rgba(7,17,31,.97);
+      border-bottom:1px solid var(--line);
+    }
+
+    .brand{
+      font-size:15px;
+      font-weight:800;
+      white-space:nowrap;
+    }
+
+    .connection{
+      min-width:0;
+      flex:1;
+      display:flex;
+      align-items:center;
+      gap:6px;
+      color:var(--muted);
+      font-size:11px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .connection-dot{
+      width:8px;
+      height:8px;
+      border-radius:50%;
+      background:var(--amber);
+      flex:0 0 auto;
+    }
+
+    .connection-dot.ok{background:#22c55e}
+    .connection-dot.err{background:#ef4444}
+
+    .icon-btn{
+      min-width:36px;
+      height:34px;
+      padding:0 9px;
+      border:1px solid var(--line);
+      border-radius:9px;
+      background:#17243a;
+      color:#fff;
+      font-weight:800;
+    }
+
+    .tools{
+      position:absolute;
+      z-index:1450;
+      top:var(--top-h);
+      left:0;
+      right:0;
+      height:var(--tools-h);
+      display:flex;
+      align-items:center;
+      gap:6px;
+      overflow-x:auto;
+      padding:7px 8px;
+      background:rgba(11,21,39,.97);
+      border-bottom:1px solid var(--line);
+      scrollbar-width:none;
+    }
+
+    .tools::-webkit-scrollbar{display:none}
+
+    .tool-btn{
+      flex:0 0 auto;
+      height:35px;
+      padding:0 11px;
+      border:1px solid var(--line);
+      border-radius:9px;
+      background:#17243a;
+      color:#fff;
+      font-size:12px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+
+    .tool-btn.active{
+      background:#0f766e;
+      border-color:#14b8a6;
+    }
+
+    .summary{
+      position:absolute;
+      z-index:1400;
+      top:calc(var(--top-h) + var(--tools-h));
+      left:0;
+      right:0;
+      height:var(--summary-h);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:0 8px;
+      background:rgba(7,17,31,.91);
+      border-bottom:1px solid var(--line);
+      color:#dbe5f3;
+      font-size:11px;
+      font-weight:700;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    #map{
+      position:absolute;
+      inset:calc(var(--top-h) + var(--tools-h) + var(--summary-h)) 0 0 0;
+      z-index:1;
+      background:#e5e7eb;
+    }
+
+    body.map-only #map{inset:0}
+    body.map-only .topbar,
+    body.map-only .tools,
+    body.map-only .summary{display:none}
+    body.map-only #showUi{display:block}
+
+    #showUi{
+      display:none;
+      position:absolute;
+      z-index:1700;
+      right:10px;
+      top:max(10px,env(safe-area-inset-top));
+      min-width:46px;
+      height:40px;
+      border:1px solid #64748b;
+      border-radius:11px;
+      background:rgba(7,17,31,.92);
+      color:#fff;
+      font-weight:800;
+    }
+
+    .sheet{
+      position:absolute;
+      z-index:1800;
+      left:8px;
+      right:8px;
+      bottom:8px;
+      max-height:min(68vh,560px);
+      overflow:auto;
+      display:none;
+      background:rgba(9,18,33,.985);
+      border:1px solid #3a4d70;
+      border-radius:15px;
+      box-shadow:0 12px 38px rgba(0,0,0,.5);
+      padding:12px;
+      padding-bottom:max(12px,env(safe-area-inset-bottom));
+    }
+
+    .sheet.show{display:block}
+
+    .sheet-head{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-bottom:10px;
+    }
+
+    .sheet-title{
+      min-width:0;
+      flex:1;
+      font-size:16px;
+      font-weight:800;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+
+    .close-btn{
+      width:34px;
+      height:34px;
+      border:0;
+      border-radius:9px;
+      background:#334155;
+      color:#fff;
+      font-weight:800;
+    }
+
+    .search-input{
+      width:100%;
+      height:42px;
+      padding:0 12px;
+      border:1px solid #435677;
+      border-radius:10px;
+      outline:none;
+      background:#17243a;
+      color:#fff;
+      font-size:15px;
+    }
+
+    .search-results{
+      display:grid;
+      gap:7px;
+      margin-top:9px;
+    }
+
+    .result-btn{
+      width:100%;
+      border:1px solid #314363;
+      border-radius:10px;
+      padding:10px;
+      background:#111e32;
+      color:#fff;
+      text-align:left;
+    }
+
+    .result-name{
+      display:block;
+      font-weight:800;
+      font-size:13px;
+      margin-bottom:3px;
+    }
+
+    .result-meta{
+      display:block;
+      color:var(--muted);
+      font-size:11px;
+      line-height:1.3;
+    }
+
+    .filter-grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:7px;
+    }
+
+    .filter-chip{
+      display:flex;
+      align-items:center;
+      gap:7px;
+      min-height:38px;
+      padding:8px 9px;
+      border:1px solid #334867;
+      border-radius:10px;
+      background:#111e32;
+      color:#fff;
+      font-size:11px;
+      font-weight:700;
+    }
+
+    .filter-chip input{accent-color:#2563eb}
+
+    .filter-actions,
+    .detail-actions{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:7px;
+      margin-top:10px;
+    }
+
+    .wide-btn{
+      min-height:40px;
+      border:1px solid #3d5071;
+      border-radius:10px;
+      background:#17243a;
+      color:#fff;
+      font-weight:800;
+      font-size:12px;
+    }
+
+    .wide-btn.primary{background:#2563eb;border-color:#3b82f6}
+    .wide-btn.green{background:#15803d;border-color:#22c55e}
+    .wide-btn.warn{background:#92400e;border-color:#f59e0b}
+    .wide-btn.danger{background:#991b1b;border-color:#ef4444}
+
+    .detail-name{
+      font-size:18px;
+      font-weight:900;
+      line-height:1.2;
+      margin-bottom:8px;
+    }
+
+    .detail-row{
+      display:grid;
+      grid-template-columns:108px 1fr;
+      gap:9px;
+      margin-top:7px;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.35;
+    }
+
+    .detail-row strong{
+      color:#fff;
+      font-weight:600;
+      overflow-wrap:anywhere;
+    }
+
+    .status-dot{
+      display:inline-block;
+      width:9px;
+      height:9px;
+      border-radius:50%;
+      margin-right:6px;
+      border:1px solid rgba(255,255,255,.7);
+    }
+
+    .toast{
+      position:absolute;
+      z-index:2000;
+      left:50%;
+      bottom:18px;
+      transform:translate(-50%,25px);
+      max-width:calc(100% - 32px);
+      padding:9px 12px;
+      border-radius:10px;
+      background:rgba(7,17,31,.96);
+      border:1px solid #3c4e6c;
+      color:#fff;
+      font-size:12px;
+      font-weight:700;
+      text-align:center;
+      opacity:0;
+      pointer-events:none;
+      transition:.2s ease;
+    }
+
+    .toast.show{
+      opacity:1;
+      transform:translate(-50%,0);
+    }
+
+    .agent-pin{
+      position:relative;
+      width:20px;
+      height:20px;
+      border-radius:50%;
+      background:#22c55e;
+      border:3px solid #fff;
+      box-shadow:0 0 0 4px rgba(34,197,94,.3);
+    }
+
+    .agent-pin.following{
+      background:#f59e0b;
+      box-shadow:0 0 0 5px rgba(245,158,11,.35);
+    }
+
+    .manager-pin{
+      position:relative;
+      width:24px;
+      height:24px;
+      border-radius:50%;
+      background:#ff1744;
+      border:4px solid #fff;
+      box-shadow:0 0 0 6px rgba(255,23,68,.34),0 0 18px rgba(255,23,68,.95);
+    }
+
+    .manager-pin::after{
+      content:"";
+      position:absolute;
+      inset:-10px;
+      border:3px solid rgba(255,23,68,.65);
+      border-radius:50%;
+      animation:managerPulse 1.5s ease-out infinite;
+    }
+
+    @keyframes managerPulse{
+      0%{transform:scale(.55);opacity:1}
+      100%{transform:scale(1.65);opacity:0}
+    }
+
+    .leaflet-control-zoom{
+      border:0!important;
+      box-shadow:0 3px 14px rgba(0,0,0,.3)!important;
+    }
+
+    .leaflet-control-zoom a{
+      background:#fff!important;
+      color:#111827!important;
+    }
+
+    .leaflet-control-attribution{font-size:8px}
+
+    @media (orientation:landscape) and (max-height:600px){
+      :root{
+        --top-h:42px;
+        --tools-h:44px;
+        --summary-h:25px;
+      }
+      .topbar{padding-top:4px}
+      .sheet{max-height:82vh}
+    }
+  </style>
+
+  <!-- Google Analytics GA4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-E59KMQFDEK"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-E59KMQFDEK');
+  </script>
+</head>
+
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="brand">GEST_MG MOBILE</div>
+    <div class="connection">
+      <span id="connectionDot" class="connection-dot"></span>
+      <span id="connectionText">Conectando...</span>
+    </div>
+    <button id="btnMapOnly" class="icon-btn" title="Ocultar painéis">MAPA</button>
+  </header>
+
+  <nav class="tools" aria-label="Ferramentas">
+    <button id="btnGps" class="tool-btn">ATIVAR GPS</button>
+    <button id="btnLocate" class="tool-btn">LOCALIZAÇÃO</button>
+    <button id="btnFitAgents" class="tool-btn">AGENTES</button>
+    <button id="btnNearest" class="tool-btn">PRÓXIMO</button>
+    <button id="btnSearch" class="tool-btn">BUSCAR</button>
+    <button id="btnFilter" class="tool-btn">FILTRO</button>
+    <button id="btnFullscreen" class="tool-btn">TELA CHEIA</button>
+  </nav>
+
+  <div id="summary" class="summary">Online: 0 • Pontos: 0 • Atualizados: 0</div>
+  <div id="map"></div>
+
+  <button id="showUi">MENU</button>
+  <div id="toast" class="toast"></div>
+
+  <section id="searchSheet" class="sheet" aria-label="Pesquisa">
+    <div class="sheet-head">
+      <div class="sheet-title">Pesquisar ponto</div>
+      <button class="close-btn" data-close-sheet="searchSheet">X</button>
+    </div>
+    <input id="searchInput" class="search-input" type="search"
+           placeholder="CNPJ, empresa, endereço ou município">
+    <div id="searchResults" class="search-results"></div>
+  </section>
+
+  <section id="filterSheet" class="sheet" aria-label="Filtros">
+    <div class="sheet-head">
+      <div class="sheet-title">Filtrar pontos</div>
+      <button class="close-btn" data-close-sheet="filterSheet">X</button>
+    </div>
+
+    <div id="filterGrid" class="filter-grid"></div>
+
+    <label class="filter-chip" style="margin-top:8px">
+      <input id="showAgentsToggle" type="checkbox" checked>
+      Mostrar agentes online
+    </label>
+
+    <div class="filter-actions">
+      <button id="btnAllStatuses" class="wide-btn">TODOS</button>
+      <button id="btnOnlyPending" class="wide-btn">SÓ PENDENTES</button>
+      <button id="btnApplyFilter" class="wide-btn primary">APLICAR</button>
+      <button id="btnUpdateBase" class="wide-btn green">ATUALIZAR BASE</button>
+    </div>
+  </section>
+
+  <section id="detailSheet" class="sheet" aria-label="Detalhes">
+    <div class="sheet-head">
+      <div id="detailTitle" class="sheet-title">Detalhes</div>
+      <button class="close-btn" data-close-sheet="detailSheet">X</button>
+    </div>
+    <div id="detailContent"></div>
+    <div id="detailActions" class="detail-actions"></div>
+  </section>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+<script type="module">
+  import { initializeApp } from
+    "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+
+  import {
+    getDatabase,
+    ref,
+    onValue
+  } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCYfLl08iRHnvnbBcKTaJOsONjFHKd2mrA",
+    authDomain: "pilotomg-efe79.firebaseapp.com",
+    databaseURL: "https://pilotomg-efe79-default-rtdb.firebaseio.com",
+    projectId: "pilotomg-efe79",
+    storageBucket: "pilotomg-efe79.firebasestorage.app",
+    messagingSenderId: "577008586078",
+    appId: "1:577008586078:web:eb8bdd9891418e0777d3cf"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const GEOJSON_URL = new URL(
+    "./MAPA_INICIAL_TESTE_HTML.geojson",
+    window.location.href
+  ).href;
+
+  const GEO_CACHE = "mg-sebrae-mobile-geo-v2";
+
+  const STATUS_ORDER = [
+    "PENDENTE",
+    "RECUSA",
+    "INICIADO",
+    "RETORNAR",
+    "END_ERRADO",
+    "NAO_CONHECEM"
+  ];
+
+  const STATUS_COLORS = {
+    PENDENTE:"#123d68",
+    RECUSA:"#b91c1c",
+    INICIADO:"#f59e0b",
+    RETORNAR:"#06b6d4",
+    END_ERRADO:"#6b7280",
+    NAO_CONHECEM:"#7c3aed"
+  };
+
+  const el = {
+    connectionDot:document.getElementById("connectionDot"),
+    connectionText:document.getElementById("connectionText"),
+    summary:document.getElementById("summary"),
+    toast:document.getElementById("toast"),
+    btnMapOnly:document.getElementById("btnMapOnly"),
+    showUi:document.getElementById("showUi"),
+    btnGps:document.getElementById("btnGps"),
+    btnLocate:document.getElementById("btnLocate"),
+    btnFitAgents:document.getElementById("btnFitAgents"),
+    btnNearest:document.getElementById("btnNearest"),
+    btnSearch:document.getElementById("btnSearch"),
+    btnFilter:document.getElementById("btnFilter"),
+    btnFullscreen:document.getElementById("btnFullscreen"),
+    searchSheet:document.getElementById("searchSheet"),
+    searchInput:document.getElementById("searchInput"),
+    searchResults:document.getElementById("searchResults"),
+    filterSheet:document.getElementById("filterSheet"),
+    filterGrid:document.getElementById("filterGrid"),
+    showAgentsToggle:document.getElementById("showAgentsToggle"),
+    btnAllStatuses:document.getElementById("btnAllStatuses"),
+    btnOnlyPending:document.getElementById("btnOnlyPending"),
+    btnApplyFilter:document.getElementById("btnApplyFilter"),
+    btnUpdateBase:document.getElementById("btnUpdateBase"),
+    detailSheet:document.getElementById("detailSheet"),
+    detailTitle:document.getElementById("detailTitle"),
+    detailContent:document.getElementById("detailContent"),
+    detailActions:document.getElementById("detailActions")
+  };
+
+  const map = L.map("map", {
+    preferCanvas:true,
+    zoomControl:true
+  }).setView([-20.2,-44.2],8);
+
+  map.createPane("pointsPane");
+  map.getPane("pointsPane").style.zIndex = 410;
+
+  map.createPane("agentsPane");
+  map.getPane("agentsPane").style.zIndex = 650;
+
+  map.createPane("managerPane");
+  map.getPane("managerPane").style.zIndex = 700;
+
+  const pointRenderer = L.canvas({
+    pane:"pointsPane",
+    padding:.5,
+    tolerance:14
+  });
+
+  L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {
+      maxZoom:19,
+      attribution:"&copy; OpenStreetMap"
+    }
+  ).addTo(map);
+
+  const pointFeatures = new Map();
+  const pointMarkers = new Map();
+  const statuses = new Map();
+  const agents = new Map();
+  const agentMarkers = new Map();
+
+  let managerPosition = null;
+  let managerMarker = null;
+  let managerAccuracy = null;
+  let managerWatchId = null;
+  let followAgentId = "";
+  let selectedStatuses = new Set(STATUS_ORDER);
+  let showAgents = true;
+  let radiusNext = 1000;
+  let toastTimer = null;
+  let lastSearchTimer = null;
+
+  const agentIcon = L.divIcon({
+    className:"",
+    html:'<div class="agent-pin"></div>',
+    iconSize:[26,26],
+    iconAnchor:[13,13]
+  });
+
+  const managerIcon = L.divIcon({
+    className:"",
+    html:'<div class="manager-pin"></div>',
+    iconSize:[42,42],
+    iconAnchor:[21,21]
+  });
+
+  function escapeHtml(value){
+    return String(value ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function normalizeText(value){
+    return String(value ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .toUpperCase()
+      .trim();
+  }
+
+  function normalizeCnpj(properties){
+    return String(
+      properties?.NROCNPJ_PAD ??
+      properties?.CNPJ ??
+      ""
+    ).replace(/\D/g,"");
+  }
+
+  function currentStatus(cnpj,properties){
+    const raw = statuses.get(cnpj)?.status ||
+      properties?.STATUS ||
+      "PENDENTE";
+
+    return raw === "CARTEIRA" ? "PENDENTE" : raw;
+  }
+
+  function formatDate(value){
+    if(!value || !Number.isFinite(Number(value))) return "—";
+    return new Date(Number(value)).toLocaleString("pt-BR");
+  }
+
+  function ageText(value){
+    if(!value || !Number.isFinite(Number(value))) return "sem horário";
+    const seconds = Math.max(
+      0,
+      Math.round((Date.now() - Number(value)) / 1000)
+    );
+
+    if(seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    if(minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours} h`;
+  }
+
+  function distanceMeters(a,b){
+    if(!a || !b) return Infinity;
+
+    const R = 6371000;
+    const rad = value => value * Math.PI / 180;
+    const dLat = rad(b.lat - a.lat);
+    const dLng = rad(b.lng - a.lng);
+    const lat1 = rad(a.lat);
+    const lat2 = rad(b.lat);
+
+    const h =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1) *
+      Math.cos(lat2) *
+      Math.sin(dLng / 2) ** 2;
+
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  function distanceLabel(meters){
+    if(!Number.isFinite(meters)) return "GPS não ativo";
+    if(meters < 1000) return `${Math.round(meters)} m`;
+    return `${(meters / 1000).toFixed(1).replace(".",",")} km`;
+  }
+
+  function routeUrl(lat,lng){
+    return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+  }
+
+  function toast(message){
+    el.toast.textContent = message;
+    el.toast.classList.add("show");
+
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      el.toast.classList.remove("show");
+    },2600);
+  }
+
+  function setConnection(text,type="wait"){
+    el.connectionText.textContent = text;
+    el.connectionDot.className = "connection-dot";
+    if(type === "ok") el.connectionDot.classList.add("ok");
+    if(type === "err") el.connectionDot.classList.add("err");
+  }
+
+  function closeSheets(exceptId=""){
+    for(const sheet of document.querySelectorAll(".sheet")){
+      if(sheet.id !== exceptId) sheet.classList.remove("show");
+    }
+  }
+
+  function openSheet(sheet){
+    closeSheets(sheet.id);
+    sheet.classList.add("show");
+  }
+
+  function refreshMapSize(){
+    setTimeout(() => map.invalidateSize(false),80);
+  }
+
+  function markerStyle(status){
+    return {
+      renderer:pointRenderer,
+      radius:6,
+      color:"#fff",
+      weight:1.2,
+      fillColor:STATUS_COLORS[status] || STATUS_COLORS.PENDENTE,
+      fillOpacity:.92,
+      interactive:true
+    };
+  }
+
+  function addPointMarker(cnpj,feature){
+    const coordinates = feature.geometry?.coordinates || [];
+    const lng = Number(coordinates[0]);
+    const lat = Number(coordinates[1]);
+
+    if(!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+    const marker = L.circleMarker(
+      [lat,lng],
+      markerStyle(currentStatus(cnpj,feature.properties))
+    );
+
+    marker.on("click", () => showPointDetails(cnpj));
+    pointMarkers.set(cnpj,marker);
+    return marker;
+  }
+
+  function isPointVisible(cnpj){
+    const feature = pointFeatures.get(cnpj);
+    if(!feature) return false;
+
+    const status = currentStatus(cnpj,feature.properties);
+    return selectedStatuses.has(status);
+  }
+
+  function applyPointFilters(){
+    for(const [cnpj,feature] of pointFeatures){
+      let marker = pointMarkers.get(cnpj);
+
+      if(!marker){
+        marker = addPointMarker(cnpj,feature);
+      }
+
+      if(!marker) continue;
+
+      const status = currentStatus(cnpj,feature.properties);
+      marker.setStyle(markerStyle(status));
+
+      if(selectedStatuses.has(status)){
+        if(!map.hasLayer(marker)) marker.addTo(map);
+      }else{
+        if(map.hasLayer(marker)) map.removeLayer(marker);
+      }
+    }
+
+    updateSummary();
+  }
+
+  function updatePointStyle(cnpj){
+    const feature = pointFeatures.get(cnpj);
+    const marker = pointMarkers.get(cnpj);
+
+    if(!feature || !marker) return;
+
+    marker.setStyle(
+      markerStyle(currentStatus(cnpj,feature.properties))
+    );
+  }
+
+  function activeAgent(agent){
+    if(!agent?.online) return false;
+    if(!Number.isFinite(Number(agent.lat))) return false;
+    if(!Number.isFinite(Number(agent.lng))) return false;
+    if(!Number.isFinite(Number(agent.ultimaAtualizacao))) return false;
+
+    return Date.now() - Number(agent.ultimaAtualizacao) <= 180000;
+  }
+
+  function renderAgents(){
+    const activeIds = new Set();
+
+    for(const [id,agent] of agents){
+      const active = activeAgent(agent);
+
+      if(!active || !showAgents){
+        const oldMarker = agentMarkers.get(id);
+        if(oldMarker && map.hasLayer(oldMarker)){
+          map.removeLayer(oldMarker);
+        }
+        continue;
+      }
+
+      activeIds.add(id);
+
+      const lat = Number(agent.lat);
+      const lng = Number(agent.lng);
+      let marker = agentMarkers.get(id);
+
+      if(!marker){
+        marker = L.marker(
+          [lat,lng],
+          {
+            icon:agentIcon,
+            pane:"agentsPane"
+          }
+        );
+
+        marker.on("click", () => showAgentDetails(id));
+        agentMarkers.set(id,marker);
+      }else{
+        marker.setLatLng([lat,lng]);
+      }
+
+      if(!map.hasLayer(marker)) marker.addTo(map);
+
+      const pin = marker.getElement()?.querySelector(".agent-pin");
+      if(pin){
+        pin.classList.toggle("following",followAgentId === id);
+      }
+
+      if(followAgentId === id){
+        map.panTo([lat,lng],{animate:true});
+      }
+    }
+
+    for(const [id,marker] of agentMarkers){
+      if(!activeIds.has(id) && map.hasLayer(marker)){
+        map.removeLayer(marker);
+      }
+    }
+
+    updateSummary();
+  }
+
+  function updateSummary(){
+    const onlineCount = [...agents.values()].filter(activeAgent).length;
+    const updatedCount = [...statuses.keys()].filter(
+      key => key !== "TEMP" && key !== "TESTE_MANUAL"
+    ).length;
+
+    el.summary.textContent =
+      `Online: ${onlineCount} • Pontos: ${pointFeatures.size} • Atualizados: ${updatedCount}`;
+  }
+
+  function showPointDetails(cnpj){
+    const feature = pointFeatures.get(cnpj);
+    if(!feature) return;
+
+    const properties = feature.properties || {};
+    const coordinates = feature.geometry.coordinates || [];
+    const lng = Number(coordinates[0]);
+    const lat = Number(coordinates[1]);
+    const statusData = statuses.get(cnpj);
+    const status = currentStatus(cnpj,properties);
+    const distance = managerPosition
+      ? distanceMeters(managerPosition,{lat,lng})
+      : Infinity;
+
+    el.detailTitle.textContent =
+      properties.NOME_FANTASIA ||
+      properties.RAZAO_SOCIAL ||
+      "Ponto";
+
+    el.detailContent.innerHTML = `
+      <div class="detail-name">${escapeHtml(el.detailTitle.textContent)}</div>
+      <div class="detail-row"><span>NROCNPJ_PAD</span><strong>${escapeHtml(cnpj)}</strong></div>
+      <div class="detail-row"><span>NOME_FANTASIA</span><strong>${escapeHtml(properties.NOME_FANTASIA || "—")}</strong></div>
+      <div class="detail-row"><span>RAZAO_SOCIAL</span><strong>${escapeHtml(properties.RAZAO_SOCIAL || "—")}</strong></div>
+      <div class="detail-row"><span>RESPONSAVEL</span><strong>${escapeHtml(properties.RESPONSAVEL || properties["RESPONSÁVEL"] || "—")}</strong></div>
+      <div class="detail-row"><span>MUNICIPIO</span><strong>${escapeHtml(properties.MUNICIPIO || "—")}</strong></div>
+      <div class="detail-row"><span>ENDEE</span><strong>${escapeHtml(properties.ENDEE || "—")}</strong></div>
+      <div class="detail-row"><span>STATUS</span><strong><span class="status-dot" style="background:${STATUS_COLORS[status] || STATUS_COLORS.PENDENTE}"></span>${escapeHtml(status)}</strong></div>
+      <div class="detail-row"><span>Distância</span><strong>${distanceLabel(distance)}</strong></div>
+      <div class="detail-row"><span>Agente</span><strong>${escapeHtml(statusData?.agente || "—")}</strong></div>
+      <div class="detail-row"><span>Data/hora</span><strong>${formatDate(statusData?.hora)}</strong></div>
+    `;
+
+    el.detailActions.innerHTML = `
+      <button id="detailCenterPoint" class="wide-btn">CENTRALIZAR</button>
+      <button id="detailRoutePoint" class="wide-btn primary">ABRIR ROTA</button>
+    `;
+
+    document.getElementById("detailCenterPoint").onclick = () => {
+      map.setView([lat,lng],18,{animate:true});
+      closeSheets();
+    };
+
+    document.getElementById("detailRoutePoint").onclick = () => {
+      window.open(routeUrl(lat,lng),"_blank","noopener");
+    };
+
+    openSheet(el.detailSheet);
+  }
+
+  function showAgentDetails(id){
+    const agent = agents.get(id);
+    if(!agent) return;
+
+    const lat = Number(agent.lat);
+    const lng = Number(agent.lng);
+    const distance = managerPosition
+      ? distanceMeters(managerPosition,{lat,lng})
+      : Infinity;
+
+    el.detailTitle.textContent = agent.nome || "Agente";
+
+    el.detailContent.innerHTML = `
+      <div class="detail-name">${escapeHtml(agent.nome || "Agente")}</div>
+      <div class="detail-row"><span>Situação</span><strong>${activeAgent(agent) ? "ONLINE" : "SEM ATUALIZAÇÃO"}</strong></div>
+      <div class="detail-row"><span>Última posição</span><strong>${ageText(agent.ultimaAtualizacao)}</strong></div>
+      <div class="detail-row"><span>Precisão</span><strong>${escapeHtml(agent.precisao ?? "—")} m</strong></div>
+      <div class="detail-row"><span>Distância</span><strong>${distanceLabel(distance)}</strong></div>
+      <div class="detail-row"><span>Latitude</span><strong>${lat.toFixed(6)}</strong></div>
+      <div class="detail-row"><span>Longitude</span><strong>${lng.toFixed(6)}</strong></div>
+    `;
+
+    const following = followAgentId === id;
+
+    el.detailActions.innerHTML = `
+      <button id="detailFollowAgent" class="wide-btn ${following ? "warn" : "green"}">${following ? "PARAR DE ACOMPANHAR" : "ACOMPANHAR"}</button>
+      <button id="detailRouteAgent" class="wide-btn primary">ABRIR ROTA</button>
+    `;
+
+    document.getElementById("detailFollowAgent").onclick = () => {
+      followAgentId = following ? "" : id;
+      renderAgents();
+
+      if(followAgentId){
+        map.setView([lat,lng],17,{animate:true});
+        toast(`Acompanhando ${agent.nome}`);
+      }else{
+        toast("Acompanhamento encerrado");
+      }
+
+      closeSheets();
+    };
+
+    document.getElementById("detailRouteAgent").onclick = () => {
+      window.open(routeUrl(lat,lng),"_blank","noopener");
+    };
+
+    openSheet(el.detailSheet);
+  }
+
+  function centerManagerLocation(){
+    if(!managerPosition){
+      if(managerWatchId === null){
+        startManagerGps();
+      }else{
+        toast("Aguardando uma posição válida do GPS");
+      }
+      return;
+    }
+
+    map.setView(
+      [managerPosition.lat,managerPosition.lng],
+      18,
+      {animate:true}
+    );
+
+    toast(`Localização centralizada • precisão ${Math.round(managerPosition.accuracy || 0)} m`);
+  }
+
+  function fitAllAgents(){
+    const latLngs = [...agents.values()]
+      .filter(activeAgent)
+      .map(agent => [Number(agent.lat),Number(agent.lng)]);
+
+    if(latLngs.length === 0){
+      toast("Nenhum agente online com GPS");
+      return;
+    }
+
+    followAgentId = "";
+    renderAgents();
+
+    if(latLngs.length === 1){
+      map.setView(latLngs[0],17,{animate:true});
+    }else{
+      map.fitBounds(latLngs,{
+        padding:[36,36],
+        maxZoom:16
+      });
+    }
+  }
+
+  function startManagerGps(){
+    if(!navigator.geolocation){
+      toast("GPS indisponível neste navegador");
+      return;
+    }
+
+    if(managerWatchId !== null){
+      navigator.geolocation.clearWatch(managerWatchId);
+      managerWatchId = null;
+
+      if(managerMarker && map.hasLayer(managerMarker)){
+        map.removeLayer(managerMarker);
+      }
+
+      if(managerAccuracy && map.hasLayer(managerAccuracy)){
+        map.removeLayer(managerAccuracy);
+      }
+
+      managerPosition = null;
+      el.btnGps.classList.remove("active");
+      toast("Meu GPS desativado");
+      return;
+    }
+
+    toast("Solicitando localização...");
+
+    managerWatchId = navigator.geolocation.watchPosition(
+      position => {
+        managerPosition = {
+          lat:position.coords.latitude,
+          lng:position.coords.longitude,
+          accuracy:position.coords.accuracy
+        };
+
+        const latLng = [
+          managerPosition.lat,
+          managerPosition.lng
+        ];
+
+        if(!managerMarker){
+          managerMarker = L.marker(
+            latLng,
+            {
+              icon:managerIcon,
+              pane:"managerPane"
+            }
+          ).addTo(map);
+
+          managerAccuracy = L.circle(
+            latLng,
+            {
+              pane:"managerPane",
+              radius:managerPosition.accuracy || 0,
+              color:"#ff1744",
+              weight:2,
+              fillColor:"#ff1744",
+              fillOpacity:.10,
+              interactive:false
+            }
+          ).addTo(map);
+
+          map.setView(latLng,16);
+        }else{
+          managerMarker.setLatLng(latLng);
+          managerAccuracy
+            .setLatLng(latLng)
+            .setRadius(managerPosition.accuracy || 0);
+        }
+
+        el.btnGps.classList.add("active");
+        toast(`Meu GPS ativo • precisão ${Math.round(managerPosition.accuracy || 0)} m`);
+      },
+      error => {
+        const messages = {
+          1:"Permissão de GPS negada",
+          2:"Localização indisponível",
+          3:"Tempo esgotado ao obter GPS"
+        };
+
+        toast(messages[error.code] || "Erro no GPS");
+        el.btnGps.classList.remove("active");
+      },
+      {
+        enableHighAccuracy:true,
+        maximumAge:10000,
+        timeout:25000
+      }
+    );
+  }
+
+  function findNearestPendingPoint(){
+    if(!managerPosition){
+      toast("Ative MEU GPS primeiro");
+      return;
+    }
+
+    let nearest = null;
+
+    for(const [cnpj,feature] of pointFeatures){
+      const status = currentStatus(cnpj,feature.properties);
+
+      if(status !== "PENDENTE") continue;
+
+      const coordinates = feature.geometry.coordinates || [];
+      const lng = Number(coordinates[0]);
+      const lat = Number(coordinates[1]);
+
+      if(!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+      const distance = distanceMeters(
+        managerPosition,
+        {lat,lng}
+      );
+
+      if(distance > radiusNext) continue;
+
+      if(!nearest || distance < nearest.distance){
+        nearest = {
+          cnpj,
+          lat,
+          lng,
+          distance
+        };
+      }
+    }
+
+    if(!nearest){
+      toast(`Nenhum pendente em até ${Math.round(radiusNext)} m`);
+      return;
+    }
+
+    const feature = pointFeatures.get(nearest.cnpj);
+    const marker = pointMarkers.get(nearest.cnpj);
+
+    selectedStatuses.add("PENDENTE");
+    applyPointFilters();
+
+    if(marker && !map.hasLayer(marker)){
+      marker.addTo(map);
+    }
+
+    map.setView([nearest.lat,nearest.lng],18,{animate:true});
+    toast(`Pendente mais próximo: ${distanceLabel(nearest.distance)}`);
+
+    setTimeout(
+      () => showPointDetails(nearest.cnpj),
+      250
+    );
+  }
+
+  function renderFilterGrid(){
+    el.filterGrid.innerHTML = STATUS_ORDER.map(status => `
+      <label class="filter-chip">
+        <input type="checkbox" value="${status}" ${selectedStatuses.has(status) ? "checked" : ""}>
+        <span class="status-dot" style="background:${STATUS_COLORS[status]}"></span>
+        ${status}
+      </label>
+    `).join("");
+  }
+
+  function applyFilterFromPanel(){
+    const checked = [
+      ...el.filterGrid.querySelectorAll(
+        'input[type="checkbox"]:checked'
+      )
+    ].map(input => input.value);
+
+    selectedStatuses = new Set(checked);
+    showAgents = el.showAgentsToggle.checked;
+
+    applyPointFilters();
+    renderAgents();
+    closeSheets();
+    toast("Filtros aplicados");
+  }
+
+  function searchPoints(query){
+    const normalized = normalizeText(query);
+
+    if(normalized.length < 2){
+      el.searchResults.innerHTML =
+        '<div class="result-meta">Digite pelo menos 2 caracteres.</div>';
+      return;
+    }
+
+    const digits = query.replace(/\D/g,"");
+    const results = [];
+
+    for(const [cnpj,feature] of pointFeatures){
+      const properties = feature.properties || {};
+
+      const searchable = normalizeText([
+        cnpj,
+        properties.NOME_FANTASIA,
+        properties.RAZAO_SOCIAL,
+        properties.ENDEE,
+        properties.MUNICIPIO
+      ].join(" "));
+
+      const matchText = searchable.includes(normalized);
+      const matchCnpj = digits.length >= 3 && cnpj.includes(digits);
+
+      if(matchText || matchCnpj){
+        results.push({
+          cnpj,
+          feature,
+          status:currentStatus(cnpj,properties)
+        });
+      }
+
+      if(results.length >= 30) break;
+    }
+
+    if(results.length === 0){
+      el.searchResults.innerHTML =
+        '<div class="result-meta">Nenhum ponto encontrado.</div>';
+      return;
+    }
+
+    el.searchResults.innerHTML = results.map(item => {
+      const properties = item.feature.properties || {};
+
+      return `
+        <button class="result-btn" data-search-cnpj="${item.cnpj}">
+          <span class="result-name">${escapeHtml(properties.NOME_FANTASIA || properties.RAZAO_SOCIAL || "Empresa")}</span>
+          <span class="result-meta">${escapeHtml(item.cnpj)} • ${escapeHtml(properties.MUNICIPIO || "")} • ${escapeHtml(item.status)}</span>
+          <span class="result-meta">${escapeHtml(properties.ENDEE || "")}</span>
+        </button>
+      `;
+    }).join("");
+
+    for(const button of el.searchResults.querySelectorAll("[data-search-cnpj]")){
+      button.onclick = () => {
+        const cnpj = button.dataset.searchCnpj;
+        const feature = pointFeatures.get(cnpj);
+        const marker = pointMarkers.get(cnpj);
+
+        if(!feature || !marker) return;
+
+        const coordinates = feature.geometry.coordinates;
+        const lng = Number(coordinates[0]);
+        const lat = Number(coordinates[1]);
+
+        if(!map.hasLayer(marker)) marker.addTo(map);
+
+        map.setView([lat,lng],18,{animate:true});
+        showPointDetails(cnpj);
+      };
+    }
+  }
+
+  async function fetchGeoJsonFromNetwork(cache){
+    const response = await fetch(
+      GEOJSON_URL,
+      {cache:"no-cache"}
+    );
+
+    if(!response.ok){
+      throw new Error(`GeoJSON HTTP ${response.status}`);
+    }
+
+    if(cache){
+      await cache.put(
+        GEOJSON_URL,
+        response.clone()
+      );
+    }
+
+    return response.json();
+  }
+
+  async function getGeoJson(forceNetwork=false){
+    let cache = null;
+
+    if("caches" in window){
+      cache = await caches.open(GEO_CACHE);
+    }
+
+    if(!forceNetwork && cache){
+      const cached = await cache.match(GEOJSON_URL);
+
+      if(cached){
+        setConnection("Base local carregada", "ok");
+
+        fetchGeoJsonFromNetwork(cache)
+          .then(() => {
+            setConnection("Firebase conectado • base atualizada em cache","ok");
+          })
+          .catch(() => {});
+
+        return cached.json();
+      }
+    }
+
+    const data = await fetchGeoJsonFromNetwork(cache);
+    setConnection("Firebase conectado • base baixada","ok");
+    return data;
+  }
+
+  function clearPointLayers(){
+    for(const marker of pointMarkers.values()){
+      if(map.hasLayer(marker)){
+        map.removeLayer(marker);
+      }
+    }
+
+    pointFeatures.clear();
+    pointMarkers.clear();
+  }
+
+  async function loadGeoJson(forceNetwork=false){
+    const data = await getGeoJson(forceNetwork);
+    clearPointLayers();
+
+    const bounds = [];
+
+    for(const feature of data.features || []){
+      if(feature?.geometry?.type !== "Point") continue;
+
+      const cnpj = normalizeCnpj(feature.properties);
+      const coordinates = feature.geometry.coordinates || [];
+      const lng = Number(coordinates[0]);
+      const lat = Number(coordinates[1]);
+
+      if(!cnpj) continue;
+      if(!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+      pointFeatures.set(cnpj,feature);
+      bounds.push([lat,lng]);
+      addPointMarker(cnpj,feature);
+    }
+
+    applyPointFilters();
+
+    if(bounds.length && map.getZoom() <= 8){
+      map.fitBounds(bounds,{
+        padding:[20,20],
+        maxZoom:9
+      });
+    }
+
+    updateSummary();
+  }
+
+  function toggleFullscreen(){
+    if(!document.fullscreenElement){
+      document.documentElement
+        .requestFullscreen()
+        .then(() => toast("Tela cheia ativada"))
+        .catch(() => toast("Tela cheia não disponível"));
+    }else{
+      document.exitFullscreen();
+    }
+  }
+
+  function toggleMapOnly(active){
+    document.body.classList.toggle("map-only",active);
+    refreshMapSize();
+  }
+
+  for(const closeButton of document.querySelectorAll("[data-close-sheet]")){
+    closeButton.onclick = () => {
+      document
+        .getElementById(closeButton.dataset.closeSheet)
+        .classList.remove("show");
+    };
+  }
+
+  el.btnMapOnly.onclick = () => toggleMapOnly(true);
+  el.showUi.onclick = () => toggleMapOnly(false);
+  el.btnGps.onclick = startManagerGps;
+  el.btnLocate.onclick = centerManagerLocation;
+  el.btnFitAgents.onclick = fitAllAgents;
+  el.btnNearest.onclick = findNearestPendingPoint;
+  el.btnFullscreen.onclick = toggleFullscreen;
+
+  el.btnSearch.onclick = () => {
+    openSheet(el.searchSheet);
+    setTimeout(() => el.searchInput.focus(),100);
+  };
+
+  el.btnFilter.onclick = () => {
+    renderFilterGrid();
+    el.showAgentsToggle.checked = showAgents;
+    openSheet(el.filterSheet);
+  };
+
+  el.searchInput.addEventListener("input", () => {
+    clearTimeout(lastSearchTimer);
+
+    lastSearchTimer = setTimeout(
+      () => searchPoints(el.searchInput.value),
+      180
+    );
+  });
+
+  el.btnAllStatuses.onclick = () => {
+    selectedStatuses = new Set(STATUS_ORDER);
+    renderFilterGrid();
+  };
+
+  el.btnOnlyPending.onclick = () => {
+    selectedStatuses = new Set(["PENDENTE"]);
+    renderFilterGrid();
+  };
+
+  el.btnApplyFilter.onclick = applyFilterFromPanel;
+
+  el.btnUpdateBase.onclick = async () => {
+    el.btnUpdateBase.disabled = true;
+    el.btnUpdateBase.textContent = "ATUALIZANDO...";
+
+    try{
+      await loadGeoJson(true);
+      toast("Base atualizada");
+      closeSheets();
+    }catch(error){
+      console.error(error);
+      toast("Falha ao atualizar a base");
+    }finally{
+      el.btnUpdateBase.disabled = false;
+      el.btnUpdateBase.textContent = "ATUALIZAR BASE";
+    }
+  };
+
+  onValue(
+    ref(db,"CONFIG"),
+    snapshot => {
+      const config = snapshot.val() || {};
+      radiusNext = Number(config.raioProximo) || 1000;
+    }
+  );
+
+  onValue(
+    ref(db,"STATUS_PONTOS"),
+    snapshot => {
+      statuses.clear();
+
+      const raw = snapshot.val() || {};
+
+      for(const [cnpj,value] of Object.entries(raw)){
+        if(cnpj === "TEMP" || cnpj === "TESTE_MANUAL") continue;
+        if(!value) continue;
+
+        statuses.set(cnpj,value);
+        updatePointStyle(cnpj);
+      }
+
+      applyPointFilters();
+      updateSummary();
+      setConnection("Firebase conectado","ok");
+    },
+    error => {
+      console.error(error);
+      setConnection("Erro ao ler status","err");
+    }
+  );
+
+  onValue(
+    ref(db,"AGENTES_ONLINE"),
+    snapshot => {
+      agents.clear();
+
+      const raw = snapshot.val() || {};
+
+      for(const [key,value] of Object.entries(raw)){
+        if(!value) continue;
+        if(key === "TEMP" || key === "TESTE_V01") continue;
+
+        const id = String(value.id || key);
+
+        agents.set(id,{
+          ...value,
+          id
+        });
+      }
+
+      renderAgents();
+      setConnection("Firebase conectado","ok");
+    },
+    error => {
+      console.error(error);
+      setConnection("Erro ao ler agentes","err");
+    }
+  );
+
+  window.addEventListener("resize",refreshMapSize);
+  document.addEventListener("fullscreenchange",refreshMapSize);
+
+  setConnection("Carregando base...");
+
+  loadGeoJson(false).catch(error => {
+    console.error(error);
+    setConnection("Erro ao carregar GeoJSON","err");
+    toast("Não foi possível carregar a base");
+  });
+</script>
+</body>
+</html>
