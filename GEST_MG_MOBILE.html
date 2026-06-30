@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <meta name="theme-color" content="#07111f">
-  <title>GEST_MG Mobile — Gestão de Campo</title>
+  <title>GEST_MG Mobile — Rotas otimizadas</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 
@@ -324,6 +324,182 @@
     .wide-btn.green{background:#15803d;border-color:#22c55e}
     .wide-btn.warn{background:#92400e;border-color:#f59e0b}
     .wide-btn.danger{background:#991b1b;border-color:#ef4444}
+    .wide-btn:disabled{opacity:.48;cursor:not-allowed}
+
+    .route-section{
+      margin-top:10px;
+      padding-top:10px;
+      border-top:1px solid #2c3e5c;
+    }
+
+    .route-section:first-of-type{
+      margin-top:0;
+      padding-top:0;
+      border-top:0;
+    }
+
+    .route-label{
+      display:block;
+      margin-bottom:6px;
+      color:#dce7f7;
+      font-size:12px;
+      font-weight:800;
+    }
+
+    .route-select{
+      appearance:auto;
+      margin-bottom:8px;
+    }
+
+    .route-note{
+      color:var(--muted);
+      font-size:11px;
+      line-height:1.4;
+      margin-top:6px;
+    }
+
+    .route-key-status{
+      padding:8px 10px;
+      border:1px solid #334867;
+      border-radius:10px;
+      background:#111e32;
+      color:#dbe7f8;
+      font-size:11px;
+      font-weight:700;
+    }
+
+    .route-summary-card{
+      padding:10px;
+      border:1px solid #334867;
+      border-radius:11px;
+      background:#111e32;
+    }
+
+    .route-summary-title{
+      color:#fff;
+      font-size:13px;
+      font-weight:900;
+      margin-bottom:5px;
+    }
+
+    .route-summary-meta{
+      color:var(--muted);
+      font-size:11px;
+      line-height:1.45;
+    }
+
+    .route-stop-list{
+      display:grid;
+      gap:7px;
+      margin-top:9px;
+    }
+
+    .route-stop{
+      display:grid;
+      grid-template-columns:30px minmax(0,1fr) auto;
+      align-items:center;
+      gap:8px;
+      padding:8px;
+      border:1px solid #314363;
+      border-radius:10px;
+      background:#0e1a2c;
+    }
+
+    .route-stop-number{
+      width:28px;
+      height:28px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:50%;
+      background:#ff6b00;
+      color:#fff;
+      font-size:12px;
+      font-weight:900;
+      border:2px solid #fff;
+    }
+
+    .route-stop-name{
+      display:block;
+      color:#fff;
+      font-size:11px;
+      font-weight:800;
+      line-height:1.25;
+    }
+
+    .route-stop-address{
+      display:block;
+      margin-top:2px;
+      color:var(--muted);
+      font-size:10px;
+      line-height:1.25;
+    }
+
+    .route-stop-open{
+      min-width:44px;
+      height:31px;
+      padding:0 7px;
+      border:1px solid #3b82f6;
+      border-radius:8px;
+      background:#1d4ed8;
+      color:#fff;
+      font-size:10px;
+      font-weight:900;
+    }
+
+    .route-number-pin{
+      width:30px;
+      height:30px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:50%;
+      background:#ff6b00;
+      color:#fff;
+      border:3px solid #fff;
+      box-shadow:0 3px 12px rgba(0,0,0,.5);
+      font-size:12px;
+      font-weight:900;
+    }
+
+    .route-select-bar{
+      display:none;
+      position:absolute;
+      z-index:1900;
+      left:8px;
+      right:8px;
+      bottom:max(8px,env(safe-area-inset-bottom));
+      min-height:54px;
+      align-items:center;
+      gap:7px;
+      padding:8px;
+      border:1px solid #f59e0b;
+      border-radius:13px;
+      background:rgba(7,17,31,.97);
+      box-shadow:0 10px 28px rgba(0,0,0,.48);
+    }
+
+    .route-select-bar.show{display:flex}
+
+    .route-select-count{
+      min-width:0;
+      flex:1;
+      color:#fff;
+      font-size:12px;
+      font-weight:900;
+    }
+
+    .route-select-bar button{
+      height:36px;
+      padding:0 10px;
+      border-radius:9px;
+      color:#fff;
+      font-size:11px;
+      font-weight:900;
+    }
+
+    .route-select-generate{background:#15803d;border:1px solid #22c55e}
+    .route-select-cancel{background:#991b1b;border:1px solid #ef4444}
 
     .detail-name{
       font-size:18px;
@@ -470,6 +646,7 @@
     <button id="btnLocate" class="tool-btn">LOCALIZAÇÃO</button>
     <button id="btnFitAgents" class="tool-btn">AGENTES</button>
     <button id="btnNearest" class="tool-btn">PRÓXIMO</button>
+    <button id="btnRoutes" class="tool-btn">ROTAS</button>
     <button id="btnSearch" class="tool-btn">BUSCAR</button>
     <button id="btnFilter" class="tool-btn">FILTRO</button>
     <button id="btnFullscreen" class="tool-btn">TELA CHEIA</button>
@@ -480,6 +657,12 @@
 
   <button id="showUi">MENU</button>
   <div id="toast" class="toast"></div>
+
+  <div id="routeSelectBar" class="route-select-bar">
+    <div id="routeSelectCount" class="route-select-count">Selecionados: 0/10</div>
+    <button id="btnFinishManualRoute" class="route-select-generate">GERAR</button>
+    <button id="btnCancelManualRoute" class="route-select-cancel">CANCELAR</button>
+  </div>
 
   <section id="searchSheet" class="sheet" aria-label="Pesquisa">
     <div class="sheet-head">
@@ -509,6 +692,59 @@
       <button id="btnOnlyPending" class="wide-btn">SÓ PENDENTES</button>
       <button id="btnApplyFilter" class="wide-btn primary">APLICAR</button>
       <button id="btnUpdateBase" class="wide-btn green">ATUALIZAR BASE</button>
+    </div>
+  </section>
+
+  <section id="routeSheet" class="sheet" aria-label="Rotas otimizadas">
+    <div class="sheet-head">
+      <div class="sheet-title">Rotas otimizadas</div>
+      <button class="close-btn" data-close-sheet="routeSheet">X</button>
+    </div>
+
+    <div class="route-section">
+      <div id="orsKeyStatus" class="route-key-status">Chave openrouteservice: não configurada</div>
+      <div class="filter-actions">
+        <button id="btnSaveOrsKey" class="wide-btn">CONFIGURAR CHAVE</button>
+        <button id="btnDeleteOrsKey" class="wide-btn danger">APAGAR CHAVE</button>
+      </div>
+      <div class="route-note">A chave fica somente neste navegador e não é enviada ao Firebase.</div>
+    </div>
+
+    <div class="route-section">
+      <label class="filter-chip">
+        <input id="routeIncludeReturn" type="checkbox">
+        Incluir pontos com status RETORNAR
+      </label>
+    </div>
+
+    <div class="route-section">
+      <span class="route-label">Rota automática</span>
+      <div class="filter-actions">
+        <button id="btnRouteNearest10" class="wide-btn primary">PRÓXIMOS 10</button>
+        <button id="btnRouteManual" class="wide-btn warn">ESCOLHER ATÉ 10</button>
+      </div>
+      <div class="route-note">A rota começa na localização atual do celular.</div>
+    </div>
+
+    <div class="route-section">
+      <label class="route-label" for="routeCity">Filtrar por município</label>
+      <select id="routeCity" class="search-input route-select">
+        <option value="">Selecione um município</option>
+      </select>
+      <button id="btnRouteCity10" class="wide-btn primary" style="width:100%">GERAR 10 DA CIDADE</button>
+    </div>
+
+    <div class="route-section">
+      <div id="routeSummary" class="route-summary-card">
+        <div class="route-summary-title">Nenhuma rota calculada</div>
+        <div class="route-summary-meta">Escolha uma opção acima para gerar a sequência.</div>
+      </div>
+      <div id="routeStopList" class="route-stop-list"></div>
+      <div class="filter-actions">
+        <button id="btnOpenNextStop" class="wide-btn green" disabled>ABRIR PRÓXIMA</button>
+        <button id="btnOpenFullRoute" class="wide-btn primary" disabled>ABRIR ROTA</button>
+        <button id="btnClearRoute" class="wide-btn danger" style="grid-column:1/-1" disabled>LIMPAR ROTA</button>
+      </div>
     </div>
   </section>
 
@@ -552,7 +788,7 @@
     window.location.href
   ).href;
 
-  const GEO_CACHE = "mg-sebrae-mobile-geo-v2";
+  const GEO_CACHE = "mg-sebrae-mobile-geo-v3";
 
   const STATUS_ORDER = [
     "PENDENTE",
@@ -583,6 +819,7 @@
     btnLocate:document.getElementById("btnLocate"),
     btnFitAgents:document.getElementById("btnFitAgents"),
     btnNearest:document.getElementById("btnNearest"),
+    btnRoutes:document.getElementById("btnRoutes"),
     btnSearch:document.getElementById("btnSearch"),
     btnFilter:document.getElementById("btnFilter"),
     btnFullscreen:document.getElementById("btnFullscreen"),
@@ -596,6 +833,24 @@
     btnOnlyPending:document.getElementById("btnOnlyPending"),
     btnApplyFilter:document.getElementById("btnApplyFilter"),
     btnUpdateBase:document.getElementById("btnUpdateBase"),
+    routeSheet:document.getElementById("routeSheet"),
+    orsKeyStatus:document.getElementById("orsKeyStatus"),
+    btnSaveOrsKey:document.getElementById("btnSaveOrsKey"),
+    btnDeleteOrsKey:document.getElementById("btnDeleteOrsKey"),
+    routeIncludeReturn:document.getElementById("routeIncludeReturn"),
+    btnRouteNearest10:document.getElementById("btnRouteNearest10"),
+    btnRouteManual:document.getElementById("btnRouteManual"),
+    routeCity:document.getElementById("routeCity"),
+    btnRouteCity10:document.getElementById("btnRouteCity10"),
+    routeSummary:document.getElementById("routeSummary"),
+    routeStopList:document.getElementById("routeStopList"),
+    btnOpenNextStop:document.getElementById("btnOpenNextStop"),
+    btnOpenFullRoute:document.getElementById("btnOpenFullRoute"),
+    btnClearRoute:document.getElementById("btnClearRoute"),
+    routeSelectBar:document.getElementById("routeSelectBar"),
+    routeSelectCount:document.getElementById("routeSelectCount"),
+    btnFinishManualRoute:document.getElementById("btnFinishManualRoute"),
+    btnCancelManualRoute:document.getElementById("btnCancelManualRoute"),
     detailSheet:document.getElementById("detailSheet"),
     detailTitle:document.getElementById("detailTitle"),
     detailContent:document.getElementById("detailContent"),
@@ -609,6 +864,12 @@
 
   map.createPane("pointsPane");
   map.getPane("pointsPane").style.zIndex = 410;
+
+  map.createPane("routePane");
+  map.getPane("routePane").style.zIndex = 590;
+
+  map.createPane("routeMarkersPane");
+  map.getPane("routeMarkersPane").style.zIndex = 630;
 
   map.createPane("agentsPane");
   map.getPane("agentsPane").style.zIndex = 650;
@@ -635,6 +896,7 @@
   const statuses = new Map();
   const agents = new Map();
   const agentMarkers = new Map();
+  const routeLayerGroup = L.layerGroup().addTo(map);
 
   let managerPosition = null;
   let managerMarker = null;
@@ -646,6 +908,19 @@
   let radiusNext = 1000;
   let toastTimer = null;
   let lastSearchTimer = null;
+  let routeIncludeReturn = false;
+  let manualSelectionMode = false;
+  let manualRouteSelection = new Set();
+  let routeSequence = [];
+  let routeNextIndex = 0;
+  let routeBusy = false;
+  let routeSummaryData = null;
+
+  const ORS_KEY_STORAGE = "mg_sebrae_ors_api_key";
+  const ORS_BASE_URLS = [
+    "https://api.openrouteservice.org",
+    "https://api.heigit.org"
+  ];
 
   const agentIcon = L.divIcon({
     className:"",
@@ -774,14 +1049,16 @@
     setTimeout(() => map.invalidateSize(false),80);
   }
 
-  function markerStyle(status){
+  function markerStyle(status,cnpj=""){
+    const selected = manualRouteSelection.has(cnpj);
+
     return {
       renderer:pointRenderer,
-      radius:6,
-      color:"#fff",
-      weight:1.2,
+      radius:selected ? 9 : 6,
+      color:selected ? "#fef08a" : "#fff",
+      weight:selected ? 4 : 1.2,
       fillColor:STATUS_COLORS[status] || STATUS_COLORS.PENDENTE,
-      fillOpacity:.92,
+      fillOpacity:.94,
       interactive:true
     };
   }
@@ -795,10 +1072,17 @@
 
     const marker = L.circleMarker(
       [lat,lng],
-      markerStyle(currentStatus(cnpj,feature.properties))
+      markerStyle(currentStatus(cnpj,feature.properties),cnpj)
     );
 
-    marker.on("click", () => showPointDetails(cnpj));
+    marker.on("click", () => {
+      if(manualSelectionMode){
+        toggleManualRoutePoint(cnpj);
+      }else{
+        showPointDetails(cnpj);
+      }
+    });
+
     pointMarkers.set(cnpj,marker);
     return marker;
   }
@@ -822,9 +1106,9 @@
       if(!marker) continue;
 
       const status = currentStatus(cnpj,feature.properties);
-      marker.setStyle(markerStyle(status));
+      marker.setStyle(markerStyle(status,cnpj));
 
-      if(selectedStatuses.has(status)){
+      if(selectedStatuses.has(status) || manualRouteSelection.has(cnpj)){
         if(!map.hasLayer(marker)) marker.addTo(map);
       }else{
         if(map.hasLayer(marker)) map.removeLayer(marker);
@@ -841,7 +1125,7 @@
     if(!feature || !marker) return;
 
     marker.setStyle(
-      markerStyle(currentStatus(cnpj,feature.properties))
+      markerStyle(currentStatus(cnpj,feature.properties),cnpj)
     );
   }
 
@@ -1313,6 +1597,618 @@
     }
   }
 
+  function getOrsKey(){
+    return (localStorage.getItem(ORS_KEY_STORAGE) || "").trim();
+  }
+
+  function updateOrsKeyStatus(){
+    const configured = Boolean(getOrsKey());
+    el.orsKeyStatus.textContent = configured
+      ? "Chave openrouteservice: configurada neste navegador"
+      : "Chave openrouteservice: não configurada";
+
+    el.btnDeleteOrsKey.disabled = !configured;
+  }
+
+  function saveOrsKey(){
+    const key = window.prompt(
+      "Cole a nova Basic Key do openrouteservice. Ela ficará somente neste navegador:"
+    );
+
+    if(key === null) return false;
+
+    const cleaned = key.trim();
+    if(cleaned.length < 20){
+      toast("Chave inválida ou incompleta");
+      return false;
+    }
+
+    localStorage.setItem(ORS_KEY_STORAGE,cleaned);
+    updateOrsKeyStatus();
+    toast("Chave salva neste navegador");
+    return true;
+  }
+
+  function ensureOrsKey(){
+    const existing = getOrsKey();
+    if(existing) return existing;
+
+    const saved = saveOrsKey();
+    return saved ? getOrsKey() : "";
+  }
+
+  function removeOrsKey(){
+    localStorage.removeItem(ORS_KEY_STORAGE);
+    updateOrsKeyStatus();
+    toast("Chave removida deste navegador");
+  }
+
+  function routeEligibleStatus(status){
+    return status === "PENDENTE" ||
+      (routeIncludeReturn && status === "RETORNAR");
+  }
+
+  function featureRouteData(cnpj,feature){
+    const properties = feature.properties || {};
+    const coordinates = feature.geometry?.coordinates || [];
+    const lng = Number(coordinates[0]);
+    const lat = Number(coordinates[1]);
+
+    if(!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+    return {
+      cnpj,
+      feature,
+      properties,
+      lat,
+      lng,
+      status:currentStatus(cnpj,properties),
+      name:properties.NOME_FANTASIA ||
+        properties.RAZAO_SOCIAL ||
+        cnpj,
+      address:properties.ENDEE || "",
+      city:properties.MUNICIPIO || ""
+    };
+  }
+
+  function getRouteCandidates(city=""){
+    const normalizedCity = normalizeText(city);
+    const candidates = [];
+
+    for(const [cnpj,feature] of pointFeatures){
+      const item = featureRouteData(cnpj,feature);
+      if(!item) continue;
+      if(!routeEligibleStatus(item.status)) continue;
+      if(normalizedCity && normalizeText(item.city) !== normalizedCity) continue;
+
+      candidates.push(item);
+    }
+
+    return candidates;
+  }
+
+  function refreshRouteCities(){
+    if(!el.routeCity) return;
+
+    const current = el.routeCity.value;
+    const counts = new Map();
+
+    for(const item of getRouteCandidates()){
+      const city = String(item.city || "").trim();
+      if(!city) continue;
+      counts.set(city,(counts.get(city) || 0) + 1);
+    }
+
+    const cities = [...counts.keys()].sort(
+      (a,b) => a.localeCompare(b,"pt-BR")
+    );
+
+    el.routeCity.innerHTML = [
+      '<option value="">Selecione um município</option>',
+      ...cities.map(city =>
+        `<option value="${escapeHtml(city)}">${escapeHtml(city)} (${counts.get(city)})</option>`
+      )
+    ].join("");
+
+    if(cities.includes(current)){
+      el.routeCity.value = current;
+    }
+  }
+
+  function formatRouteDuration(seconds){
+    const totalMinutes = Math.max(0,Math.round(Number(seconds || 0) / 60));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if(hours === 0) return `${minutes} min`;
+    if(minutes === 0) return `${hours} h`;
+    return `${hours} h ${minutes} min`;
+  }
+
+  function setRouteBusy(active,message="Calculando rota..."){
+    routeBusy = active;
+
+    for(const button of [
+      el.btnRouteNearest10,
+      el.btnRouteCity10,
+      el.btnRouteManual,
+      el.btnFinishManualRoute
+    ]){
+      button.disabled = active;
+    }
+
+    if(active){
+      el.routeSummary.innerHTML = `
+        <div class="route-summary-title">${escapeHtml(message)}</div>
+        <div class="route-summary-meta">Aguarde a resposta do openrouteservice.</div>
+      `;
+    }
+  }
+
+  function routeNumberIcon(number){
+    return L.divIcon({
+      className:"",
+      html:`<div class="route-number-pin">${number}</div>`,
+      iconSize:[34,34],
+      iconAnchor:[17,17]
+    });
+  }
+
+  function renderRouteResult(){
+    const hasRoute = routeSequence.length > 0;
+
+    el.btnOpenNextStop.disabled = !hasRoute;
+    el.btnOpenFullRoute.disabled = !hasRoute;
+    el.btnClearRoute.disabled = !hasRoute;
+
+    if(!hasRoute){
+      el.routeSummary.innerHTML = `
+        <div class="route-summary-title">Nenhuma rota calculada</div>
+        <div class="route-summary-meta">Escolha uma opção acima para gerar a sequência.</div>
+      `;
+      el.routeStopList.innerHTML = "";
+      return;
+    }
+
+    const summary = routeSummaryData || {};
+    const distance = Number(summary.distance || 0);
+    const duration = Number(summary.duration || 0);
+
+    el.routeSummary.innerHTML = `
+      <div class="route-summary-title">Rota com ${routeSequence.length} parada${routeSequence.length === 1 ? "" : "s"}</div>
+      <div class="route-summary-meta">
+        Distância estimada: ${escapeHtml(distanceLabel(distance))}<br>
+        Tempo estimado: ${escapeHtml(formatRouteDuration(duration))}<br>
+        Início: localização atual do celular
+      </div>
+    `;
+
+    el.routeStopList.innerHTML = routeSequence.map((item,index) => `
+      <div class="route-stop">
+        <div class="route-stop-number">${index + 1}</div>
+        <div>
+          <span class="route-stop-name">${escapeHtml(item.name)}</span>
+          <span class="route-stop-address">${escapeHtml(item.city)} • ${escapeHtml(item.address)}</span>
+        </div>
+        <button class="route-stop-open" data-route-stop="${index}">ABRIR</button>
+      </div>
+    `).join("");
+
+    for(const button of el.routeStopList.querySelectorAll("[data-route-stop]")){
+      button.onclick = () => {
+        const index = Number(button.dataset.routeStop);
+        openRouteStop(index);
+      };
+    }
+  }
+
+  function clearOptimizedRoute(showMessage=true){
+    routeLayerGroup.clearLayers();
+    routeSequence = [];
+    routeSummaryData = null;
+    routeNextIndex = 0;
+    manualRouteSelection.clear();
+    manualSelectionMode = false;
+    el.routeSelectBar.classList.remove("show");
+    applyPointFilters();
+    renderRouteResult();
+
+    if(showMessage) toast("Rota removida do mapa");
+  }
+
+  function openRouteStop(index){
+    const item = routeSequence[index];
+    if(!item) return;
+
+    window.open(
+      routeUrl(item.lat,item.lng),
+      "_blank",
+      "noopener"
+    );
+  }
+
+  function openNextRouteStop(){
+    if(routeSequence.length === 0) return;
+
+    const index = Math.min(routeNextIndex,routeSequence.length - 1);
+    openRouteStop(index);
+    routeNextIndex = Math.min(index + 1,routeSequence.length - 1);
+
+    const nextNumber = Math.min(routeNextIndex + 1,routeSequence.length);
+    el.btnOpenNextStop.textContent = `ABRIR PARADA ${nextNumber}`;
+  }
+
+  function openFullRouteInGoogle(){
+    if(!managerPosition || routeSequence.length === 0){
+      toast("Rota ou GPS indisponível");
+      return;
+    }
+
+    const last = routeSequence[routeSequence.length - 1];
+    const intermediates = routeSequence.slice(0,-1);
+    const params = new URLSearchParams({
+      api:"1",
+      origin:`${managerPosition.lat},${managerPosition.lng}`,
+      destination:`${last.lat},${last.lng}`,
+      travelmode:"driving"
+    });
+
+    if(intermediates.length){
+      params.set(
+        "waypoints",
+        intermediates.map(item => `${item.lat},${item.lng}`).join("|")
+      );
+    }
+
+    window.open(
+      `https://www.google.com/maps/dir/?${params.toString()}`,
+      "_blank",
+      "noopener"
+    );
+  }
+
+  async function orsPost(path,payload){
+    const key = ensureOrsKey();
+    if(!key) throw new Error("Chave openrouteservice não informada");
+
+    let lastError = null;
+
+    for(const base of ORS_BASE_URLS){
+      try{
+        const response = await fetch(`${base}${path}`,{
+          method:"POST",
+          headers:{
+            "Authorization":key,
+            "Content-Type":"application/json",
+            "Accept":"application/json, application/geo+json"
+          },
+          body:JSON.stringify(payload)
+        });
+
+        const raw = await response.text();
+        let data = null;
+
+        try{
+          data = raw ? JSON.parse(raw) : {};
+        }catch{
+          data = {message:raw};
+        }
+
+        if(response.ok) return data;
+
+        const message =
+          data?.error?.message ||
+          data?.error ||
+          data?.message ||
+          `HTTP ${response.status}`;
+
+        const error = new Error(String(message));
+        error.status = response.status;
+
+        if(response.status === 401 || response.status === 403 || response.status === 429){
+          throw error;
+        }
+
+        lastError = error;
+      }catch(error){
+        lastError = error;
+
+        if(error?.status === 401 || error?.status === 403 || error?.status === 429){
+          break;
+        }
+      }
+    }
+
+    throw lastError || new Error("Falha de conexão com openrouteservice");
+  }
+
+  async function optimizeRouteOrder(candidates){
+    if(candidates.length <= 1) return candidates;
+
+    const jobs = candidates.map((item,index) => ({
+      id:index + 1,
+      location:[item.lng,item.lat],
+      service:0
+    }));
+
+    const payload = {
+      jobs,
+      vehicles:[{
+        id:1,
+        profile:"driving-car",
+        start:[managerPosition.lng,managerPosition.lat]
+      }]
+    };
+
+    const data = await orsPost("/optimization",payload);
+    const route = data?.routes?.[0];
+
+    if(!route) throw new Error("A otimização não retornou uma rota");
+
+    const byJobId = new Map(
+      candidates.map((item,index) => [index + 1,item])
+    );
+
+    const ordered = (route.steps || [])
+      .filter(step => step.type === "job")
+      .map(step => byJobId.get(Number(step.id)))
+      .filter(Boolean);
+
+    if(ordered.length !== candidates.length){
+      throw new Error("Nem todos os pontos foram incluídos na otimização");
+    }
+
+    routeSummaryData = {
+      distance:Number(route.distance || data?.summary?.distance || 0),
+      duration:Number(route.duration || data?.summary?.duration || 0)
+    };
+
+    return ordered;
+  }
+
+  async function requestRoadGeometry(ordered){
+    const coordinates = [
+      [managerPosition.lng,managerPosition.lat],
+      ...ordered.map(item => [item.lng,item.lat])
+    ];
+
+    return orsPost(
+      "/v2/directions/driving-car/geojson",
+      {
+        coordinates,
+        instructions:false,
+        elevation:false
+      }
+    );
+  }
+
+  function drawOptimizedRoute(ordered,directions){
+    routeLayerGroup.clearLayers();
+
+    if(directions?.features?.length){
+      const routeGeo = L.geoJSON(directions,{
+        pane:"routePane",
+        style:{
+          color:"#ff6b00",
+          weight:6,
+          opacity:.92
+        },
+        interactive:false
+      }).addTo(routeLayerGroup);
+
+      const summary = directions.features[0]?.properties?.summary;
+      if(summary){
+        routeSummaryData = {
+          distance:Number(summary.distance || routeSummaryData?.distance || 0),
+          duration:Number(summary.duration || routeSummaryData?.duration || 0)
+        };
+      }
+    }else{
+      L.polyline(
+        [
+          [managerPosition.lat,managerPosition.lng],
+          ...ordered.map(item => [item.lat,item.lng])
+        ],
+        {
+          pane:"routePane",
+          color:"#ff6b00",
+          weight:5,
+          opacity:.82,
+          dashArray:"8 8",
+          interactive:false
+        }
+      ).addTo(routeLayerGroup);
+    }
+
+    ordered.forEach((item,index) => {
+      const marker = L.marker(
+        [item.lat,item.lng],
+        {
+          pane:"routeMarkersPane",
+          icon:routeNumberIcon(index + 1)
+        }
+      ).addTo(routeLayerGroup);
+
+      marker.on("click",() => showPointDetails(item.cnpj));
+    });
+
+    const bounds = L.latLngBounds([
+      [managerPosition.lat,managerPosition.lng],
+      ...ordered.map(item => [item.lat,item.lng])
+    ]);
+
+    map.fitBounds(bounds,{
+      padding:[35,35],
+      maxZoom:16
+    });
+  }
+
+  function describeOrsError(error){
+    const status = Number(error?.status || 0);
+    const message = String(error?.message || "Erro desconhecido");
+
+    if(status === 401 || status === 403){
+      return "Chave inválida, revogada ou sem permissão. Configure a nova chave.";
+    }
+
+    if(status === 429){
+      return "Limite temporário do openrouteservice atingido. Aguarde e tente novamente.";
+    }
+
+    if(/failed to fetch|networkerror|load failed/i.test(message)){
+      return "Falha de internet ou bloqueio ao acessar o openrouteservice.";
+    }
+
+    return message;
+  }
+
+  async function generateOptimizedRoute(candidates,label="Rota"){
+    if(routeBusy) return;
+
+    if(!managerPosition){
+      toast("Ative o GPS e aguarde a localização");
+      return;
+    }
+
+    const unique = [];
+    const seen = new Set();
+
+    for(const item of candidates){
+      if(!item || seen.has(item.cnpj)) continue;
+      seen.add(item.cnpj);
+      unique.push(item);
+      if(unique.length === 10) break;
+    }
+
+    if(unique.length === 0){
+      toast("Nenhum ponto elegível encontrado");
+      return;
+    }
+
+    setRouteBusy(true,`${label}: otimizando ${unique.length} ponto${unique.length === 1 ? "" : "s"}...`);
+
+    try{
+      const ordered = await optimizeRouteOrder(unique);
+      let directions = null;
+
+      try{
+        directions = await requestRoadGeometry(ordered);
+      }catch(geometryError){
+        console.warn("Falha ao desenhar rota viária; usando linha aproximada",geometryError);
+        toast("Ordem calculada; desenho viário indisponível");
+      }
+
+      routeSequence = ordered;
+      routeNextIndex = 0;
+      manualRouteSelection.clear();
+      manualSelectionMode = false;
+      el.routeSelectBar.classList.remove("show");
+      applyPointFilters();
+      drawOptimizedRoute(ordered,directions);
+      renderRouteResult();
+      openSheet(el.routeSheet);
+      toast(`Rota gerada com ${ordered.length} parada${ordered.length === 1 ? "" : "s"}`);
+    }catch(error){
+      console.error(error);
+      el.routeSummary.innerHTML = `
+        <div class="route-summary-title">Não foi possível gerar a rota</div>
+        <div class="route-summary-meta">${escapeHtml(describeOrsError(error))}</div>
+      `;
+      toast(describeOrsError(error));
+    }finally{
+      setRouteBusy(false);
+    }
+  }
+
+  function nearestRouteCandidates(city=""){
+    if(!managerPosition) return [];
+
+    return getRouteCandidates(city)
+      .map(item => ({
+        ...item,
+        directDistance:distanceMeters(
+          managerPosition,
+          {lat:item.lat,lng:item.lng}
+        )
+      }))
+      .sort((a,b) => a.directDistance - b.directDistance)
+      .slice(0,10);
+  }
+
+  function updateManualSelectionBar(){
+    el.routeSelectCount.textContent =
+      `Selecionados: ${manualRouteSelection.size}/10`;
+
+    el.btnFinishManualRoute.disabled =
+      manualRouteSelection.size === 0 || routeBusy;
+  }
+
+  function startManualRouteSelection(){
+    routeIncludeReturn = el.routeIncludeReturn.checked;
+    manualSelectionMode = true;
+    manualRouteSelection.clear();
+    closeSheets();
+    el.routeSelectBar.classList.add("show");
+    selectedStatuses.add("PENDENTE");
+    if(routeIncludeReturn) selectedStatuses.add("RETORNAR");
+    applyPointFilters();
+    updateManualSelectionBar();
+    toast("Toque em até 10 pontos no mapa");
+  }
+
+  function cancelManualRouteSelection(){
+    manualSelectionMode = false;
+    manualRouteSelection.clear();
+    el.routeSelectBar.classList.remove("show");
+    applyPointFilters();
+    toast("Seleção cancelada");
+  }
+
+  function toggleManualRoutePoint(cnpj){
+    const feature = pointFeatures.get(cnpj);
+    if(!feature) return;
+
+    const item = featureRouteData(cnpj,feature);
+    if(!item || !routeEligibleStatus(item.status)){
+      toast("Este ponto não está elegível para a rota");
+      return;
+    }
+
+    if(manualRouteSelection.has(cnpj)){
+      manualRouteSelection.delete(cnpj);
+    }else{
+      if(manualRouteSelection.size >= 10){
+        toast("Limite de 10 pontos atingido");
+        return;
+      }
+      manualRouteSelection.add(cnpj);
+    }
+
+    updatePointStyle(cnpj);
+    updateManualSelectionBar();
+  }
+
+  function finishManualRouteSelection(){
+    const candidates = [...manualRouteSelection]
+      .map(cnpj => featureRouteData(cnpj,pointFeatures.get(cnpj)))
+      .filter(Boolean);
+
+    if(candidates.length === 0){
+      toast("Selecione ao menos um ponto");
+      return;
+    }
+
+    generateOptimizedRoute(candidates,"Seleção manual");
+  }
+
+  function openRoutePanel(){
+    routeIncludeReturn = el.routeIncludeReturn.checked;
+    refreshRouteCities();
+    updateOrsKeyStatus();
+    renderRouteResult();
+    openSheet(el.routeSheet);
+  }
+
   async function fetchGeoJsonFromNetwork(cache){
     const response = await fetch(
       GEOJSON_URL,
@@ -1404,6 +2300,7 @@
     }
 
     updateSummary();
+    refreshRouteCities();
   }
 
   function toggleFullscreen(){
@@ -1436,6 +2333,7 @@
   el.btnLocate.onclick = centerManagerLocation;
   el.btnFitAgents.onclick = fitAllAgents;
   el.btnNearest.onclick = findNearestPendingPoint;
+  el.btnRoutes.onclick = openRoutePanel;
   el.btnFullscreen.onclick = toggleFullscreen;
 
   el.btnSearch.onclick = () => {
@@ -1448,6 +2346,40 @@
     el.showAgentsToggle.checked = showAgents;
     openSheet(el.filterSheet);
   };
+
+  el.btnSaveOrsKey.onclick = saveOrsKey;
+  el.btnDeleteOrsKey.onclick = removeOrsKey;
+
+  el.routeIncludeReturn.onchange = () => {
+    routeIncludeReturn = el.routeIncludeReturn.checked;
+    refreshRouteCities();
+  };
+
+  el.btnRouteNearest10.onclick = () => {
+    routeIncludeReturn = el.routeIncludeReturn.checked;
+    const candidates = nearestRouteCandidates();
+    generateOptimizedRoute(candidates,"Próximos 10");
+  };
+
+  el.btnRouteCity10.onclick = () => {
+    routeIncludeReturn = el.routeIncludeReturn.checked;
+    const city = el.routeCity.value;
+
+    if(!city){
+      toast("Selecione um município");
+      return;
+    }
+
+    const candidates = nearestRouteCandidates(city);
+    generateOptimizedRoute(candidates,city);
+  };
+
+  el.btnRouteManual.onclick = startManualRouteSelection;
+  el.btnFinishManualRoute.onclick = finishManualRouteSelection;
+  el.btnCancelManualRoute.onclick = cancelManualRouteSelection;
+  el.btnClearRoute.onclick = () => clearOptimizedRoute(true);
+  el.btnOpenNextStop.onclick = openNextRouteStop;
+  el.btnOpenFullRoute.onclick = openFullRouteInGoogle;
 
   el.searchInput.addEventListener("input", () => {
     clearTimeout(lastSearchTimer);
@@ -1512,6 +2444,7 @@
 
       applyPointFilters();
       updateSummary();
+      refreshRouteCities();
       setConnection("Firebase conectado","ok");
     },
     error => {
@@ -1552,6 +2485,8 @@
   document.addEventListener("fullscreenchange",refreshMapSize);
 
   setConnection("Carregando base...");
+  updateOrsKeyStatus();
+  renderRouteResult();
 
   loadGeoJson(false).catch(error => {
     console.error(error);
