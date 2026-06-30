@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <meta name="theme-color" content="#07111f">
-  <title>GEST_MG Mobile — Rotas otimizadas</title>
+  <title>GEST_MG Mobile — Rotas otimizadas corrigidas</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 
@@ -703,6 +703,7 @@
 
     <div class="route-section">
       <div id="orsKeyStatus" class="route-key-status">Chave openrouteservice: não configurada</div>
+      <div class="route-note">Integração corrigida para api.heigit.org • versão 1.1</div>
       <div class="filter-actions">
         <button id="btnSaveOrsKey" class="wide-btn">CONFIGURAR CHAVE</button>
         <button id="btnDeleteOrsKey" class="wide-btn danger">APAGAR CHAVE</button>
@@ -788,7 +789,7 @@
     window.location.href
   ).href;
 
-  const GEO_CACHE = "mg-sebrae-mobile-geo-v3";
+  const GEO_CACHE = "mg-sebrae-mobile-geo-v4";
 
   const STATUS_ORDER = [
     "PENDENTE",
@@ -917,10 +918,19 @@
   let routeSummaryData = null;
 
   const ORS_KEY_STORAGE = "mg_sebrae_ors_api_key";
-  const ORS_BASE_URLS = [
-    "https://api.openrouteservice.org",
-    "https://api.heigit.org"
-  ];
+
+  // Endereços atuais da infraestrutura HeiGIT/openrouteservice.
+  // Os endereços antigos permanecem apenas como contingência temporária.
+  const ORS_ENDPOINTS = {
+    optimization:[
+      "https://api.heigit.org/vroom/v0",
+      "https://api.openrouteservice.org/optimization"
+    ],
+    directions:[
+      "https://api.heigit.org/openrouteservice/v2/directions/driving-car/geojson",
+      "https://api.openrouteservice.org/v2/directions/driving-car/geojson"
+    ]
+  };
 
   const agentIcon = L.divIcon({
     className:"",
@@ -1598,7 +1608,7 @@
   }
 
   function getOrsKey(){
-    return (localStorage.getItem(ORS_KEY_STORAGE) || "").trim();
+    return (localStorage.getItem(ORS_KEY_STORAGE) || "").replace(/\s+/g,"").trim();
   }
 
   function updateOrsKeyStatus(){
@@ -1617,7 +1627,7 @@
 
     if(key === null) return false;
 
-    const cleaned = key.trim();
+    const cleaned = key.replace(/\s+/g,"").trim();
     if(cleaned.length < 20){
       toast("Chave inválida ou incompleta");
       return false;
@@ -1867,23 +1877,31 @@
     );
   }
 
-  async function orsPost(path,payload){
+  async function orsPost(urls,payload,serviceName){
     const key = ensureOrsKey();
     if(!key) throw new Error("Chave openrouteservice não informada");
 
     let lastError = null;
 
-    for(const base of ORS_BASE_URLS){
+    for(const url of urls){
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(),45000);
+
       try{
-        const response = await fetch(`${base}${path}`,{
+        const response = await fetch(url,{
           method:"POST",
+          mode:"cors",
+          cache:"no-store",
+          signal:controller.signal,
           headers:{
+            "Accept":"application/json, application/geo+json",
             "Authorization":key,
-            "Content-Type":"application/json",
-            "Accept":"application/json, application/geo+json"
+            "Content-Type":"application/json"
           },
           body:JSON.stringify(payload)
         });
+
+        clearTimeout(timeoutId);
 
         const raw = await response.text();
         let data = null;
@@ -1902,24 +1920,48 @@
           data?.message ||
           `HTTP ${response.status}`;
 
-        const error = new Error(String(message));
+        const error = new Error(
+          `${serviceName}: ${String(message)}`
+        );
         error.status = response.status;
+        error.endpoint = url;
 
-        if(response.status === 401 || response.status === 403 || response.status === 429){
+        // Chave ou cota: não vale repetir no endereço de contingência.
+        if(
+          response.status === 401 ||
+          response.status === 403 ||
+          response.status === 429
+        ){
           throw error;
         }
 
         lastError = error;
       }catch(error){
-        lastError = error;
+        clearTimeout(timeoutId);
 
-        if(error?.status === 401 || error?.status === 403 || error?.status === 429){
+        if(error?.name === "AbortError"){
+          const timeoutError = new Error(
+            `${serviceName}: tempo excedido ao acessar o serviço`
+          );
+          timeoutError.endpoint = url;
+          lastError = timeoutError;
+        }else{
+          lastError = error;
+        }
+
+        if(
+          error?.status === 401 ||
+          error?.status === 403 ||
+          error?.status === 429
+        ){
           break;
         }
       }
     }
 
-    throw lastError || new Error("Falha de conexão com openrouteservice");
+    throw lastError || new Error(
+      `${serviceName}: falha de conexão com openrouteservice`
+    );
   }
 
   async function optimizeRouteOrder(candidates){
@@ -1940,7 +1982,7 @@
       }]
     };
 
-    const data = await orsPost("/optimization",payload);
+    const data = await orsPost(ORS_ENDPOINTS.optimization,payload,"Otimização");
     const route = data?.routes?.[0];
 
     if(!route) throw new Error("A otimização não retornou uma rota");
@@ -1973,12 +2015,13 @@
     ];
 
     return orsPost(
-      "/v2/directions/driving-car/geojson",
+      ORS_ENDPOINTS.directions,
       {
         coordinates,
         instructions:false,
         elevation:false
-      }
+      },
+      "Traçado da rota"
     );
   }
 
@@ -2047,16 +2090,24 @@
     const status = Number(error?.status || 0);
     const message = String(error?.message || "Erro desconhecido");
 
-    if(status === 401 || status === 403){
-      return "Chave inválida, revogada ou sem permissão. Configure a nova chave.";
+    if(status === 401){
+      return "Chave não reconhecida. Apague e configure novamente a Basic Key.";
+    }
+
+    if(status === 403){
+      return "A chave foi recusada ou não possui acesso ao serviço solicitado.";
     }
 
     if(status === 429){
       return "Limite temporário do openrouteservice atingido. Aguarde e tente novamente.";
     }
 
-    if(/failed to fetch|networkerror|load failed/i.test(message)){
-      return "Falha de internet ou bloqueio ao acessar o openrouteservice.";
+    if(/failed to fetch|networkerror|load failed|cors/i.test(message)){
+      return "O navegador não conseguiu acessar a API. Verifique internet, bloqueador de conteúdo e tente novamente.";
+    }
+
+    if(/tempo excedido/i.test(message)){
+      return "O serviço demorou mais de 45 segundos para responder. Tente novamente.";
     }
 
     return message;
