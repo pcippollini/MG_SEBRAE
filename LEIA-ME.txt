@@ -1,0 +1,17 @@
+ARQUIVOS ATUALIZADOS — MG_SEBRAE
+
+1. Substitua no repositório os quatro arquivos:
+   - PILOTOMG.html
+   - GEST_MG.html
+   - GEST_MG_MOBILE.html
+   - MAPA_INICIAL_TESTE_HTML.geojson
+
+2. Faça commit e push.
+
+3. Teste com atualização forçada do navegador.
+
+GeoJSON analisado:
+- 471 pontos
+- 471 CNPJs únicos
+- todos os campos obrigatórios presentes
+- todos com STATUS = CARTEIRA
