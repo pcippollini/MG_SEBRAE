@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <meta name="theme-color" content="#07111f">
-  <title>GEST_MG Mobile — Rotas otimizadas v1.3</title>
+  <title>GEST_MG Mobile — Rotas otimizadas v1.4</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 
@@ -597,6 +597,40 @@
       100%{transform:scale(1.65);opacity:0}
     }
 
+    .leaflet-popup-content-wrapper,
+    .leaflet-popup-tip{
+      background:#101a2d;
+      color:#fff;
+    }
+
+    .leaflet-popup-content{
+      margin:12px 14px;
+      min-width:250px;
+      max-width:300px;
+      max-height:55vh;
+      overflow:auto;
+    }
+
+    .point-popup-title{
+      margin-bottom:8px;
+      color:#fff;
+      font-size:15px;
+      font-weight:900;
+      line-height:1.2;
+    }
+
+    .point-popup-row{
+      margin-top:5px;
+      color:#d7e2f3;
+      font-size:11px;
+      line-height:1.35;
+      overflow-wrap:anywhere;
+    }
+
+    .point-popup-row strong{
+      color:#fff;
+    }
+
     .leaflet-control-zoom{
       border:0!important;
       box-shadow:0 3px 14px rgba(0,0,0,.3)!important;
@@ -633,7 +667,7 @@
 <body>
 <div id="app">
   <header class="topbar">
-    <div class="brand">GEST_MG MOBILE</div>
+    <div class="brand" title="Versão 1.4">GEST_MG MOBILE</div>
     <div class="connection">
       <span id="connectionDot" class="connection-dot"></span>
       <span id="connectionText">Conectando...</span>
@@ -703,7 +737,7 @@
 
     <div class="route-section">
       <div id="orsKeyStatus" class="route-key-status">Chave openrouteservice: não configurada</div>
-      <div class="route-note">Integração com teste de chave • versão 1.3</div>
+      <div class="route-note">Integração com teste de chave • versão 1.4</div>
       <div class="filter-actions">
         <button id="btnSaveOrsKey" class="wide-btn">CONFIGURAR CHAVE</button>
         <button id="btnTestOrsKey" class="wide-btn green">TESTAR CHAVE</button>
@@ -790,7 +824,7 @@
     window.location.href
   ).href;
 
-  const GEO_CACHE = "mg-sebrae-mobile-geo-v6";
+  const GEO_CACHE = "mg-sebrae-mobile-geo-v7";
 
   const STATUS_ORDER = [
     "PENDENTE",
@@ -867,6 +901,7 @@
 
   map.createPane("pointsPane");
   map.getPane("pointsPane").style.zIndex = 410;
+  map.getPane("pointsPane").style.pointerEvents = "auto";
 
   map.createPane("routePane");
   map.getPane("routePane").style.zIndex = 590;
@@ -883,7 +918,7 @@
   const pointRenderer = L.canvas({
     pane:"pointsPane",
     padding:.5,
-    tolerance:14
+    tolerance:22
   });
 
   L.tileLayer(
@@ -1075,6 +1110,31 @@
     };
   }
 
+  function pointPopupHtml(cnpj,feature){
+    const properties = feature?.properties || {};
+    const saved = statuses.get(cnpj);
+    const status = currentStatus(cnpj,properties);
+
+    return `
+      <div class="point-popup-title">${escapeHtml(
+        properties.NOME_FANTASIA ||
+        properties.RAZAO_SOCIAL ||
+        "Ponto"
+      )}</div>
+      <div class="point-popup-row"><strong>NROCNPJ_PAD:</strong> ${escapeHtml(cnpj)}</div>
+      <div class="point-popup-row"><strong>NOME_FANTASIA:</strong> ${escapeHtml(properties.NOME_FANTASIA || "—")}</div>
+      <div class="point-popup-row"><strong>RAZAO_SOCIAL:</strong> ${escapeHtml(properties.RAZAO_SOCIAL || "—")}</div>
+      <div class="point-popup-row"><strong>RESPONSAVEL:</strong> ${escapeHtml(properties.RESPONSAVEL || properties["RESPONSÁVEL"] || "—")}</div>
+      <div class="point-popup-row"><strong>MUNICIPIO:</strong> ${escapeHtml(properties.MUNICIPIO || "—")}</div>
+      <div class="point-popup-row"><strong>ENDEE:</strong> ${escapeHtml(properties.ENDEE || "—")}</div>
+      <div class="point-popup-row"><strong>STATUS:</strong> ${escapeHtml(status)}</div>
+      ${saved ? `
+        <div class="point-popup-row"><strong>AGENTE:</strong> ${escapeHtml(saved.agente || "—")}</div>
+        <div class="point-popup-row"><strong>DATA/HORA:</strong> ${escapeHtml(formatDate(saved.hora))}</div>
+      ` : ""}
+    `;
+  }
+
   function addPointMarker(cnpj,feature){
     const coordinates = feature.geometry?.coordinates || [];
     const lng = Number(coordinates[0]);
@@ -1087,10 +1147,30 @@
       markerStyle(currentStatus(cnpj,feature.properties),cnpj)
     );
 
+    marker.bindPopup("",{
+      maxWidth:320,
+      autoPan:true,
+      closeButton:true
+    });
+
     marker.on("click", () => {
-      if(manualSelectionMode){
+      marker.setPopupContent(pointPopupHtml(cnpj,feature));
+      marker.openPopup();
+
+      const visibleManualMode =
+        manualSelectionMode &&
+        el.routeSelectBar.classList.contains("show");
+
+      if(visibleManualMode){
         toggleManualRoutePoint(cnpj);
+        toast(
+          manualRouteSelection.has(cnpj)
+            ? "Ponto adicionado à rota"
+            : "Ponto removido da rota"
+        );
       }else{
+        // Corrige eventual modo de seleção residual e abre os dados.
+        manualSelectionMode = false;
         showPointDetails(cnpj);
       }
     });
@@ -1217,6 +1297,13 @@
   }
 
   function showPointDetails(cnpj){
+    if(
+      manualSelectionMode &&
+      !el.routeSelectBar.classList.contains("show")
+    ){
+      manualSelectionMode = false;
+    }
+
     const feature = pointFeatures.get(cnpj);
     if(!feature) return;
 
