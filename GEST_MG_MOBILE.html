@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <meta name="theme-color" content="#07111f">
-  <title>GEST_MG Mobile — Rotas otimizadas v1.4</title>
+  <title>GEST_MG Mobile — Rotas de equipe v1.5</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 
@@ -462,6 +462,119 @@
       font-weight:900;
     }
 
+    .team-route-grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:8px;
+      margin-top:8px;
+    }
+
+    .team-route-field{
+      display:grid;
+      gap:5px;
+      color:var(--muted);
+      font-size:10px;
+      font-weight:800;
+    }
+
+    .team-route-field select{
+      width:100%;
+      min-height:40px;
+      padding:7px 9px;
+      border:1px solid #405578;
+      border-radius:9px;
+      background:#17243a;
+      color:#fff;
+      font-size:12px;
+    }
+
+    .team-route-summary{
+      margin-top:10px;
+      padding:10px;
+      border:1px solid #415779;
+      border-radius:11px;
+      background:#0e1a2c;
+    }
+
+    .team-route-cards{
+      display:grid;
+      gap:8px;
+      margin-top:9px;
+    }
+
+    .team-route-card{
+      padding:9px;
+      border:1px solid #405578;
+      border-left:7px solid var(--team-color,#2563eb);
+      border-radius:11px;
+      background:#111e32;
+    }
+
+    .team-route-card-title{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      color:#fff;
+      font-size:12px;
+      font-weight:900;
+    }
+
+    .team-route-card-meta{
+      margin-top:5px;
+      color:var(--muted);
+      font-size:10px;
+      line-height:1.45;
+    }
+
+    .team-route-card-actions{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:6px;
+      margin-top:8px;
+    }
+
+    .team-small-btn{
+      min-height:34px;
+      padding:5px;
+      border:1px solid #405578;
+      border-radius:8px;
+      background:#17243a;
+      color:#fff;
+      font-size:9px;
+      font-weight:900;
+    }
+
+    .team-start-pin{
+      width:34px;
+      height:34px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:50%;
+      background:var(--pin-color,#2563eb);
+      color:#fff;
+      border:3px solid #fff;
+      box-shadow:0 3px 13px rgba(0,0,0,.55);
+      font-size:11px;
+      font-weight:900;
+    }
+
+    .team-drop-pin{
+      width:30px;
+      height:30px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:9px;
+      background:#111827;
+      color:#fff;
+      border:3px solid #fff;
+      box-shadow:0 3px 13px rgba(0,0,0,.55);
+      font-size:10px;
+      font-weight:900;
+    }
+
     .route-select-bar{
       display:none;
       position:absolute;
@@ -667,7 +780,7 @@
 <body>
 <div id="app">
   <header class="topbar">
-    <div class="brand" title="Versão 1.4">GEST_MG MOBILE</div>
+    <div class="brand" title="Versão 1.5">GEST_MG MOBILE</div>
     <div class="connection">
       <span id="connectionDot" class="connection-dot"></span>
       <span id="connectionText">Conectando...</span>
@@ -737,7 +850,7 @@
 
     <div class="route-section">
       <div id="orsKeyStatus" class="route-key-status">Chave openrouteservice: não configurada</div>
-      <div class="route-note">Integração com teste de chave • versão 1.4</div>
+      <div class="route-note">Rotas individuais e divisão da equipe • versão 1.5</div>
       <div class="filter-actions">
         <button id="btnSaveOrsKey" class="wide-btn">CONFIGURAR CHAVE</button>
         <button id="btnTestOrsKey" class="wide-btn green">TESTAR CHAVE</button>
@@ -768,6 +881,56 @@
         <option value="">Selecione um município</option>
       </select>
       <button id="btnRouteCity10" class="wide-btn primary" style="width:100%">GERAR 10 DA CIDADE</button>
+    </div>
+
+    <div class="route-section">
+      <span class="route-label">Dividir uma cidade entre os agentes</span>
+
+      <label class="route-label" for="teamRouteCity">Município</label>
+      <select id="teamRouteCity" class="search-input route-select">
+        <option value="">Selecione um município</option>
+      </select>
+
+      <div class="team-route-grid">
+        <label class="team-route-field">
+          Agentes
+          <select id="teamAgentCount">
+            <option value="2">2 agentes</option>
+            <option value="3">3 agentes</option>
+            <option value="4" selected>4 agentes</option>
+          </select>
+        </label>
+
+        <label class="team-route-field">
+          Pontos por agente
+          <select id="teamPointsPerAgent">
+            <option value="10">10 pontos</option>
+            <option value="15">15 pontos</option>
+            <option value="20" selected>20 pontos</option>
+            <option value="ALL">DIVIDIR TODOS</option>
+          </select>
+        </label>
+      </div>
+
+      <button id="btnGenerateTeamRoutes" class="wide-btn green" style="width:100%;margin-top:9px">
+        GERAR ROTAS DA EQUIPE
+      </button>
+
+      <div class="route-note">
+        Divide os pontos em setores compactos e equilibrados. Os trajetos a pé são calculados pelo openrouteservice. Em “DIVIDIR TODOS”, cada rota é limitada a 45 pontos por lote.
+      </div>
+
+      <div id="teamRouteSummary" class="team-route-summary">
+        <div class="route-summary-title">Nenhuma divisão calculada</div>
+        <div class="route-summary-meta">Escolha a cidade, a quantidade de agentes e gere as rotas.</div>
+      </div>
+
+      <div id="teamRouteCards" class="team-route-cards"></div>
+
+      <div class="filter-actions" style="margin-top:9px">
+        <button id="btnOpenDropoffRoute" class="wide-btn primary" disabled>ROTA PARA DEIXAR AGENTES</button>
+        <button id="btnClearTeamRoutes" class="wide-btn danger" disabled>LIMPAR ROTAS DA EQUIPE</button>
+      </div>
     </div>
 
     <div class="route-section">
@@ -824,7 +987,7 @@
     window.location.href
   ).href;
 
-  const GEO_CACHE = "mg-sebrae-mobile-geo-v7";
+  const GEO_CACHE = "mg-sebrae-mobile-geo-v8";
 
   const STATUS_ORDER = [
     "PENDENTE",
@@ -879,6 +1042,14 @@
     btnRouteManual:document.getElementById("btnRouteManual"),
     routeCity:document.getElementById("routeCity"),
     btnRouteCity10:document.getElementById("btnRouteCity10"),
+    teamRouteCity:document.getElementById("teamRouteCity"),
+    teamAgentCount:document.getElementById("teamAgentCount"),
+    teamPointsPerAgent:document.getElementById("teamPointsPerAgent"),
+    btnGenerateTeamRoutes:document.getElementById("btnGenerateTeamRoutes"),
+    teamRouteSummary:document.getElementById("teamRouteSummary"),
+    teamRouteCards:document.getElementById("teamRouteCards"),
+    btnOpenDropoffRoute:document.getElementById("btnOpenDropoffRoute"),
+    btnClearTeamRoutes:document.getElementById("btnClearTeamRoutes"),
     routeSummary:document.getElementById("routeSummary"),
     routeStopList:document.getElementById("routeStopList"),
     btnOpenNextStop:document.getElementById("btnOpenNextStop"),
@@ -935,6 +1106,7 @@
   const agents = new Map();
   const agentMarkers = new Map();
   const routeLayerGroup = L.layerGroup().addTo(map);
+  const teamRouteLayerGroup = L.layerGroup().addTo(map);
 
   let managerPosition = null;
   let managerMarker = null;
@@ -953,6 +1125,17 @@
   let routeNextIndex = 0;
   let routeBusy = false;
   let routeSummaryData = null;
+  let teamRouteBusy = false;
+  let teamRouteResults = [];
+  let teamDropoffSequence = [];
+  let teamRouteOmitted = 0;
+
+  const TEAM_ROUTE_COLORS = [
+    "#2563eb",
+    "#16a34a",
+    "#f97316",
+    "#7c3aed"
+  ];
 
   const ORS_KEY_STORAGE = "mg_sebrae_ors_api_key_v2";
 
@@ -1806,15 +1989,23 @@
       (a,b) => a.localeCompare(b,"pt-BR")
     );
 
-    el.routeCity.innerHTML = [
+    const options = [
       '<option value="">Selecione um município</option>',
       ...cities.map(city =>
         `<option value="${escapeHtml(city)}">${escapeHtml(city)} (${counts.get(city)})</option>`
       )
     ].join("");
 
+    el.routeCity.innerHTML = options;
+    if(el.teamRouteCity) el.teamRouteCity.innerHTML = options;
+
     if(cities.includes(current)){
       el.routeCity.value = current;
+    }
+
+    const teamCurrent = el.teamRouteCity?.dataset?.current || el.teamRouteCity?.value || "";
+    if(el.teamRouteCity && cities.includes(teamCurrent)){
+      el.teamRouteCity.value = teamCurrent;
     }
   }
 
@@ -1835,7 +2026,8 @@
       el.btnRouteNearest10,
       el.btnRouteCity10,
       el.btnRouteManual,
-      el.btnFinishManualRoute
+      el.btnFinishManualRoute,
+      el.btnGenerateTeamRoutes
     ]){
       button.disabled = active;
     }
@@ -2435,11 +2627,781 @@
     generateOptimizedRoute(candidates,"Seleção manual");
   }
 
+  function teamDistance(a,b){
+    return distanceMeters(
+      {lat:Number(a.lat),lng:Number(a.lng)},
+      {lat:Number(b.lat),lng:Number(b.lng)}
+    );
+  }
+
+  function teamPathDistance(items){
+    let total = 0;
+    for(let index=1;index<items.length;index++){
+      total += teamDistance(items[index - 1],items[index]);
+    }
+    return total;
+  }
+
+  function nearestNeighborOrder(items,startItem){
+    if(items.length <= 1) return [...items];
+
+    const remaining = new Map(items.map(item => [item.cnpj,item]));
+    const ordered = [];
+    let current = startItem || items[0];
+
+    ordered.push(current);
+    remaining.delete(current.cnpj);
+
+    while(remaining.size){
+      let nearest = null;
+      let nearestDistance = Infinity;
+
+      for(const item of remaining.values()){
+        const distance = teamDistance(current,item);
+        if(distance < nearestDistance){
+          nearest = item;
+          nearestDistance = distance;
+        }
+      }
+
+      if(!nearest) break;
+      ordered.push(nearest);
+      remaining.delete(nearest.cnpj);
+      current = nearest;
+    }
+
+    return improveOpenRoute(ordered);
+  }
+
+  function improveOpenRoute(items){
+    if(items.length < 4) return [...items];
+
+    let best = [...items];
+    let bestDistance = teamPathDistance(best);
+    let improved = true;
+    let passes = 0;
+
+    while(improved && passes < 4){
+      improved = false;
+      passes += 1;
+
+      for(let start=1;start<best.length - 2;start++){
+        for(let end=start + 1;end<best.length - 1;end++){
+          const candidate = [
+            ...best.slice(0,start),
+            ...best.slice(start,end + 1).reverse(),
+            ...best.slice(end + 1)
+          ];
+          const candidateDistance = teamPathDistance(candidate);
+
+          if(candidateDistance + 1 < bestDistance){
+            best = candidate;
+            bestDistance = candidateDistance;
+            improved = true;
+          }
+        }
+      }
+    }
+
+    return best;
+  }
+
+  function planarDistanceSquared(point,centroid){
+    const latitudeScale = 111320;
+    const longitudeScale =
+      111320 * Math.cos((Number(point.lat) + Number(centroid.lat)) * Math.PI / 360);
+
+    const dx = (Number(point.lng) - Number(centroid.lng)) * longitudeScale;
+    const dy = (Number(point.lat) - Number(centroid.lat)) * latitudeScale;
+
+    return dx * dx + dy * dy;
+  }
+
+  function balancedGeographicClusters(points,requestedCount){
+    const clusterCount = Math.max(
+      1,
+      Math.min(Number(requestedCount) || 1,points.length)
+    );
+
+    if(clusterCount === 1) return [[...points]];
+
+    const centroids = [];
+    const closestToManager = [...points].sort((a,b) =>
+      distanceMeters(managerPosition,{lat:a.lat,lng:a.lng}) -
+      distanceMeters(managerPosition,{lat:b.lat,lng:b.lng})
+    )[0];
+
+    centroids.push({
+      lat:closestToManager.lat,
+      lng:closestToManager.lng
+    });
+
+    while(centroids.length < clusterCount){
+      let farthestPoint = null;
+      let farthestScore = -1;
+
+      for(const point of points){
+        const score = Math.min(
+          ...centroids.map(centroid =>
+            planarDistanceSquared(point,centroid)
+          )
+        );
+
+        if(score > farthestScore){
+          farthestScore = score;
+          farthestPoint = point;
+        }
+      }
+
+      centroids.push({
+        lat:farthestPoint.lat,
+        lng:farthestPoint.lng
+      });
+    }
+
+    const baseCapacity = Math.floor(points.length / clusterCount);
+    const extra = points.length % clusterCount;
+    const capacities = Array.from(
+      {length:clusterCount},
+      (_,index) => baseCapacity + (index < extra ? 1 : 0)
+    );
+
+    let clusters = [];
+
+    for(let iteration=0;iteration<7;iteration++){
+      clusters = Array.from({length:clusterCount},() => []);
+      const remaining = [...capacities];
+
+      const ranked = points.map(point => {
+        const distances = centroids
+          .map((centroid,index) => ({
+            index,
+            distance:planarDistanceSquared(point,centroid)
+          }))
+          .sort((a,b) => a.distance - b.distance);
+
+        return {
+          point,
+          ranked,
+          regret:(ranked[1]?.distance ?? ranked[0].distance) -
+            ranked[0].distance
+        };
+      }).sort((a,b) => b.regret - a.regret);
+
+      for(const item of ranked){
+        let chosen = item.ranked.find(candidate =>
+          remaining[candidate.index] > 0
+        );
+
+        if(!chosen){
+          chosen = item.ranked[0];
+        }
+
+        clusters[chosen.index].push(item.point);
+        remaining[chosen.index] -= 1;
+      }
+
+      clusters.forEach((cluster,index) => {
+        if(!cluster.length) return;
+
+        centroids[index] = {
+          lat:cluster.reduce((sum,item) => sum + item.lat,0) / cluster.length,
+          lng:cluster.reduce((sum,item) => sum + item.lng,0) / cluster.length
+        };
+      });
+    }
+
+    return clusters;
+  }
+
+  function teamRouteStart(cluster){
+    return [...cluster].sort((a,b) =>
+      distanceMeters(managerPosition,{lat:a.lat,lng:a.lng}) -
+      distanceMeters(managerPosition,{lat:b.lat,lng:b.lng})
+    )[0];
+  }
+
+  function profileDirectionUrls(profile){
+    return [
+      `https://api.openrouteservice.org/v2/directions/${profile}/geojson`,
+      `https://api.heigit.org/openrouteservice/v2/directions/${profile}/geojson`
+    ];
+  }
+
+  async function requestTeamGeometry(ordered,profile="foot-walking"){
+    if(ordered.length < 2) return null;
+
+    return orsPost(
+      profileDirectionUrls(profile),
+      {
+        coordinates:ordered.map(item => [item.lng,item.lat]),
+        instructions:false,
+        elevation:false
+      },
+      `Traçado ${profile}`
+    );
+  }
+
+  function teamStartIcon(agentNumber,color){
+    return L.divIcon({
+      className:"",
+      html:`<div class="team-start-pin" style="--pin-color:${color}">A${agentNumber}</div>`,
+      iconSize:[38,38],
+      iconAnchor:[19,19]
+    });
+  }
+
+  function teamDropIcon(number){
+    return L.divIcon({
+      className:"",
+      html:`<div class="team-drop-pin">D${number}</div>`,
+      iconSize:[34,34],
+      iconAnchor:[17,17]
+    });
+  }
+
+  function localWalkingEstimate(ordered){
+    const distance = teamPathDistance(ordered);
+    return {
+      distance,
+      duration:distance / 1.15
+    };
+  }
+
+  function clearTeamRoutes(showMessage=true){
+    teamRouteLayerGroup.clearLayers();
+    teamRouteResults = [];
+    teamDropoffSequence = [];
+    teamRouteOmitted = 0;
+    el.teamRouteCards.innerHTML = "";
+    el.teamRouteSummary.innerHTML = `
+      <div class="route-summary-title">Nenhuma divisão calculada</div>
+      <div class="route-summary-meta">Escolha a cidade, a quantidade de agentes e gere as rotas.</div>
+    `;
+    el.btnOpenDropoffRoute.disabled = true;
+    el.btnClearTeamRoutes.disabled = true;
+
+    if(showMessage) toast("Rotas da equipe removidas");
+  }
+
+  function drawTeamRoute(result,index){
+    const color = TEAM_ROUTE_COLORS[index % TEAM_ROUTE_COLORS.length];
+
+    if(result.geometry?.features?.length){
+      L.geoJSON(result.geometry,{
+        pane:"routePane",
+        style:{
+          color,
+          weight:6,
+          opacity:.9
+        },
+        interactive:false
+      }).addTo(teamRouteLayerGroup);
+    }else{
+      L.polyline(
+        result.ordered.map(item => [item.lat,item.lng]),
+        {
+          pane:"routePane",
+          color,
+          weight:5,
+          opacity:.84,
+          dashArray:"8 7",
+          interactive:false
+        }
+      ).addTo(teamRouteLayerGroup);
+    }
+
+    result.ordered.forEach((item,stopIndex) => {
+      if(stopIndex === 0){
+        const startMarker = L.marker(
+          [item.lat,item.lng],
+          {
+            pane:"routeMarkersPane",
+            icon:teamStartIcon(index + 1,color)
+          }
+        ).addTo(teamRouteLayerGroup);
+
+        startMarker.on("click",() => showPointDetails(item.cnpj));
+      }else{
+        const point = L.circleMarker(
+          [item.lat,item.lng],
+          {
+            pane:"routeMarkersPane",
+            radius:5,
+            color:"#fff",
+            weight:1.5,
+            fillColor:color,
+            fillOpacity:.96
+          }
+        ).addTo(teamRouteLayerGroup);
+
+        point.on("click",() => showPointDetails(item.cnpj));
+      }
+    });
+  }
+
+  function drawDropoffRoute(geometry,orderedStarts){
+    if(geometry?.features?.length){
+      L.geoJSON(geometry,{
+        pane:"routePane",
+        style:{
+          color:"#111827",
+          weight:10,
+          opacity:.72
+        },
+        interactive:false
+      }).addTo(teamRouteLayerGroup);
+
+      L.geoJSON(geometry,{
+        pane:"routePane",
+        style:{
+          color:"#ffffff",
+          weight:4,
+          opacity:.95,
+          dashArray:"8 8"
+        },
+        interactive:false
+      }).addTo(teamRouteLayerGroup);
+    }else{
+      L.polyline(
+        [
+          [managerPosition.lat,managerPosition.lng],
+          ...orderedStarts.map(item => [item.lat,item.lng])
+        ],
+        {
+          pane:"routePane",
+          color:"#fff",
+          weight:4,
+          opacity:.95,
+          dashArray:"8 8",
+          interactive:false
+        }
+      ).addTo(teamRouteLayerGroup);
+    }
+
+    orderedStarts.forEach((item,index) => {
+      const marker = L.marker(
+        [item.lat,item.lng],
+        {
+          pane:"routeMarkersPane",
+          icon:teamDropIcon(index + 1)
+        }
+      ).addTo(teamRouteLayerGroup);
+
+      marker.on("click",() => showPointDetails(item.cnpj));
+    });
+  }
+
+  async function optimizeDropoffStarts(starts){
+    if(starts.length <= 1) return [...starts];
+
+    const jobs = starts.map((item,index) => ({
+      id:index + 1,
+      location:[item.lng,item.lat],
+      service:0
+    }));
+
+    const response = await orsPost(
+      ORS_ENDPOINTS.optimization,
+      {
+        jobs,
+        vehicles:[{
+          id:1,
+          profile:"driving-car",
+          start:[managerPosition.lng,managerPosition.lat]
+        }]
+      },
+      "Distribuição dos agentes"
+    );
+
+    const byId = new Map(
+      starts.map((item,index) => [index + 1,item])
+    );
+
+    const ordered = (response?.routes?.[0]?.steps || [])
+      .filter(step => step.type === "job")
+      .map(step => byId.get(Number(step.id)))
+      .filter(Boolean);
+
+    return ordered.length === starts.length ? ordered : starts;
+  }
+
+  function renderTeamRoutes(){
+    const totalPoints = teamRouteResults.reduce(
+      (sum,result) => sum + result.ordered.length,
+      0
+    );
+
+    el.teamRouteSummary.innerHTML = `
+      <div class="route-summary-title">${teamRouteResults.length} rota${teamRouteResults.length === 1 ? "" : "s"} para a equipe</div>
+      <div class="route-summary-meta">
+        Pontos neste lote: ${totalPoints}<br>
+        ${teamRouteOmitted > 0 ? `Restantes para outro lote: ${teamRouteOmitted}<br>` : ""}
+        Linhas coloridas: rotas a pé dos agentes<br>
+        Linha branca tracejada: rota de carro para os pontos iniciais
+      </div>
+    `;
+
+    el.teamRouteCards.innerHTML = teamRouteResults.map((result,index) => {
+      const color = TEAM_ROUTE_COLORS[index % TEAM_ROUTE_COLORS.length];
+      const summary = result.summary || {};
+      const first = result.ordered[0];
+
+      return `
+        <div class="team-route-card" style="--team-color:${color}">
+          <div class="team-route-card-title">
+            <span>AGENTE ${index + 1}</span>
+            <span>${result.ordered.length} pontos</span>
+          </div>
+          <div class="team-route-card-meta">
+            Distância: ${escapeHtml(distanceLabel(summary.distance || 0))}<br>
+            Tempo estimado: ${escapeHtml(formatRouteDuration(summary.duration || 0))}<br>
+            Início: ${escapeHtml(first?.name || "—")}<br>
+            ${escapeHtml(first?.address || "")}
+          </div>
+          <div class="team-route-card-actions">
+            <button class="team-small-btn" data-team-view="${index}">VER</button>
+            <button class="team-small-btn" data-team-open="${index}">ABRIR</button>
+            <button class="team-small-btn" data-team-share="${index}">COMPARTILHAR</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    for(const button of el.teamRouteCards.querySelectorAll("[data-team-view]")){
+      button.onclick = () => viewTeamRoute(Number(button.dataset.teamView));
+    }
+
+    for(const button of el.teamRouteCards.querySelectorAll("[data-team-open]")){
+      button.onclick = () => openTeamRoute(Number(button.dataset.teamOpen));
+    }
+
+    for(const button of el.teamRouteCards.querySelectorAll("[data-team-share]")){
+      button.onclick = () => shareTeamRoute(Number(button.dataset.teamShare));
+    }
+
+    el.btnOpenDropoffRoute.disabled = teamDropoffSequence.length === 0;
+    el.btnClearTeamRoutes.disabled = teamRouteResults.length === 0;
+  }
+
+  function viewTeamRoute(index){
+    const result = teamRouteResults[index];
+    if(!result) return;
+
+    const bounds = L.latLngBounds(
+      result.ordered.map(item => [item.lat,item.lng])
+    );
+
+    map.fitBounds(bounds,{
+      padding:[35,35],
+      maxZoom:17
+    });
+
+    closeSheets();
+  }
+
+  function googleRouteForPoints(points,travelmode="walking"){
+    if(!points.length) return "";
+
+    if(points.length === 1){
+      return routeUrl(points[0].lat,points[0].lng);
+    }
+
+    // O Google Maps no celular pode limitar a quantidade de waypoints.
+    const usable = points.slice(0,10);
+    const origin = usable[0];
+    const destination = usable[usable.length - 1];
+    const intermediates = usable.slice(1,-1);
+
+    const params = new URLSearchParams({
+      api:"1",
+      origin:`${origin.lat},${origin.lng}`,
+      destination:`${destination.lat},${destination.lng}`,
+      travelmode
+    });
+
+    if(intermediates.length){
+      params.set(
+        "waypoints",
+        intermediates.map(item => `${item.lat},${item.lng}`).join("|")
+      );
+    }
+
+    return `https://www.google.com/maps/dir/?${params.toString()}`;
+  }
+
+  function openTeamRoute(index){
+    const result = teamRouteResults[index];
+    if(!result) return;
+
+    const url = googleRouteForPoints(result.ordered,"walking");
+    if(url) window.open(url,"_blank","noopener");
+
+    if(result.ordered.length > 10){
+      toast("Google Maps abriu as 10 primeiras paradas; a lista completa permanece no gestor");
+    }
+  }
+
+  async function shareTeamRoute(index){
+    const result = teamRouteResults[index];
+    if(!result) return;
+
+    const first = result.ordered[0];
+    const lines = result.ordered.map((item,stopIndex) =>
+      `${stopIndex + 1}. ${item.name} — ${item.address} — CNPJ ${item.cnpj}`
+    );
+
+    const text = [
+      `ROTA DO AGENTE ${index + 1}`,
+      `Município: ${first?.city || ""}`,
+      `Pontos: ${result.ordered.length}`,
+      `Início: ${first?.address || ""}`,
+      `Abrir início: ${routeUrl(first.lat,first.lng)}`,
+      "",
+      ...lines
+    ].join("\n");
+
+    try{
+      if(navigator.share){
+        await navigator.share({
+          title:`Rota do Agente ${index + 1}`,
+          text
+        });
+      }else{
+        await navigator.clipboard.writeText(text);
+        toast("Rota copiada para compartilhar");
+      }
+    }catch(error){
+      if(error?.name !== "AbortError"){
+        toast("Não foi possível compartilhar");
+      }
+    }
+  }
+
+  function openDropoffRoute(){
+    if(!managerPosition || !teamDropoffSequence.length){
+      toast("Rota de distribuição indisponível");
+      return;
+    }
+
+    const last = teamDropoffSequence[teamDropoffSequence.length - 1];
+    const intermediates = teamDropoffSequence.slice(0,-1);
+    const params = new URLSearchParams({
+      api:"1",
+      origin:`${managerPosition.lat},${managerPosition.lng}`,
+      destination:`${last.lat},${last.lng}`,
+      travelmode:"driving"
+    });
+
+    if(intermediates.length){
+      params.set(
+        "waypoints",
+        intermediates.map(item => `${item.lat},${item.lng}`).join("|")
+      );
+    }
+
+    window.open(
+      `https://www.google.com/maps/dir/?${params.toString()}`,
+      "_blank",
+      "noopener"
+    );
+  }
+
+  function setTeamRouteBusy(active,message="Dividindo os pontos..."){
+    teamRouteBusy = active;
+    el.btnGenerateTeamRoutes.disabled = active;
+    el.btnGenerateTeamRoutes.textContent = active
+      ? "CALCULANDO..."
+      : "GERAR ROTAS DA EQUIPE";
+
+    if(active){
+      el.teamRouteSummary.innerHTML = `
+        <div class="route-summary-title">${escapeHtml(message)}</div>
+        <div class="route-summary-meta">Aguarde. O cálculo usa o navegador e o openrouteservice.</div>
+      `;
+    }
+  }
+
+  async function generateTeamRoutes(){
+    if(teamRouteBusy) return;
+
+    if(!managerPosition){
+      toast("Ative o GPS e aguarde a localização");
+      return;
+    }
+
+    const city = el.teamRouteCity.value;
+    if(!city){
+      toast("Selecione um município");
+      return;
+    }
+
+    routeIncludeReturn = el.routeIncludeReturn.checked;
+    const requestedAgents = Number(el.teamAgentCount.value) || 4;
+    const pointsMode = el.teamPointsPerAgent.value;
+    const allCandidates = getRouteCandidates(city)
+      .map(item => ({
+        ...item,
+        directDistance:distanceMeters(
+          managerPosition,
+          {lat:item.lat,lng:item.lng}
+        )
+      }))
+      .sort((a,b) => a.directDistance - b.directDistance);
+
+    if(!allCandidates.length){
+      toast("Nenhum ponto elegível nessa cidade");
+      return;
+    }
+
+    const agentCount = Math.min(requestedAgents,allCandidates.length);
+    const perAgentLimit = pointsMode === "ALL"
+      ? 45
+      : Math.max(1,Number(pointsMode) || 20);
+
+    const totalLimit = agentCount * perAgentLimit;
+    const selected = allCandidates.slice(0,totalLimit);
+    teamRouteOmitted = Math.max(0,allCandidates.length - selected.length);
+
+    setTeamRouteBusy(
+      true,
+      `Dividindo ${selected.length} pontos entre ${agentCount} agentes...`
+    );
+
+    clearTeamRoutes(false);
+
+    try{
+      const clusters = balancedGeographicClusters(
+        selected,
+        agentCount
+      );
+
+      const results = [];
+
+      for(let index=0;index<clusters.length;index++){
+        const cluster = clusters[index];
+        const start = teamRouteStart(cluster);
+        const ordered = nearestNeighborOrder(cluster,start);
+
+        el.teamRouteSummary.innerHTML = `
+          <div class="route-summary-title">Calculando rota ${index + 1} de ${clusters.length}</div>
+          <div class="route-summary-meta">${ordered.length} pontos • perfil a pé</div>
+        `;
+
+        let geometry = null;
+        let summary = localWalkingEstimate(ordered);
+
+        try{
+          geometry = await requestTeamGeometry(
+            ordered,
+            "foot-walking"
+          );
+
+          const orsSummary =
+            geometry?.features?.[0]?.properties?.summary;
+
+          if(orsSummary){
+            summary = {
+              distance:Number(orsSummary.distance || summary.distance),
+              duration:Number(orsSummary.duration || summary.duration)
+            };
+          }
+        }catch(error){
+          console.warn(
+            `Falha no traçado da rota ${index + 1}; usando aproximação`,
+            error
+          );
+        }
+
+        const result = {
+          ordered,
+          geometry,
+          summary
+        };
+
+        results.push(result);
+        drawTeamRoute(result,index);
+      }
+
+      teamRouteResults = results;
+
+      const starts = results
+        .map(result => result.ordered[0])
+        .filter(Boolean);
+
+      let orderedStarts = starts;
+      let dropoffGeometry = null;
+
+      try{
+        orderedStarts = await optimizeDropoffStarts(starts);
+
+        dropoffGeometry = await orsPost(
+          ORS_ENDPOINTS.directions,
+          {
+            coordinates:[
+              [managerPosition.lng,managerPosition.lat],
+              ...orderedStarts.map(item => [item.lng,item.lat])
+            ],
+            instructions:false,
+            elevation:false
+          },
+          "Rota para distribuir agentes"
+        );
+      }catch(error){
+        console.warn(
+          "Falha na rota de distribuição; usando sequência aproximada",
+          error
+        );
+
+        orderedStarts = [...starts].sort((a,b) =>
+          distanceMeters(managerPosition,{lat:a.lat,lng:a.lng}) -
+          distanceMeters(managerPosition,{lat:b.lat,lng:b.lng})
+        );
+      }
+
+      teamDropoffSequence = orderedStarts;
+      drawDropoffRoute(dropoffGeometry,orderedStarts);
+      renderTeamRoutes();
+
+      const allBounds = L.latLngBounds([
+        [managerPosition.lat,managerPosition.lng],
+        ...selected.map(item => [item.lat,item.lng])
+      ]);
+
+      map.fitBounds(allBounds,{
+        padding:[35,35],
+        maxZoom:15
+      });
+
+      openSheet(el.routeSheet);
+      toast(`${results.length} rotas geradas para a equipe`);
+    }catch(error){
+      console.error(error);
+      el.teamRouteSummary.innerHTML = `
+        <div class="route-summary-title">Não foi possível dividir as rotas</div>
+        <div class="route-summary-meta">${escapeHtml(describeOrsError(error))}</div>
+      `;
+      toast(describeOrsError(error));
+    }finally{
+      setTeamRouteBusy(false);
+    }
+  }
+
   function openRoutePanel(){
     routeIncludeReturn = el.routeIncludeReturn.checked;
+
+    if(el.teamRouteCity){
+      el.teamRouteCity.dataset.current = el.teamRouteCity.value || "";
+    }
+
     refreshRouteCities();
     updateOrsKeyStatus();
     renderRouteResult();
+
+    if(teamRouteResults.length){
+      renderTeamRoutes();
+    }
+
     openSheet(el.routeSheet);
   }
 
@@ -2607,6 +3569,14 @@
 
     const candidates = nearestRouteCandidates(city);
     generateOptimizedRoute(candidates,city);
+  };
+
+  el.btnGenerateTeamRoutes.onclick = generateTeamRoutes;
+  el.btnOpenDropoffRoute.onclick = openDropoffRoute;
+  el.btnClearTeamRoutes.onclick = () => clearTeamRoutes(true);
+
+  el.teamRouteCity.onchange = () => {
+    el.teamRouteCity.dataset.current = el.teamRouteCity.value;
   };
 
   el.btnRouteManual.onclick = startManualRouteSelection;
