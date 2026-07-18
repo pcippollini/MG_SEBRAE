@@ -1,0 +1,1708 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+  <title>AGENTEMG V1.02 — Mapa do Agente</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <style>
+    
+:root{
+  --bg:#07111f;
+  --panel:#101a2d;
+  --panel-2:#0b1527;
+  --line:#263653;
+  --text:#f7f9fc;
+  --muted:#b9c6dc;
+  --blue:#2f5be7;
+  --green:#20c86a;
+  --red:#ef4444;
+  --amber:#f59e0b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#101a2d;color:#fff}
+.leaflet-popup-content{margin:13px 15px;min-width:235px}
+.popup-title{font-size:16px;font-weight:700;margin-bottom:5px}
+.popup-line{margin:4px 0;color:#d6e0f0;line-height:1.3}
+.popup-muted{color:#aebbd0;font-size:12px}
+.popup-route,.popup-save{
+  display:block;width:100%;margin-top:10px;padding:10px 12px;border:0;border-radius:9px;
+  text-align:center;text-decoration:none;font-weight:700
+}
+.popup-route{background:#2563eb;color:#fff}
+.popup-save{background:#16a34a;color:#fff}
+.popup-select{
+  width:100%;margin-top:9px;padding:10px;border-radius:8px;border:1px solid #3a4c6d;
+  background:#17253d;color:#fff
+}
+.legend{
+  background:rgba(9,18,33,.90);color:#fff;padding:5px 6px;border-radius:7px;
+  border:1px solid #30415f;box-shadow:0 2px 8px rgba(0,0,0,.22);font-size:9px;line-height:1.15
+}
+.legend-row{display:flex;align-items:center;gap:4px;margin:2px 0}
+.legend-dot{width:7px;height:7px;border-radius:50%;border:1px solid rgba(255,255,255,.65)}
+.legend-dot.scheduled{background:linear-gradient(90deg,#111111 0 50%,#FACC15 50% 100%)}
+.scheduled-pin{
+  width:16px;height:16px;margin:4px;border-radius:50%;
+  background:linear-gradient(90deg,#111111 0 50%,#FACC15 50% 100%);
+  border:2px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,.55)
+}
+
+    .app{display:grid;grid-template-rows:auto auto 1fr;height:100%}
+    header{padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line)}
+    h1{margin:0;font-size:16px;line-height:1.15}
+    header p{display:none}
+    .controls{
+      padding:5px 8px;background:var(--panel-2);border-bottom:1px solid var(--line);
+      display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center
+    }
+    .row{display:flex;gap:6px;align-items:center;min-width:0}
+    input{
+      flex:1 1 auto;min-width:0;padding:8px 10px;border-radius:8px;border:1px solid var(--line);
+      background:#1a2942;color:#fff;font-size:14px
+    }
+    .btn{padding:8px 10px;border:0;border-radius:8px;font-weight:700;font-size:13px;white-space:nowrap}
+    .primary{background:var(--blue);color:#fff}
+    .next{background:#0f766e;color:#fff}
+    .route10{background:#7c3aed;color:#fff}
+    .danger{background:#3a1822;color:#fecdd3;border:1px solid #7f1d1d}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .notice{
+      display:flex;align-items:center;justify-content:center;gap:6px;min-height:32px;
+      padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);
+      color:#dce7f7;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+    }
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);flex:0 0 auto}
+    .dot.ok{background:var(--green)} .dot.err{background:var(--red)}
+    .stats{display:none}
+    #map{width:100%;min-height:320px}
+    .agent-pin{position:relative;width:23px;height:23px;border-radius:50%;background:#ff1744;border:4px solid #fff;box-shadow:0 0 0 6px rgba(255,23,68,.34),0 0 18px rgba(255,23,68,.95)}
+    .agent-pin::after{content:"";position:absolute;inset:-10px;border:3px solid rgba(255,23,68,.65);border-radius:50%;animation:gpsPulse 1.5s ease-out infinite}
+    @keyframes gpsPulse{0%{transform:scale(.55);opacity:1}100%{transform:scale(1.65);opacity:0}}
+    .btn.locate{background:#e11d48;color:#fff;border-color:#fb7185}
+    .action-panel{
+      position:fixed;left:8px;right:8px;bottom:8px;z-index:10000;
+      display:none;padding:10px;background:rgba(9,18,33,.98);
+      pointer-events:auto;touch-action:manipulation;
+      border:1px solid #3b4e70;border-radius:12px;
+      box-shadow:0 8px 28px rgba(0,0,0,.42)
+    }
+    .action-panel.show{display:block}
+    .action-title{font-size:14px;font-weight:700;margin-bottom:3px}
+    .action-meta{font-size:11px;color:var(--muted);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .action-row{display:grid;grid-template-columns:1fr auto auto;gap:7px}
+    .action-select{
+      min-width:0;padding:9px;border-radius:8px;border:1px solid #3a4c6d;
+      background:#17253d;color:#fff
+    }
+    .action-save,.action-close{
+      border:0;border-radius:8px;padding:9px 11px;font-weight:700
+    }
+    .action-save{background:#16a34a;color:#fff}
+    .action-close{background:#334155;color:#fff}
+    .action-save:disabled{opacity:.55}
+    .schedule-fields{
+      display:none;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:8px
+    }
+    .schedule-fields.show{display:grid}
+    .schedule-field{display:grid;gap:4px;color:var(--muted);font-size:10px;font-weight:700}
+    .schedule-input{
+      width:100%;min-width:0;padding:9px;border-radius:8px;border:1px solid #3a4c6d;
+      background:#17253d;color:#fff;color-scheme:dark
+    }
+    .action-feedback{min-height:16px;margin-top:7px;font-size:11px;color:#cbd5e1}
+    #proximo,#rota10{display:none}
+
+    .route-panel{
+      position:fixed;
+      left:8px;
+      right:8px;
+      bottom:8px;
+      z-index:9995;
+      display:none;
+      max-height:58vh;
+      overflow:auto;
+      padding:10px;
+      border:1px solid #405578;
+      border-radius:12px;
+      background:rgba(9,18,33,.98);
+      box-shadow:0 8px 28px rgba(0,0,0,.46);
+    }
+    .route-panel.show{display:block}
+    .route-panel-head{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .route-title{font-size:15px;font-weight:900}
+    .route-meta{
+      margin-top:3px;
+      color:var(--muted);
+      font-size:11px;
+      line-height:1.35;
+    }
+    .route-close{
+      min-width:36px;
+      min-height:34px;
+      border:0;
+      border-radius:8px;
+      background:#334155;
+      color:#fff;
+      font-weight:900;
+    }
+    .route-list{
+      display:grid;
+      gap:5px;
+      margin-top:9px;
+    }
+    .route-list-item{
+      display:grid;
+      grid-template-columns:26px minmax(0,1fr);
+      gap:7px;
+      align-items:center;
+      width:100%;
+      padding:7px 8px;
+      border:1px solid #354a6b;
+      border-radius:9px;
+      background:#111e32;
+      color:#fff;
+      text-align:left;
+    }
+    .route-list-number{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:24px;
+      height:24px;
+      border-radius:50%;
+      background:#7c3aed;
+      color:#fff;
+      font-size:11px;
+      font-weight:900;
+    }
+    .route-list-name{
+      overflow:hidden;
+      color:#fff;
+      font-size:11px;
+      font-weight:800;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .route-list-address{
+      overflow:hidden;
+      margin-top:2px;
+      color:var(--muted);
+      font-size:9px;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .route-actions{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:7px;
+      margin-top:9px;
+    }
+    .route-action{
+      min-height:38px;
+      padding:7px;
+      border:0;
+      border-radius:9px;
+      color:#fff;
+      font-size:10px;
+      font-weight:900;
+    }
+    .route-open{background:#2563eb}
+    .route-share{background:#0f766e}
+    .route-clear{background:#7f1d1d}
+    .route-number-pin{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:30px;
+      height:30px;
+      border:3px solid #fff;
+      border-radius:50%;
+      background:#7c3aed;
+      color:#fff;
+      box-shadow:0 3px 12px rgba(0,0,0,.5);
+      font-size:12px;
+      font-weight:900;
+    }
+    body.connected #nome,body.connected #entrar{display:none}
+    body.connected .controls{grid-template-columns:1fr auto}
+    body.connected .row{order:2}
+    body.connected .notice{order:1}
+    body.connected #sair,body.connected #proximo,body.connected #rota10{display:block}
+    @media(max-width:760px){
+      header{padding:5px 8px}
+      h1{font-size:14px}
+      .controls{padding:4px 6px}
+      .row{gap:4px}
+      input{padding:7px 8px;font-size:13px}
+      .btn{padding:7px 8px;font-size:12px}
+      .notice{min-height:29px;padding:5px 7px;font-size:11px}
+      body.connected .controls{grid-template-columns:1fr}
+      body.connected .row{
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        width:100%
+      }
+      body.connected .row .btn{width:100%}
+      .route-panel{max-height:64vh}
+    }
+  </style>
+
+  <!-- Google Analytics GA4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-E59KMQFDEK"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-E59KMQFDEK');
+  </script>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>AGENTEMG V1.02</h1>
+    <p>Mapa de campo, GPS e atualização dos pontos.</p>
+  </header>
+
+  <section class="controls">
+    <div class="row">
+      <input id="nome" maxlength="60" placeholder="Nome do agente" autocomplete="name">
+      <button id="entrar" class="btn primary">Entrar e ativar GPS</button>
+      <button id="proximo" class="btn next" disabled>PRÓXIMO</button>
+      <button id="rota10" class="btn route10" disabled>ROTA 10</button>
+      <button id="localizar" class="btn locate" disabled>MINHA LOCALIZAÇÃO</button>
+      <button id="sair" class="btn danger" disabled>Encerrar sessão</button>
+    </div>
+
+    <div class="notice">
+      <span id="dot" class="dot"></span>
+      <span id="mensagem">Carregando pontos...</span>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Latitude</div><div id="latitude" class="stat-value">—</div></div>
+      <div class="stat"><div class="stat-label">Longitude</div><div id="longitude" class="stat-value">—</div></div>
+      <div class="stat"><div class="stat-label">Precisão</div><div id="precisao" class="stat-value">—</div></div>
+      <div class="stat"><div class="stat-label">Pontos</div><div id="totalPontos" class="stat-value">0</div></div>
+      <div class="stat"><div class="stat-label">Atualizados</div><div id="totalAtualizados" class="stat-value">0</div></div>
+    </div>
+  </section>
+
+  <div id="map"></div>
+</div>
+
+<form id="actionForm" class="action-panel" aria-live="polite">
+  <div id="actionTitle" class="action-title">Ponto selecionado</div>
+  <div id="actionMeta" class="action-meta"></div>
+  <div class="action-row">
+    <select id="actionStatus" class="action-select" required>
+      <option value="">Selecione o status</option>
+      <option value="INICIADO">INICIADO</option>
+      <option value="RETORNAR_COMERCIAL">RETORNAR_COMERCIAL</option>
+      <option value="RETORNAR_RESIDENCIA">RETORNAR_RESIDENCIA</option>
+      <option value="RECUSADO">RECUSADO</option>
+      <option value="AGENDADO">AGENDADO</option>
+    </select>
+    <button id="actionSave" type="submit" class="action-save">SALVAR</button>
+    <button id="actionClose" type="button" class="action-close">X</button>
+  </div>
+  <div id="scheduleFields" class="schedule-fields">
+    <label class="schedule-field">
+      DATA DO AGENDAMENTO
+      <input id="scheduleDate" class="schedule-input" type="date">
+    </label>
+    <label class="schedule-field">
+      HORA DO AGENDAMENTO
+      <input id="scheduleTime" class="schedule-input" type="time" step="60">
+    </label>
+  </div>
+  <div id="actionFeedback" class="action-feedback">Selecione uma opção e toque em SALVAR.</div>
+</form>
+
+
+<section id="routePanel" class="route-panel" aria-live="polite">
+  <div class="route-panel-head">
+    <div>
+      <div class="route-title">ROTA 10</div>
+      <div id="routeMeta" class="route-meta">Nenhuma rota criada.</div>
+    </div>
+    <button id="routeClose" type="button" class="route-close">X</button>
+  </div>
+
+  <div id="routeList" class="route-list"></div>
+
+  <div class="route-actions">
+    <button id="routeOpen1" type="button" class="route-action route-open">ABRIR TRECHO 1</button>
+    <button id="routeOpen2" type="button" class="route-action route-open">ABRIR TRECHO 2</button>
+    <button id="routeShare" type="button" class="route-action route-share">COMPARTILHAR</button>
+    <button id="routeClear" type="button" class="route-action route-clear">LIMPAR ROTA</button>
+  </div>
+</section>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+  import {
+    getDatabase, ref, get, set, update, onValue, onDisconnect, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+
+  const firebaseConfig = {
+  apiKey: "AIzaSyCYfLl08iRHnvnbBcKTaJOsONjFHKd2mrA",
+  authDomain: "pilotomg-efe79.firebaseapp.com",
+  databaseURL: "https://pilotomg-efe79-default-rtdb.firebaseio.com",
+  projectId: "pilotomg-efe79",
+  storageBucket: "pilotomg-efe79.firebasestorage.app",
+  messagingSenderId: "577008586078",
+  appId: "1:577008586078:web:eb8bdd9891418e0777d3cf"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const STATUS_OPTIONS = [
+    "INICIADO",
+    "RETORNAR_COMERCIAL",
+    "RETORNAR_RESIDENCIA",
+    "RECUSADO",
+    "AGENDADO"
+  ];
+
+  const STATUS_COLORS = {
+    PENDENTE:"#123D68",
+    CARTEIRA:"#123D68",
+    RETORNAR_COMERCIAL:"#16A34A",
+    RETORNAR_RESIDENCIA:"#7C3AED",
+    INICIADO:"#F59E0B",
+    RECUSADO:"#B91C1C",
+
+    // Compatibilidade com registros antigos já existentes no Firebase.
+    RETORNAR:"#06B6D4",
+    RECUSA:"#B91C1C",
+    END_ERRADO:"#6B7280",
+    NAO_CONHECEM:"#64748B"
+  };
+
+  const FINAL_STATUSES = new Set([
+    "INICIADO",
+    "RECUSADO",
+    // Legados definitivos:
+    "RECUSA",
+    "END_ERRADO",
+    "NAO_CONHECEM"
+  ]);
+
+  const el = {
+    nome:document.getElementById("nome"),
+    entrar:document.getElementById("entrar"),
+    proximo:document.getElementById("proximo"),
+    rota10:document.getElementById("rota10"),
+    localizar:document.getElementById("localizar"),
+    sair:document.getElementById("sair"),
+    dot:document.getElementById("dot"),
+    mensagem:document.getElementById("mensagem"),
+    latitude:document.getElementById("latitude"),
+    longitude:document.getElementById("longitude"),
+    precisao:document.getElementById("precisao"),
+    totalPontos:document.getElementById("totalPontos"),
+    totalAtualizados:document.getElementById("totalAtualizados"),
+    actionForm:document.getElementById("actionForm"),
+    actionPanel:document.getElementById("actionForm"),
+    actionTitle:document.getElementById("actionTitle"),
+    actionMeta:document.getElementById("actionMeta"),
+    actionStatus:document.getElementById("actionStatus"),
+    scheduleFields:document.getElementById("scheduleFields"),
+    scheduleDate:document.getElementById("scheduleDate"),
+    scheduleTime:document.getElementById("scheduleTime"),
+    actionSave:document.getElementById("actionSave"),
+    actionClose:document.getElementById("actionClose"),
+    actionFeedback:document.getElementById("actionFeedback"),
+    routePanel:document.getElementById("routePanel"),
+    routeMeta:document.getElementById("routeMeta"),
+    routeList:document.getElementById("routeList"),
+    routeClose:document.getElementById("routeClose"),
+    routeOpen1:document.getElementById("routeOpen1"),
+    routeOpen2:document.getElementById("routeOpen2"),
+    routeShare:document.getElementById("routeShare"),
+    routeClear:document.getElementById("routeClear")
+  };
+
+  const map = L.map("map", {preferCanvas:true}).setView([-20.2,-44.2],8);
+
+  // Camadas separadas para evitar que GPS e precisão cubram os pontos no celular.
+  map.createPane("gpsAccuracyPane");
+  map.getPane("gpsAccuracyPane").style.zIndex = 350;
+  map.getPane("gpsAccuracyPane").style.pointerEvents = "none";
+
+  map.createPane("agentsPane");
+  map.getPane("agentsPane").style.zIndex = 620;
+  map.getPane("agentsPane").style.pointerEvents = "none";
+
+  map.createPane("routeLinePane");
+  map.getPane("routeLinePane").style.zIndex = 590;
+  map.getPane("routeLinePane").style.pointerEvents = "none";
+
+  map.createPane("pointsPane");
+  map.getPane("pointsPane").style.zIndex = 650;
+  map.getPane("pointsPane").style.pointerEvents = "auto";
+
+  map.createPane("routeNumberPane");
+  map.getPane("routeNumberPane").style.zIndex = 680;
+  map.getPane("routeNumberPane").style.pointerEvents = "none";
+
+  const pointRenderer = L.canvas({
+    pane:"pointsPane",
+    padding:.5,
+    tolerance:18
+  });
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom:19, attribution:"&copy; OpenStreetMap"
+  }).addTo(map);
+
+  const legend = L.control({position:"bottomright"});
+  legend.onAdd = () => {
+    const div = L.DomUtil.create("div","legend");
+    div.innerHTML = `
+      <div class="legend-row"><span class="legend-dot" style="background:#123D68"></span>CARTEIRA</div>
+      <div class="legend-row"><span class="legend-dot" style="background:#16A34A"></span>RET. COMERCIAL</div>
+      <div class="legend-row"><span class="legend-dot" style="background:#7C3AED"></span>RET. RESIDÊNCIA</div>
+      <div class="legend-row"><span class="legend-dot scheduled"></span>AGENDADO</div>
+    `;
+    return div;
+  };
+  legend.addTo(map);
+
+  const agentIcon = L.divIcon({
+    className:"", html:'<div class="agent-pin"></div>',
+    iconSize:[39,39], iconAnchor:[19,19], popupAnchor:[0,-19]
+  });
+
+  const scheduledPointIcon = L.divIcon({
+    className:"",
+    html:'<div class="scheduled-pin"></div>',
+    iconSize:[24,24],
+    iconAnchor:[12,12],
+    popupAnchor:[0,-10]
+  });
+
+  let ownMarker = null;
+  let ownAccuracy = null;
+  let watchId = null;
+  let timerId = null;
+  let agentRef = null;
+  let disconnectHandler = null;
+  let currentPosition = null;
+  let lastSentPosition = null;
+  let lastSentAt = 0;
+  let radiusRelease = 100;
+  let radiusNext = 1000;
+  let gpsSeconds = 60;
+  let gpsDistance = 100;
+
+  const featuresByCnpj = new Map();
+  const markersByCnpj = new Map();
+  const pointStatus = new Map();
+  const otherAgentMarkers = new Map();
+  const route10Layer = L.layerGroup().addTo(map);
+  const ROUTE10_MAX_POINTS = 10;
+  const ROUTE10_MAX_LEG_METERS = 1000;
+  let activeRoute10 = [];
+  let selectedCnpj = "";
+
+  const idKey = "pilotomg_v04_agent_id";
+  const nameKey = "pilotomg_v04_agent_name";
+  let agentId = localStorage.getItem(idKey);
+
+  if (!agentId) {
+    agentId = "ag_" + crypto.randomUUID().replaceAll("-","").slice(0,12);
+    localStorage.setItem(idKey, agentId);
+  }
+
+  const savedName = localStorage.getItem(nameKey);
+  if (savedName) el.nome.value = savedName;
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+  }
+
+  function formatDateTime(value) {
+    if(!value || !Number.isFinite(Number(value))) return "—";
+    return new Date(Number(value)).toLocaleString("pt-BR");
+  }
+
+  function formatTime(value) {
+    if(!value || !Number.isFinite(Number(value))) return "—";
+    return new Date(Number(value)).toLocaleTimeString(
+      "pt-BR",
+      {hour:"2-digit",minute:"2-digit"}
+    );
+  }
+
+  function setNotice(text,type="wait") {
+    el.mensagem.textContent = text;
+    el.dot.className = "dot";
+    if(type==="ok") el.dot.classList.add("ok");
+    if(type==="err") el.dot.classList.add("err");
+  }
+
+  function haversine(a,b) {
+    if(!a || !b) return Infinity;
+    const R=6371000, rad=x=>x*Math.PI/180;
+    const dLat=rad(b.lat-a.lat), dLng=rad(b.lng-a.lng);
+    const h=Math.sin(dLat/2)**2 + Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLng/2)**2;
+    return 2*R*Math.asin(Math.sqrt(h));
+  }
+
+  function normalizeCnpj(props) {
+    return String(props.NROCNPJ_PAD ?? props.CNPJ ?? "").replace(/\D/g,"");
+  }
+
+  function normalizeStatus(value) {
+    const raw = String(value || "")
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g,"_");
+
+    if(!raw || raw === "PENDENTE") return "CARTEIRA";
+    if(raw === "RECUSA") return "RECUSA"; // legado definitivo
+    return raw;
+  }
+
+  function statusFor(cnpj, props) {
+    return normalizeStatus(
+      pointStatus.get(cnpj)?.status || props.STATUS || "CARTEIRA"
+    );
+  }
+
+  function isRouteEligibleStatus(status) {
+    return normalizeStatus(status) === "CARTEIRA";
+  }
+
+  function markerTypeForStatus(status) {
+    return normalizeStatus(status) === "AGENDADO" ? "scheduled" : "circle";
+  }
+
+  function markerStyle(status) {
+    const normalized = normalizeStatus(status);
+    const color = STATUS_COLORS[normalized] || STATUS_COLORS.CARTEIRA;
+    return {
+      renderer:pointRenderer,
+      radius:7,
+      color:"#ffffff",
+      weight:1.5,
+      fillColor:color,
+      fillOpacity:.95,
+      interactive:true,
+      bubblingMouseEvents:false
+    };
+  }
+
+  function schedulePayloadFromForm() {
+    const dateValue = el.scheduleDate.value || "";
+    const timeValue = el.scheduleTime.value || "";
+
+    if(!dateValue || !timeValue) return null;
+
+    const [year,month,day] = dateValue.split("-").map(Number);
+    const [hour,minute] = timeValue.split(":").map(Number);
+    const date = new Date(year,month - 1,day,hour,minute,0,0);
+
+    if(Number.isNaN(date.getTime())) return null;
+
+    return {
+      dataAgendamento:`${String(day).padStart(2,"0")}/${String(month).padStart(2,"0")}/${year}`,
+      horaAgendamento:`${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}`,
+      agendadoPara:date.getTime()
+    };
+  }
+
+  function routeUrl(lat,lng) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+  }
+
+
+  function routePointFromFeature(cnpj,feature) {
+    const coordinates = feature?.geometry?.coordinates || [];
+    const lng = Number(coordinates[0]);
+    const lat = Number(coordinates[1]);
+
+    if(!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+    const props = feature.properties || {};
+
+    return {
+      cnpj,
+      lat,
+      lng,
+      name:props.NOME_FANTASIA || props.RAZAO_SOCIAL || "Empresa",
+      address:props.ENDEE || "Endereço não informado",
+      city:props.MUNICIPIO || ""
+    };
+  }
+
+  function route10NumberIcon(number) {
+    return L.divIcon({
+      className:"",
+      html:`<div class="route-number-pin">${number}</div>`,
+      iconSize:[34,34],
+      iconAnchor:[17,17]
+    });
+  }
+
+  function route10PathDistance(points) {
+    if(!currentPosition || !points.length) return 0;
+
+    let total = 0;
+    let previous = currentPosition;
+
+    for(const point of points) {
+      total += haversine(previous,point);
+      previous = point;
+    }
+
+    return total;
+  }
+
+  function formatDistance(value) {
+    const meters = Number(value) || 0;
+    return meters >= 1000
+      ? `${(meters / 1000).toFixed(1).replace(".",",")} km`
+      : `${Math.round(meters)} m`;
+  }
+
+  function buildRoute10Segments() {
+    if(!currentPosition || !activeRoute10.length) return [];
+
+    const firstStops = activeRoute10.slice(0,5);
+    const segments = [{
+      number:1,
+      origin:currentPosition,
+      stops:firstStops
+    }];
+
+    if(activeRoute10.length > 5) {
+      segments.push({
+        number:2,
+        origin:activeRoute10[4],
+        stops:activeRoute10.slice(5,10)
+      });
+    }
+
+    return segments.filter(segment => segment.stops.length);
+  }
+
+  function googleMapsSegmentUrl(segment) {
+    if(!segment?.stops?.length) return "";
+
+    const destination = segment.stops[segment.stops.length - 1];
+    const waypoints = segment.stops.slice(0,-1);
+
+    const params = new URLSearchParams({
+      api:"1",
+      origin:`${segment.origin.lat},${segment.origin.lng}`,
+      destination:`${destination.lat},${destination.lng}`,
+      travelmode:"walking",
+      dir_action:"navigate"
+    });
+
+    if(waypoints.length) {
+      params.set(
+        "waypoints",
+        waypoints.map(point => `${point.lat},${point.lng}`).join("|")
+      );
+    }
+
+    return `https://www.google.com/maps/dir/?${params.toString()}`;
+  }
+
+  function focusRoute10Point(cnpj) {
+    const point = activeRoute10.find(item => item.cnpj === cnpj);
+    const marker = markersByCnpj.get(cnpj);
+
+    if(!point || !marker) return;
+
+    el.routePanel.classList.remove("show");
+    hideActionPanel();
+    map.closePopup();
+    map.setView([point.lat,point.lng],18,{animate:true});
+
+    window.setTimeout(() => {
+      marker.setPopupContent(buildPopup(cnpj));
+      marker.openPopup();
+      selectPoint(cnpj);
+    },250);
+  }
+
+  function renderRoute10Panel() {
+    if(!activeRoute10.length) {
+      el.routeMeta.textContent = "Nenhuma rota criada.";
+      el.routeList.innerHTML = "";
+      el.routeOpen1.disabled = true;
+      el.routeOpen2.disabled = true;
+      el.routeShare.disabled = true;
+      return;
+    }
+
+    const distance = route10PathDistance(activeRoute10);
+    const segments = buildRoute10Segments();
+
+    el.routeMeta.textContent =
+      `${activeRoute10.length} ponto${activeRoute10.length === 1 ? "" : "s"} • ` +
+      `sequência por proximidade • aproximadamente ${formatDistance(distance)}`;
+
+    el.routeList.innerHTML = activeRoute10.map((point,index) => `
+      <button type="button" class="route-list-item" data-route-cnpj="${escapeHtml(point.cnpj)}">
+        <span class="route-list-number">${index + 1}</span>
+        <span>
+          <span class="route-list-name">${escapeHtml(point.name)}</span>
+          <span class="route-list-address">${escapeHtml(point.address)}</span>
+        </span>
+      </button>
+    `).join("");
+
+    for(const button of el.routeList.querySelectorAll("[data-route-cnpj]")) {
+      button.addEventListener("click",() =>
+        focusRoute10Point(button.dataset.routeCnpj)
+      );
+    }
+
+    el.routeOpen1.disabled = !segments[0];
+    el.routeOpen2.disabled = !segments[1];
+    el.routeOpen2.style.display = segments[1] ? "block" : "none";
+    el.routeShare.disabled = false;
+  }
+
+  function drawRoute10() {
+    route10Layer.clearLayers();
+
+    if(!currentPosition || !activeRoute10.length) return;
+
+    const coordinates = [
+      [currentPosition.lat,currentPosition.lng],
+      ...activeRoute10.map(point => [point.lat,point.lng])
+    ];
+
+    L.polyline(coordinates,{
+      pane:"routeLinePane",
+      color:"#7c3aed",
+      weight:5,
+      opacity:.86,
+      dashArray:"8 7",
+      interactive:false
+    }).addTo(route10Layer);
+
+    activeRoute10.forEach((point,index) => {
+      L.marker([point.lat,point.lng],{
+        pane:"routeNumberPane",
+        icon:route10NumberIcon(index + 1),
+        interactive:false,
+        keyboard:false
+      }).addTo(route10Layer);
+    });
+  }
+
+  function showRoute10Panel() {
+    if(!activeRoute10.length) return;
+    renderRoute10Panel();
+    el.routePanel.classList.add("show");
+  }
+
+  function clearRoute10(showMessage=true) {
+    activeRoute10 = [];
+    route10Layer.clearLayers();
+    el.routePanel.classList.remove("show");
+    renderRoute10Panel();
+
+    if(showMessage) {
+      setNotice("ROTA 10 REMOVIDA","ok");
+    }
+  }
+
+  function reconcileRoute10(showMessage=false) {
+    if(!activeRoute10.length) return;
+
+    const previousLength = activeRoute10.length;
+
+    activeRoute10 = activeRoute10.filter(point => {
+      const feature = featuresByCnpj.get(point.cnpj);
+      const currentStatus = feature
+        ? statusFor(point.cnpj,feature.properties || {})
+        : "";
+
+      return isRouteEligibleStatus(currentStatus) &&
+        markersByCnpj.has(point.cnpj);
+    });
+
+    if(activeRoute10.length === previousLength) return;
+
+    if(!activeRoute10.length) {
+      clearRoute10(false);
+      if(showMessage) setNotice("ROTA 10 CONCLUÍDA","ok");
+      return;
+    }
+
+    drawRoute10();
+    renderRoute10Panel();
+
+    if(showMessage) {
+      setNotice(
+        `ROTA ATUALIZADA • ${activeRoute10.length} PONTOS RESTANTES`,
+        "ok"
+      );
+    }
+  }
+
+  function generateRoute10() {
+    if(!currentPosition) {
+      setNotice("ATIVE O GPS PARA CRIAR A ROTA 10","err");
+      return;
+    }
+
+    const candidates = [];
+
+    for(const [cnpj,feature] of featuresByCnpj.entries()) {
+      const currentStatus = statusFor(cnpj,feature.properties || {});
+
+      // A rota contém exclusivamente pontos em CARTEIRA.
+      if(!isRouteEligibleStatus(currentStatus)) continue;
+      if(!markersByCnpj.has(cnpj)) continue;
+
+      const point = routePointFromFeature(cnpj,feature);
+      if(point) candidates.push(point);
+    }
+
+    const remaining = new Map(
+      candidates.map(point => [point.cnpj,point])
+    );
+
+    const route = [];
+    let anchor = {
+      lat:currentPosition.lat,
+      lng:currentPosition.lng
+    };
+
+    while(route.length < ROUTE10_MAX_POINTS && remaining.size) {
+      let nearest = null;
+      let nearestDistance = Infinity;
+
+      for(const point of remaining.values()) {
+        const distance = haversine(anchor,point);
+
+        if(distance <= ROUTE10_MAX_LEG_METERS &&
+           distance < nearestDistance) {
+          nearest = point;
+          nearestDistance = distance;
+        }
+      }
+
+      if(!nearest) break;
+
+      route.push({
+        ...nearest,
+        legDistance:nearestDistance
+      });
+      remaining.delete(nearest.cnpj);
+      anchor = nearest;
+    }
+
+    if(!route.length) {
+      clearRoute10(false);
+      setNotice(
+        `NENHUM PONTO PENDENTE EM ATÉ ${ROUTE10_MAX_LEG_METERS} M`,
+        "err"
+      );
+      return;
+    }
+
+    hideActionPanel();
+    map.closePopup();
+    activeRoute10 = route;
+
+    drawRoute10();
+    renderRoute10Panel();
+    showRoute10Panel();
+
+    const bounds = L.latLngBounds([
+      [currentPosition.lat,currentPosition.lng],
+      ...activeRoute10.map(point => [point.lat,point.lng])
+    ]);
+
+    map.fitBounds(bounds,{
+      padding:[35,35],
+      maxZoom:17
+    });
+
+    const complement = route.length < ROUTE10_MAX_POINTS
+      ? " • NÃO HÁ OUTROS PONTOS PRÓXIMOS"
+      : "";
+
+    setNotice(
+      `ROTA CRIADA • ${route.length} PONTOS${complement}`,
+      "ok"
+    );
+  }
+
+  function openRoute10Segment(index) {
+    const segment = buildRoute10Segments()[index];
+    const url = googleMapsSegmentUrl(segment);
+
+    if(!url) {
+      setNotice("TRECHO DA ROTA INDISPONÍVEL","err");
+      return;
+    }
+
+    window.open(url,"_blank","noopener");
+  }
+
+  function route10ShareText() {
+    const segments = buildRoute10Segments();
+    const city = activeRoute10[0]?.city || "";
+
+    return [
+      `ROTA 10${city ? ` — ${city}` : ""}`,
+      `Pontos: ${activeRoute10.length}`,
+      "",
+      ...segments.flatMap((segment,index) => [
+        `TRECHO ${index + 1}:`,
+        googleMapsSegmentUrl(segment),
+        ""
+      ]),
+      "SEQUÊNCIA:",
+      ...activeRoute10.map((point,index) =>
+        `${index + 1}. ${point.name} — ${point.address} — CNPJ ${point.cnpj}`
+      )
+    ].join("\n");
+  }
+
+  function copyTextFallback(textToCopy) {
+    const textarea = document.createElement("textarea");
+    textarea.value = textToCopy;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+      document.execCommand("copy");
+      return true;
+    } finally {
+      textarea.remove();
+    }
+  }
+
+  async function shareRoute10() {
+    if(!activeRoute10.length) {
+      setNotice("CRIE A ROTA 10 PRIMEIRO","err");
+      return;
+    }
+
+    const textToShare = route10ShareText();
+
+    try {
+      if(navigator.share) {
+        await navigator.share({
+          title:"ROTA 10",
+          text:textToShare
+        });
+        setNotice("ROTA COMPARTILHADA","ok");
+        return;
+      }
+
+      if(navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(textToShare);
+      } else {
+        copyTextFallback(textToShare);
+      }
+
+      setNotice("ROTA COPIADA PARA COMPARTILHAR","ok");
+    } catch(error) {
+      if(error?.name !== "AbortError") {
+        console.error(error);
+        setNotice("NÃO FOI POSSÍVEL COMPARTILHAR","err");
+      }
+    }
+  }
+
+  function buildPopup(cnpj) {
+    const feature = featuresByCnpj.get(cnpj);
+    if(!feature) return "Ponto indisponível.";
+
+    const p = feature.properties || {};
+    const [lng,lat] = feature.geometry.coordinates;
+    const statusData = pointStatus.get(cnpj);
+    const status = statusFor(cnpj,p);
+    const distance = currentPosition ? haversine(currentPosition,{lat,lng}) : Infinity;
+    const distanceText = Number.isFinite(distance) ? `${Math.round(distance)} m` : "GPS não ativo";
+
+    let actionHtml = "";
+    if(!currentPosition) {
+      actionHtml = '<div class="popup-line popup-muted">Ative o GPS para validar a distância.</div>';
+    } else if(distance > radiusRelease) {
+      actionHtml = `
+        <div class="popup-line"><strong>Fora do raio de ${radiusRelease} m.</strong></div>
+        <a class="popup-route" target="_blank" rel="noopener" href="${routeUrl(lat,lng)}">Melhor rota</a>
+      `;
+    } else {
+      actionHtml = `
+        <div class="popup-line"><strong>Dentro do raio permitido.</strong></div>
+        <div class="popup-line popup-muted">Preencha o status no painel inferior.</div>
+      `;
+    }
+
+    return `
+      <div class="popup-title">${escapeHtml(p.NOME_FANTASIA || p.RAZAO_SOCIAL || "Empresa")}</div>
+      <div class="popup-line"><strong>NROCNPJ_PAD:</strong> ${escapeHtml(cnpj)}</div>
+      <div class="popup-line"><strong>NOME_FANTASIA:</strong> ${escapeHtml(p.NOME_FANTASIA || "—")}</div>
+      <div class="popup-line"><strong>RAZAO_SOCIAL:</strong> ${escapeHtml(p.RAZAO_SOCIAL || "—")}</div>
+      <div class="popup-line"><strong>RESPONSAVEL:</strong> ${escapeHtml(p.RESPONSAVEL || p["RESPONSÁVEL"] || "—")}</div>
+      <div class="popup-line"><strong>MUNICIPIO:</strong> ${escapeHtml(p.MUNICIPIO || "—")}</div>
+      <div class="popup-line"><strong>ENDEE:</strong> ${escapeHtml(p.ENDEE || "—")}</div>
+      <div class="popup-line"><strong>BANCO:</strong> ${escapeHtml(p.BANCO || "—")}</div>
+      <div class="popup-line"><strong>STATUS:</strong> ${escapeHtml(status)}</div>
+      ${status === "AGENDADO" ? `
+        <div class="popup-line"><strong>DATA:</strong> ${escapeHtml(statusData?.dataAgendamento || p.DATA || "—")}</div>
+        <div class="popup-line"><strong>HORA:</strong> ${escapeHtml(statusData?.horaAgendamento || p.HORA || "—")}</div>
+      ` : ""}
+      ${statusData ? `
+        <div class="popup-line popup-muted">Atualizado por ${escapeHtml(statusData.agente || "—")}</div>
+        <div class="popup-line popup-muted">
+          <strong>Marcado em:</strong> ${escapeHtml(formatDateTime(statusData.hora))}
+        </div>
+      ` : ""}
+      <div class="popup-line"><strong>Distância:</strong> ${distanceText}</div>
+      ${actionHtml}
+    `;
+  }
+
+  function isCompletedStatus(status) {
+    return FINAL_STATUSES.has(normalizeStatus(status));
+  }
+
+  function hideActionPanel() {
+    selectedCnpj = "";
+    el.actionPanel.classList.remove("show");
+    el.actionStatus.value = "";
+    el.scheduleFields.classList.remove("show");
+    el.scheduleDate.value = "";
+    el.scheduleTime.value = "";
+    el.scheduleDate.required = false;
+    el.scheduleTime.required = false;
+    el.actionFeedback.textContent = "Selecione uma opção e toque em SALVAR.";
+    el.actionSave.disabled = false;
+    el.actionSave.textContent = "SALVAR";
+  }
+
+  function selectPoint(cnpj) {
+    const feature = featuresByCnpj.get(cnpj);
+    if(!feature) return;
+
+    const props = feature.properties || {};
+    const [lng,lat] = feature.geometry.coordinates;
+    const distance = currentPosition ? haversine(currentPosition,{lat,lng}) : Infinity;
+
+    selectedCnpj = cnpj;
+    el.actionTitle.textContent = props.NOME_FANTASIA || props.RAZAO_SOCIAL || "Ponto";
+    el.actionMeta.textContent = `CNPJ ${cnpj} • ${Number.isFinite(distance) ? Math.round(distance) + " m" : "GPS não ativo"}`;
+    el.actionStatus.value = "";
+    el.scheduleFields.classList.remove("show");
+    el.scheduleDate.value = "";
+    el.scheduleTime.value = "";
+    el.scheduleDate.required = false;
+    el.scheduleTime.required = false;
+    el.actionFeedback.textContent = "Selecione uma opção e toque em SALVAR.";
+
+    if(!currentPosition) {
+      el.actionPanel.classList.remove("show");
+      setNotice("Ative o GPS para preencher.", "err");
+      return;
+    }
+
+    if(distance > radiusRelease) {
+      el.actionPanel.classList.remove("show");
+      return;
+    }
+
+    el.actionPanel.classList.add("show");
+  }
+
+  function createPointMarker(cnpj, feature) {
+    const [lng,lat] = feature.geometry.coordinates;
+    const status = statusFor(cnpj,feature.properties || {});
+    const markerType = markerTypeForStatus(status);
+
+    const marker = markerType === "scheduled"
+      ? L.marker([lat,lng],{
+          icon:scheduledPointIcon,
+          pane:"pointsPane",
+          interactive:true,
+          keyboard:true
+        }).addTo(map)
+      : L.circleMarker([lat,lng],markerStyle(status)).addTo(map);
+
+    marker._agentStatusMarkerType = markerType;
+    marker.bindPopup(buildPopup(cnpj),{maxWidth:330,autoPan:true});
+
+    marker.on("click", () => {
+      marker.setPopupContent(buildPopup(cnpj));
+      marker.openPopup();
+      selectPoint(cnpj);
+    });
+
+    markersByCnpj.set(cnpj,marker);
+    return marker;
+  }
+
+  function syncPointVisibility(cnpj) {
+    const feature = featuresByCnpj.get(cnpj);
+    if(!feature) return;
+
+    const currentStatus = statusFor(cnpj,feature.properties || {});
+    const desiredMarkerType = markerTypeForStatus(currentStatus);
+    let marker = markersByCnpj.get(cnpj);
+
+    // INICIADO e RECUSADO desaparecem do mapa do agente.
+    // Os status legados definitivos também continuam ocultos.
+    if(isCompletedStatus(currentStatus)) {
+      if(marker) {
+        map.removeLayer(marker);
+        markersByCnpj.delete(cnpj);
+      }
+      if(selectedCnpj === cnpj) hideActionPanel();
+      return;
+    }
+
+    if(marker && marker._agentStatusMarkerType !== desiredMarkerType) {
+      map.removeLayer(marker);
+      markersByCnpj.delete(cnpj);
+      marker = null;
+    }
+
+    if(!marker) {
+      createPointMarker(cnpj,feature);
+      return;
+    }
+
+    if(typeof marker.setStyle === "function") {
+      marker.setStyle(markerStyle(currentStatus));
+    }
+
+    marker.setPopupContent(buildPopup(cnpj));
+  }
+
+  function refreshPointMarker(cnpj) {
+    syncPointVisibility(cnpj);
+  }
+
+  function refreshUpdatedCount() {
+    const count = [...pointStatus.entries()].filter(([key,val]) =>
+      key !== "TEMP" && key !== "TESTE_MANUAL" && val?.status
+    ).length;
+    el.totalAtualizados.textContent = count;
+  }
+
+  async function saveStatus(cnpj,status,button=null) {
+    if(!agentRef || !currentPosition) {
+      const msg = "Ative o GPS antes de salvar.";
+      setNotice(msg, "err");
+      el.actionFeedback.textContent = msg;
+      return false;
+    }
+
+    if(!STATUS_OPTIONS.includes(status)) {
+      const msg = "Selecione um status válido.";
+      setNotice(msg, "err");
+      el.actionFeedback.textContent = msg;
+      el.actionStatus.focus();
+      return false;
+    }
+
+    const feature = featuresByCnpj.get(cnpj);
+    if(!feature) {
+      const msg = "Ponto não encontrado no mapa.";
+      setNotice(msg, "err");
+      el.actionFeedback.textContent = msg;
+      return false;
+    }
+
+    const [lng,lat] = feature.geometry.coordinates;
+    const distance = haversine(currentPosition,{lat,lng});
+
+    if(distance > radiusRelease) {
+      const msg = `Você está a ${Math.round(distance)} m. Limite: ${radiusRelease} m.`;
+      setNotice(msg, "err");
+      el.actionFeedback.textContent = msg;
+      return false;
+    }
+
+    const scheduleData = status === "AGENDADO"
+      ? schedulePayloadFromForm()
+      : null;
+
+    if(status === "AGENDADO" && !scheduleData) {
+      const msg = "Informe a data e a hora do agendamento.";
+      setNotice(msg,"err");
+      el.actionFeedback.textContent = msg;
+      if(!el.scheduleDate.value) el.scheduleDate.focus();
+      else el.scheduleTime.focus();
+      return false;
+    }
+
+    try {
+      const saveButton = button || el.actionSave;
+      saveButton.disabled = true;
+      saveButton.textContent = "SALVANDO...";
+      el.actionFeedback.textContent = `1/3 Enviando ${status} para o CNPJ ${cnpj}...`;
+      setNotice("SALVANDO...", "wait");
+
+      // Gravação direta pela API REST do Realtime Database.
+      // Isso elimina qualquer interferência entre o formulário do mapa e o SDK.
+      const databaseBase = firebaseConfig.databaseURL.replace(/\/$/, "");
+      const statusUrl = `${databaseBase}/STATUS_PONTOS/${encodeURIComponent(cnpj)}.json`;
+
+      const restPayload = {
+        status,
+        agente:el.nome.value.trim(),
+        agenteId:agentId,
+        hora:{".sv":"timestamp"},
+        ...(scheduleData || {})
+      };
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+      const writeResponse = await fetch(statusUrl,{
+        method:"PUT",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(restPayload),
+        signal:controller.signal,
+        cache:"no-store"
+      });
+
+      clearTimeout(timeoutId);
+
+      if(!writeResponse.ok) {
+        const errorText = await writeResponse.text();
+        throw new Error(`HTTP_${writeResponse.status}: ${errorText}`);
+      }
+
+      el.actionFeedback.textContent = "2/3 Gravação enviada. Confirmando...";
+
+      const readResponse = await fetch(`${statusUrl}?t=${Date.now()}`,{
+        method:"GET",
+        cache:"no-store"
+      });
+
+      if(!readResponse.ok) {
+        throw new Error(`CONFIRM_HTTP_${readResponse.status}`);
+      }
+
+      const confirmation = await readResponse.json();
+
+      if(!confirmation || confirmation.status !== status) {
+        throw new Error("WRITE_NOT_CONFIRMED");
+      }
+
+      el.actionFeedback.textContent = "3/3 Gravação confirmada no Firebase.";
+
+      pointStatus.set(cnpj,{
+        status,
+        agente:el.nome.value.trim(),
+        agenteId:agentId,
+        hora:Date.now(),
+        ...(scheduleData || {})
+      });
+
+      map.closePopup();
+      syncPointVisibility(cnpj);
+      refreshUpdatedCount();
+      reconcileRoute10(true);
+
+      if(isCompletedStatus(status)) {
+        setNotice("PONTO SALVO E REMOVIDO", "ok");
+      } else if(status === "AGENDADO") {
+        setNotice(`AGENDADO PARA ${scheduleData.dataAgendamento} ÀS ${scheduleData.horaAgendamento}`,"ok");
+      } else {
+        setNotice("STATUS SALVO • PONTO MANTIDO NO MAPA", "ok");
+      }
+
+      // Mantém a confirmação visível por um instante antes de ocultar o painel.
+      setTimeout(hideActionPanel, 900);
+      return true;
+
+    } catch(error) {
+      console.error("Erro ao salvar STATUS_PONTOS:",error);
+      const code =
+        error?.name === "AbortError"
+          ? "TEMPO_ESGOTADO"
+          : (error?.code || error?.message || "ERRO_DESCONHECIDO");
+
+      setNotice(`Falha ao salvar: ${code}`, "err");
+      el.actionFeedback.textContent = `ERRO: ${code}`;
+
+      const saveButton = button || el.actionSave;
+      saveButton.disabled = false;
+      saveButton.textContent = "SALVAR";
+      return false;
+    }
+  }
+
+  map.on("popupopen", event => {
+    const node = event.popup.getElement();
+    if(!node) return;
+    L.DomEvent.disableClickPropagation(node);
+    L.DomEvent.disableScrollPropagation(node);
+  });
+
+  el.actionForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    el.actionFeedback.textContent = "Comando SALVAR recebido.";
+
+    if(!selectedCnpj) {
+      el.actionFeedback.textContent = "Selecione um ponto no mapa.";
+      return;
+    }
+
+    const status = el.actionStatus.value || "";
+
+    try {
+      await saveStatus(selectedCnpj,status,el.actionSave);
+    } catch(error) {
+      console.error("Erro não tratado no submit:",error);
+      const code = error?.message || String(error);
+      el.actionFeedback.textContent = `ERRO NO COMANDO: ${code}`;
+      setNotice(`Erro no comando: ${code}`, "err");
+      el.actionSave.disabled = false;
+      el.actionSave.textContent = "SALVAR";
+    }
+  });
+
+  el.actionClose.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    hideActionPanel();
+  });
+
+  el.actionStatus.addEventListener("change", () => {
+    const status = el.actionStatus.value || "";
+    const scheduled = status === "AGENDADO";
+
+    el.scheduleFields.classList.toggle("show",scheduled);
+    el.scheduleDate.required = scheduled;
+    el.scheduleTime.required = scheduled;
+
+    if(scheduled) {
+      const today = new Date();
+      const localToday = [
+        today.getFullYear(),
+        String(today.getMonth() + 1).padStart(2,"0"),
+        String(today.getDate()).padStart(2,"0")
+      ].join("-");
+      el.scheduleDate.min = localToday;
+      if(!el.scheduleDate.value) el.scheduleDate.value = localToday;
+    } else {
+      el.scheduleDate.value = "";
+      el.scheduleTime.value = "";
+    }
+
+    el.actionFeedback.textContent = scheduled
+      ? "Informe data e hora e toque em SALVAR."
+      : status
+        ? `Status selecionado: ${status}. Toque em SALVAR.`
+        : "Selecione uma opção.";
+  });
+
+  async function loadGeoJson() {
+    const response = await fetch("./MAPA_INICIAL_TESTE_HTML.geojson", {cache:"no-store"});
+    if(!response.ok) throw new Error(`GeoJSON HTTP ${response.status}`);
+    const data = await response.json();
+    const bounds = [];
+
+    for(const feature of data.features || []) {
+      if(feature?.geometry?.type !== "Point") continue;
+      const cnpj = normalizeCnpj(feature.properties || {});
+      if(!cnpj) continue;
+      const [lng,lat] = feature.geometry.coordinates || [];
+      if(!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) continue;
+
+      featuresByCnpj.set(cnpj,feature);
+      bounds.push([lat,lng]);
+
+      if(!isCompletedStatus(statusFor(cnpj,feature.properties || {}))) {
+        createPointMarker(cnpj,feature);
+      }
+    }
+
+    el.totalPontos.textContent = featuresByCnpj.size;
+    if(bounds.length) map.fitBounds(bounds,{padding:[20,20],maxZoom:10});
+    setNotice("PRONTO", "ok");
+  }
+
+  function findNearestPendingPoint() {
+    if(!currentPosition) {
+      setNotice("ATIVE O GPS PARA USAR PRÓXIMO", "err");
+      return;
+    }
+
+    let nearest = null;
+
+    for(const [cnpj,feature] of featuresByCnpj.entries()) {
+      const currentStatus = statusFor(cnpj,feature.properties || {});
+
+      // O botão PRÓXIMO busca exclusivamente pontos em CARTEIRA.
+      if(!isRouteEligibleStatus(currentStatus)) continue;
+
+      const coordinates = feature?.geometry?.coordinates || [];
+      const lng = Number(coordinates[0]);
+      const lat = Number(coordinates[1]);
+
+      if(!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+      const distance = haversine(currentPosition,{lat,lng});
+
+      // Considera somente pontos dentro do raio configurado, atualmente 1 km.
+      if(distance > radiusNext) continue;
+
+      if(!nearest || distance < nearest.distance) {
+        nearest = {cnpj,feature,lat,lng,distance};
+      }
+    }
+
+    if(!nearest) {
+      hideActionPanel();
+      map.closePopup();
+      setNotice(`NENHUM PONTO PENDENTE EM ATÉ ${Math.round(radiusNext)} M`, "err");
+      return;
+    }
+
+    const marker = markersByCnpj.get(nearest.cnpj);
+
+    if(!marker) {
+      setNotice("O PONTO MAIS PRÓXIMO NÃO ESTÁ DISPONÍVEL", "err");
+      return;
+    }
+
+    hideActionPanel();
+    map.closePopup();
+    map.setView([nearest.lat,nearest.lng],18,{animate:true});
+
+    window.setTimeout(() => {
+      marker.setPopupContent(buildPopup(nearest.cnpj));
+      marker.openPopup();
+      selectPoint(nearest.cnpj);
+    },250);
+
+    setNotice(`PRÓXIMO PONTO A ${Math.round(nearest.distance)} M`, "ok");
+  }
+
+  async function loadConfig() {
+    const snap = await get(ref(db,"CONFIG"));
+    if(!snap.exists()) return;
+    const cfg = snap.val() || {};
+    radiusRelease = Number(cfg.raioLiberacao) || 100;
+    radiusNext = Number(cfg.raioProximo) || 1000;
+    gpsSeconds = Number(cfg.gpsAtualizacaoSegundos) || 60;
+    gpsDistance = Number(cfg.gpsDistanciaMinima) || 100;
+  }
+
+  function updateOwnMarker(position) {
+    const latlng=[position.lat,position.lng];
+    if(!ownMarker) {
+      ownMarker=L.marker(latlng,{icon:agentIcon,pane:"agentsPane",interactive:false,keyboard:false}).addTo(map);
+      ownAccuracy=L.circle(latlng,{
+        pane:"gpsAccuracyPane",
+        radius:position.accuracy||0,
+        color:"#ff1744",
+        weight:2,
+        fillColor:"#ff1744",
+        fillOpacity:.10,
+        interactive:false
+      }).addTo(map);
+      map.setView(latlng,17);
+    } else {
+      ownMarker.setLatLng(latlng);
+      ownAccuracy.setLatLng(latlng).setRadius(position.accuracy||0);
+    }
+  }
+
+  function centerOnCurrentPosition() {
+    if(!currentPosition) {
+      setNotice("Aguardando uma posição válida do GPS.","err");
+      return;
+    }
+    map.setView([currentPosition.lat,currentPosition.lng],18,{animate:true});
+    setNotice(`LOCALIZAÇÃO CENTRALIZADA • precisão ${Math.round(currentPosition.accuracy||0)} m`,"ok");
+  }
+
+  async function sendPosition(force=false) {
+    if(!agentRef || !currentPosition) return;
+    const now=Date.now();
+    const elapsed=now-lastSentAt;
+    const moved=haversine(lastSentPosition,currentPosition);
+
+    if(!force && elapsed < gpsSeconds*1000 && moved < gpsDistance) return;
+
+    await update(agentRef,{
+      fase:"V0.4",
+      id:agentId,
+      nome:el.nome.value.trim(),
+      online:true,
+      lat:Number(currentPosition.lat.toFixed(7)),
+      lng:Number(currentPosition.lng.toFixed(7)),
+      precisao:Math.round(currentPosition.accuracy||0),
+      ultimaAtualizacao:serverTimestamp()
+    });
+
+    lastSentAt=now;
+    lastSentPosition={...currentPosition};
+    setNotice("CONECTADO", "ok");
+    document.body.classList.add("connected");
+    window.setTimeout(() => map.invalidateSize(false), 80);
+  }
+
+  async function startSession() {
+    const name=el.nome.value.trim();
+    if(!name) {setNotice("Informe o nome do agente.","err");return;}
+    if(!navigator.geolocation) {setNotice("Geolocalização indisponível.","err");return;}
+
+    el.entrar.disabled=true;
+    setNotice("Conectando e solicitando o GPS...");
+
+    try {
+      await loadConfig();
+      localStorage.setItem(nameKey,name);
+
+      agentRef=ref(db,`AGENTES_ONLINE/${agentId}`);
+      disconnectHandler=onDisconnect(agentRef);
+      await disconnectHandler.update({online:false,ultimaAtualizacao:serverTimestamp()});
+
+      await set(agentRef,{
+        fase:"V0.4",id:agentId,nome:name,online:true,
+        entrada:serverTimestamp(),ultimaAtualizacao:serverTimestamp()
+      });
+
+      watchId=navigator.geolocation.watchPosition(async geo => {
+        currentPosition={lat:geo.coords.latitude,lng:geo.coords.longitude,accuracy:geo.coords.accuracy};
+        el.latitude.textContent=currentPosition.lat.toFixed(6);
+        el.longitude.textContent=currentPosition.lng.toFixed(6);
+        el.precisao.textContent=`${Math.round(currentPosition.accuracy)} m`;
+        updateOwnMarker(currentPosition);
+        await sendPosition(lastSentPosition===null);
+      }, error => {
+        const messages={1:"Permissão de GPS negada.",2:"Localização indisponível.",3:"Tempo esgotado ao obter GPS."};
+        setNotice(messages[error.code]||"Erro no GPS.","err");
+      },{enableHighAccuracy:true,maximumAge:10000,timeout:25000});
+
+      timerId=setInterval(()=>sendPosition(false).catch(console.error),5000);
+      el.sair.disabled=false;
+      el.proximo.disabled=false;
+      el.rota10.disabled=false;
+      el.localizar.disabled=false;
+    } catch(error) {
+      console.error(error);
+      el.entrar.disabled=false;
+      setNotice("Falha ao iniciar a sessão.","err");
+    }
+  }
+
+  async function endSession() {
+    if(watchId!==null) navigator.geolocation.clearWatch(watchId);
+    if(timerId!==null) clearInterval(timerId);
+    watchId=null;timerId=null;
+    try {
+      if(disconnectHandler) await disconnectHandler.cancel();
+      if(agentRef) await update(agentRef,{online:false,ultimaAtualizacao:serverTimestamp()});
+      setNotice("OFFLINE","ok");
+      document.body.classList.remove("connected");
+    } catch(error) {
+      console.error(error);
+      setNotice("Sessão encerrada localmente.","err");
+    }
+    clearRoute10(false);
+    el.entrar.disabled=false;
+    el.proximo.disabled=true;
+    el.rota10.disabled=true;
+    el.localizar.disabled=true;
+    el.sair.disabled=true;
+  }
+
+  onValue(ref(db,"STATUS_PONTOS"), snap => {
+    pointStatus.clear();
+    const raw=snap.val()||{};
+
+    for(const [cnpj,value] of Object.entries(raw)) {
+      if(cnpj==="TEMP" || cnpj==="TESTE_MANUAL" || !value) continue;
+      pointStatus.set(cnpj,value);
+    }
+
+    // Sincroniza todos os pontos conforme os novos status; definitivos desaparecem.
+    for(const cnpj of featuresByCnpj.keys()) {
+      syncPointVisibility(cnpj);
+    }
+
+    refreshUpdatedCount();
+    reconcileRoute10(false);
+  });
+
+  onValue(ref(db,"AGENTES_ONLINE"), snap => {
+    const raw=snap.val()||{};
+    const active=new Set();
+
+    for(const item of Object.values(raw)) {
+      if(!item || item.fase!=="V0.4" || !item.online || item.id===agentId) continue;
+      const lat=Number(item.lat),lng=Number(item.lng);
+      if(!Number.isFinite(lat)||!Number.isFinite(lng)) continue;
+      active.add(item.id);
+
+      const popup=`<strong>${escapeHtml(item.nome||"Agente")}</strong><br>Online`;
+      if(otherAgentMarkers.has(item.id)) {
+        otherAgentMarkers.get(item.id).setLatLng([lat,lng]).setPopupContent(popup);
+      } else {
+        otherAgentMarkers.set(item.id,L.marker([lat,lng],{icon:agentIcon,pane:"agentsPane",interactive:false,keyboard:false}).addTo(map));
+      }
+    }
+
+    for(const [id,marker] of otherAgentMarkers) {
+      if(!active.has(id)) {map.removeLayer(marker);otherAgentMarkers.delete(id);}
+    }
+  });
+
+  el.entrar.addEventListener("click",startSession);
+  el.proximo.addEventListener("click",findNearestPendingPoint);
+  el.rota10.addEventListener("click",generateRoute10);
+  el.localizar.addEventListener("click",centerOnCurrentPosition);
+
+  el.routeClose.addEventListener("click",() =>
+    el.routePanel.classList.remove("show")
+  );
+  el.routeClear.addEventListener("click",() =>
+    clearRoute10(true)
+  );
+  el.routeOpen1.addEventListener("click",() =>
+    openRoute10Segment(0)
+  );
+  el.routeOpen2.addEventListener("click",() =>
+    openRoute10Segment(1)
+  );
+  el.routeShare.addEventListener("click",shareRoute10);
+  el.sair.addEventListener("click",endSession);
+
+  loadGeoJson().catch(error => {
+    console.error(error);
+    setNotice("Erro ao carregar o GeoJSON. Use o link do GitHub Pages.","err");
+  });
+</script>
+</body>
+</html>
