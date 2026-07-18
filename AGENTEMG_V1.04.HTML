@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-  <title>AGENTEMG V1.02 — Mapa do Agente</title>
+  <title>AGENTEMG V1.04 — Mapa do Agente</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <style>
     
@@ -79,10 +79,14 @@ button{cursor:pointer}
     .dot.ok{background:var(--green)} .dot.err{background:var(--red)}
     .stats{display:none}
     #map{width:100%;min-height:320px}
-    .agent-pin{position:relative;width:23px;height:23px;border-radius:50%;background:#ff1744;border:4px solid #fff;box-shadow:0 0 0 6px rgba(255,23,68,.34),0 0 18px rgba(255,23,68,.95)}
-    .agent-pin::after{content:"";position:absolute;inset:-10px;border:3px solid rgba(255,23,68,.65);border-radius:50%;animation:gpsPulse 1.5s ease-out infinite}
-    @keyframes gpsPulse{0%{transform:scale(.55);opacity:1}100%{transform:scale(1.65);opacity:0}}
+    .agent-pin{position:relative;width:23px;height:23px;border-radius:50%;background:#22c55e;border:4px solid #fff;box-shadow:0 0 0 5px rgba(34,197,94,.28),0 0 14px rgba(34,197,94,.72)}
+    .own-direction-pin{position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center}
+    .own-direction-pin::after{content:"";position:absolute;inset:3px;border:3px solid rgba(255,23,68,.55);border-radius:50%;animation:gpsPulse 1.5s ease-out infinite}
+    .own-direction-arrow{width:34px;height:38px;display:block;transform-origin:50% 50%;transition:transform .16s linear;filter:drop-shadow(0 2px 5px rgba(0,0,0,.65))}
+    @keyframes gpsPulse{0%{transform:scale(.55);opacity:1}100%{transform:scale(1.45);opacity:0}}
     .btn.locate{background:#e11d48;color:#fff;border-color:#fb7185}
+    .btn.orientation{background:#075985;color:#fff;border:1px solid #38bdf8}
+    .btn.orientation.active{background:#b45309;border-color:#fbbf24}
     .action-panel{
       position:fixed;left:8px;right:8px;bottom:8px;z-index:10000;
       display:none;padding:10px;background:rgba(9,18,33,.98);
@@ -114,7 +118,7 @@ button{cursor:pointer}
       background:#17253d;color:#fff;color-scheme:dark
     }
     .action-feedback{min-height:16px;margin-top:7px;font-size:11px;color:#cbd5e1}
-    #proximo,#rota10{display:none}
+    #proximo,#rota10,#orientacao{display:none}
 
     .route-panel{
       position:fixed;
@@ -236,7 +240,7 @@ button{cursor:pointer}
     body.connected .controls{grid-template-columns:1fr auto}
     body.connected .row{order:2}
     body.connected .notice{order:1}
-    body.connected #sair,body.connected #proximo,body.connected #rota10{display:block}
+    body.connected #sair,body.connected #proximo,body.connected #rota10,body.connected #orientacao{display:block}
     @media(max-width:760px){
       header{padding:5px 8px}
       h1{font-size:14px}
@@ -268,7 +272,7 @@ button{cursor:pointer}
 <body>
 <div class="app">
   <header>
-    <h1>AGENTEMG V1.02</h1>
+    <h1>AGENTEMG V1.04</h1>
     <p>Mapa de campo, GPS e atualização dos pontos.</p>
   </header>
 
@@ -279,6 +283,7 @@ button{cursor:pointer}
       <button id="proximo" class="btn next" disabled>PRÓXIMO</button>
       <button id="rota10" class="btn route10" disabled>ROTA 10</button>
       <button id="localizar" class="btn locate" disabled>MINHA LOCALIZAÇÃO</button>
+      <button id="orientacao" class="btn orientation" disabled>NORTE ↑</button>
       <button id="sair" class="btn danger" disabled>Encerrar sessão</button>
     </div>
 
@@ -349,6 +354,7 @@ button{cursor:pointer}
 </section>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
   import {
@@ -407,6 +413,7 @@ button{cursor:pointer}
     proximo:document.getElementById("proximo"),
     rota10:document.getElementById("rota10"),
     localizar:document.getElementById("localizar"),
+    orientacao:document.getElementById("orientacao"),
     sair:document.getElementById("sair"),
     dot:document.getElementById("dot"),
     mensagem:document.getElementById("mensagem"),
@@ -436,7 +443,16 @@ button{cursor:pointer}
     routeClear:document.getElementById("routeClear")
   };
 
-  const map = L.map("map", {preferCanvas:true}).setView([-20.2,-44.2],8);
+  const map = L.map("map", {
+    preferCanvas:true,
+    rotate:true,
+    touchRotate:false,
+    bearing:0
+  }).setView([-20.2,-44.2],8);
+
+  if(typeof map.setBearing !== "function") {
+    console.warn("leaflet-rotate não foi carregado; o mapa continuará com o norte para cima.");
+  }
 
   // Camadas separadas para evitar que GPS e precisão cubram os pontos no celular.
   map.createPane("gpsAccuracyPane");
@@ -465,6 +481,14 @@ button{cursor:pointer}
     tolerance:18
   });
 
+  // O círculo de precisão do GPS muda de posição com frequência.
+  // Em mapas rotacionados, o Canvas pode deixar cópias visuais antigas
+  // (círculos cinza/pretos). O SVG mantém apenas a posição atual.
+  const gpsAccuracyRenderer = L.svg({
+    pane:"gpsAccuracyPane",
+    padding:.5
+  });
+
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom:19, attribution:"&copy; OpenStreetMap"
   }).addTo(map);
@@ -482,9 +506,25 @@ button{cursor:pointer}
   };
   legend.addTo(map);
 
-  const agentIcon = L.divIcon({
-    className:"", html:'<div class="agent-pin"></div>',
-    iconSize:[39,39], iconAnchor:[19,19], popupAnchor:[0,-19]
+  const otherAgentIcon = L.divIcon({
+    className:"",
+    html:'<div class="agent-pin"></div>',
+    iconSize:[33,33],
+    iconAnchor:[16,16],
+    popupAnchor:[0,-16]
+  });
+
+  const ownAgentIcon = L.divIcon({
+    className:"",
+    html:`<div class="own-direction-pin">
+      <svg class="own-direction-arrow" viewBox="0 0 40 48" aria-hidden="true">
+        <path d="M20 2 L37 36 L24 31 L20 46 L16 31 L3 36 Z"
+              fill="#ff1744" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
+      </svg>
+    </div>`,
+    iconSize:[44,44],
+    iconAnchor:[22,22],
+    popupAnchor:[0,-22]
   });
 
   const scheduledPointIcon = L.divIcon({
@@ -508,6 +548,19 @@ button{cursor:pointer}
   let radiusNext = 1000;
   let gpsSeconds = 60;
   let gpsDistance = 100;
+
+  // Orientação local do aparelho. Nada desta seção é gravado no Firebase.
+  let orientationMode = "north";
+  let currentHeading = 0;
+  let headingInitialized = false;
+  let lastGpsHeadingPoint = null;
+  let orientationListenerActive = false;
+  let orientationEventName = "";
+  let orientationHandler = null;
+  let lastBearingAppliedAt = 0;
+  const HEADING_MIN_CHANGE = 4;
+  const HEADING_GPS_MIN_DISTANCE = 5;
+  const BEARING_UPDATE_INTERVAL_MS = 140;
 
   const featuresByCnpj = new Map();
   const markersByCnpj = new Map();
@@ -1519,12 +1572,192 @@ button{cursor:pointer}
     gpsDistance = Number(cfg.gpsDistanciaMinima) || 100;
   }
 
+  function normalizeAngle(value) {
+    const angle = Number(value);
+    if(!Number.isFinite(angle)) return 0;
+    return ((angle % 360) + 360) % 360;
+  }
+
+  function signedAngleDifference(from,to) {
+    return ((normalizeAngle(to) - normalizeAngle(from) + 540) % 360) - 180;
+  }
+
+  function bearingBetween(a,b) {
+    if(!a || !b) return NaN;
+    const rad = value => value * Math.PI / 180;
+    const lat1 = rad(a.lat);
+    const lat2 = rad(b.lat);
+    const deltaLng = rad(b.lng - a.lng);
+    const y = Math.sin(deltaLng) * Math.cos(lat2);
+    const x = Math.cos(lat1) * Math.sin(lat2) -
+      Math.sin(lat1) * Math.cos(lat2) * Math.cos(deltaLng);
+    return normalizeAngle(Math.atan2(y,x) * 180 / Math.PI);
+  }
+
+  function ownArrowElement() {
+    return ownMarker?.getElement()?.querySelector(".own-direction-arrow") || null;
+  }
+
+  function updateOwnArrow() {
+    const arrow = ownArrowElement();
+    if(!arrow) return;
+
+    // No modo direção o mapa já gira para colocar o rumo para cima.
+    // No modo norte, somente a seta gira sobre o mapa fixo.
+    const arrowAngle = orientationMode === "direction" ? 0 : currentHeading;
+    arrow.style.transform = `rotate(${normalizeAngle(arrowAngle)}deg)`;
+  }
+
+  function applyMapOrientation(force=false) {
+    updateOwnArrow();
+
+    if(orientationMode !== "direction") return;
+    if(typeof map.setBearing !== "function") return;
+
+    const now = performance.now();
+    if(!force && now - lastBearingAppliedAt < BEARING_UPDATE_INTERVAL_MS) return;
+    lastBearingAppliedAt = now;
+
+    map.setBearing(normalizeAngle(currentHeading));
+  }
+
+  function acceptHeading(rawHeading,force=false) {
+    const next = normalizeAngle(rawHeading);
+
+    if(!headingInitialized) {
+      currentHeading = next;
+      headingInitialized = true;
+      applyMapOrientation(true);
+      return;
+    }
+
+    const difference = signedAngleDifference(currentHeading,next);
+    if(!force && Math.abs(difference) < HEADING_MIN_CHANGE) return;
+
+    // Suavização circular para evitar tremores da bússola.
+    currentHeading = normalizeAngle(currentHeading + difference * 0.28);
+    applyMapOrientation(force);
+  }
+
+  function updateHeadingFromGps(geo) {
+    const directHeading = Number(geo?.coords?.heading);
+    const speed = Number(geo?.coords?.speed);
+
+    if(Number.isFinite(directHeading) && directHeading >= 0 &&
+       (!Number.isFinite(speed) || speed >= 0.4)) {
+      acceptHeading(directHeading);
+    }
+
+    const point = {
+      lat:Number(geo?.coords?.latitude),
+      lng:Number(geo?.coords?.longitude)
+    };
+
+    if(!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) return;
+
+    if(lastGpsHeadingPoint) {
+      const moved = haversine(lastGpsHeadingPoint,point);
+      if(moved >= HEADING_GPS_MIN_DISTANCE) {
+        acceptHeading(bearingBetween(lastGpsHeadingPoint,point));
+        lastGpsHeadingPoint = point;
+      }
+    } else {
+      lastGpsHeadingPoint = point;
+    }
+  }
+
+  function deviceHeading(event) {
+    const iosHeading = Number(event?.webkitCompassHeading);
+    if(Number.isFinite(iosHeading)) return normalizeAngle(iosHeading);
+
+    const alpha = Number(event?.alpha);
+    if(!Number.isFinite(alpha)) return NaN;
+
+    // Em deviceorientationabsolute, alpha cresce no sentido anti-horário;
+    // o rumo de navegação é convertido para graus no sentido horário.
+    return normalizeAngle(360 - alpha);
+  }
+
+  async function enableOrientationSensor() {
+    if(orientationListenerActive) return true;
+    if(typeof window.DeviceOrientationEvent === "undefined") return false;
+
+    try {
+      if(typeof DeviceOrientationEvent.requestPermission === "function") {
+        const permission = await DeviceOrientationEvent.requestPermission();
+        if(permission !== "granted") return false;
+      }
+
+      orientationEventName = "ondeviceorientationabsolute" in window
+        ? "deviceorientationabsolute"
+        : "deviceorientation";
+
+      orientationHandler = event => {
+        const heading = deviceHeading(event);
+        if(Number.isFinite(heading)) acceptHeading(heading);
+      };
+
+      window.addEventListener(orientationEventName,orientationHandler,true);
+      orientationListenerActive = true;
+      return true;
+    } catch(error) {
+      console.warn("Orientação do aparelho indisponível:",error);
+      return false;
+    }
+  }
+
+  function resetNorthMode(showMessage=false) {
+    orientationMode = "north";
+    el.orientacao.classList.remove("active");
+    el.orientacao.textContent = "NORTE ↑";
+
+    if(typeof map.setBearing === "function") {
+      map.setBearing(0);
+    }
+
+    updateOwnArrow();
+    if(showMessage) setNotice("MAPA COM O NORTE PARA CIMA","ok");
+  }
+
+  async function toggleOrientationMode() {
+    if(!currentPosition) {
+      setNotice("AGUARDE UMA POSIÇÃO VÁLIDA DO GPS","err");
+      return;
+    }
+
+    if(orientationMode === "direction") {
+      resetNorthMode(true);
+      return;
+    }
+
+    if(typeof map.setBearing !== "function") {
+      setNotice("ROTAÇÃO DO MAPA INDISPONÍVEL NESTE NAVEGADOR","err");
+      return;
+    }
+
+    const sensorEnabled = await enableOrientationSensor();
+    orientationMode = "direction";
+    el.orientacao.classList.add("active");
+    el.orientacao.textContent = "DIREÇÃO ↑";
+
+    map.setView([currentPosition.lat,currentPosition.lng],17,{animate:true});
+    applyMapOrientation(true);
+
+    setNotice(
+      sensorEnabled
+        ? "DIREÇÃO PARA CIMA • BÚSSOLA E GPS ATIVOS"
+        : "DIREÇÃO PARA CIMA • RUMO CALCULADO PELO GPS",
+      "ok"
+    );
+  }
+
   function updateOwnMarker(position) {
     const latlng=[position.lat,position.lng];
     if(!ownMarker) {
-      ownMarker=L.marker(latlng,{icon:agentIcon,pane:"agentsPane",interactive:false,keyboard:false}).addTo(map);
+      ownMarker=L.marker(latlng,{icon:ownAgentIcon,pane:"agentsPane",interactive:false,keyboard:false}).addTo(map);
       ownAccuracy=L.circle(latlng,{
         pane:"gpsAccuracyPane",
+        renderer:gpsAccuracyRenderer,
         radius:position.accuracy||0,
         color:"#ff1744",
         weight:2,
@@ -1537,6 +1770,12 @@ button{cursor:pointer}
       ownMarker.setLatLng(latlng);
       ownAccuracy.setLatLng(latlng).setRadius(position.accuracy||0);
     }
+
+    updateOwnArrow();
+    if(orientationMode === "direction") {
+      map.panTo(latlng,{animate:false});
+      applyMapOrientation(false);
+    }
   }
 
   function centerOnCurrentPosition() {
@@ -1545,6 +1784,7 @@ button{cursor:pointer}
       return;
     }
     map.setView([currentPosition.lat,currentPosition.lng],18,{animate:true});
+    if(orientationMode === "direction") applyMapOrientation(true);
     setNotice(`LOCALIZAÇÃO CENTRALIZADA • precisão ${Math.round(currentPosition.accuracy||0)} m`,"ok");
   }
 
@@ -1596,6 +1836,7 @@ button{cursor:pointer}
       });
 
       watchId=navigator.geolocation.watchPosition(async geo => {
+        updateHeadingFromGps(geo);
         currentPosition={lat:geo.coords.latitude,lng:geo.coords.longitude,accuracy:geo.coords.accuracy};
         el.latitude.textContent=currentPosition.lat.toFixed(6);
         el.longitude.textContent=currentPosition.lng.toFixed(6);
@@ -1612,6 +1853,7 @@ button{cursor:pointer}
       el.proximo.disabled=false;
       el.rota10.disabled=false;
       el.localizar.disabled=false;
+      el.orientacao.disabled=false;
     } catch(error) {
       console.error(error);
       el.entrar.disabled=false;
@@ -1637,6 +1879,8 @@ button{cursor:pointer}
     el.proximo.disabled=true;
     el.rota10.disabled=true;
     el.localizar.disabled=true;
+    el.orientacao.disabled=true;
+    resetNorthMode(false);
     el.sair.disabled=true;
   }
 
@@ -1672,7 +1916,7 @@ button{cursor:pointer}
       if(otherAgentMarkers.has(item.id)) {
         otherAgentMarkers.get(item.id).setLatLng([lat,lng]).setPopupContent(popup);
       } else {
-        otherAgentMarkers.set(item.id,L.marker([lat,lng],{icon:agentIcon,pane:"agentsPane",interactive:false,keyboard:false}).addTo(map));
+        otherAgentMarkers.set(item.id,L.marker([lat,lng],{icon:otherAgentIcon,pane:"agentsPane",interactive:false,keyboard:false}).addTo(map));
       }
     }
 
@@ -1685,6 +1929,7 @@ button{cursor:pointer}
   el.proximo.addEventListener("click",findNearestPendingPoint);
   el.rota10.addEventListener("click",generateRoute10);
   el.localizar.addEventListener("click",centerOnCurrentPosition);
+  el.orientacao.addEventListener("click",toggleOrientationMode);
 
   el.routeClose.addEventListener("click",() =>
     el.routePanel.classList.remove("show")
