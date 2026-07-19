@@ -44,11 +44,39 @@ button{cursor:pointer}
 }
 .legend-row{display:flex;align-items:center;gap:4px;margin:2px 0}
 .legend-dot{width:7px;height:7px;border-radius:50%;border:1px solid rgba(255,255,255,.65)}
-.legend-dot.scheduled{background:linear-gradient(90deg,#111111 0 50%,#FACC15 50% 100%)}
-.scheduled-pin{
-  width:16px;height:16px;margin:4px;border-radius:50%;
-  background:linear-gradient(90deg,#111111 0 50%,#FACC15 50% 100%);
-  border:2px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,.55)
+.legend-dot.return-commercial{
+  background:#38BDF8;
+  border:3px solid #111111;
+}
+.legend-dot.return-residential{
+  background:#38BDF8;
+  border:3px solid #ffffff;
+}
+.legend-dot.agendado{
+  background:#FACC15;
+  border-color:#FACC15;
+}
+.legend-dot.verificacao-comercial{
+  background:#111111;
+  border-color:#ffffff;
+}
+.legend-dot.verificacao-residencial{
+  background:#16A34A;
+  border-color:#ffffff;
+}
+.legend-t2{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:12px;height:12px;border-radius:50%;
+  background:#FACC15;color:#111111;border:1px solid #FACC15;
+  font-size:8px;font-weight:900;line-height:1
+}
+.t2-pin{
+  display:flex;align-items:center;justify-content:center;
+  width:18px;height:18px;margin:3px;border-radius:50%;
+  background:#FACC15;color:#111111;
+  border:2px solid #FACC15;
+  box-shadow:0 2px 7px rgba(0,0,0,.55);
+  font-size:12px;font-weight:900;line-height:1
 }
 
     .app{display:grid;grid-template-rows:auto auto 1fr;height:100%}
@@ -311,10 +339,14 @@ button{cursor:pointer}
     <select id="actionStatus" class="action-select" required>
       <option value="">Selecione o status</option>
       <option value="INICIADO">INICIADO</option>
-      <option value="RETORNAR_COMERCIAL">RETORNAR_COMERCIAL</option>
-      <option value="RETORNAR_RESIDENCIA">RETORNAR_RESIDENCIA</option>
-      <option value="RECUSADO">RECUSADO</option>
+      <option value="RECUSA">RECUSA</option>
       <option value="END_ERRADO">END_ERRADO</option>
+      <option value="RETORNAR">RETORNAR</option>
+      <option value="RETORNAR_COMERCIAL">RETORNAR_COMERCIAL</option>
+      <option value="RETORNAR_RESIDENCIAL">RETORNAR_RESIDENCIAL</option>
+      <option value="VERIFICACAO_COMERCIAL">VERIFICACAO_COMERCIAL</option>
+      <option value="VERIFICACAO_RESIDENCIAL">VERIFICACAO_RESIDENCIAL</option>
+      <option value="APLICAR_T2">APLICAR_T2</option>
       <option value="AGENDADO">AGENDADO</option>
     </select>
     <button id="actionSave" type="submit" class="action-save">SALVAR</button>
@@ -376,34 +408,48 @@ button{cursor:pointer}
 
   const STATUS_OPTIONS = [
     "INICIADO",
-    "RETORNAR_COMERCIAL",
-    "RETORNAR_RESIDENCIA",
-    "RECUSADO",
+    "RECUSA",
     "END_ERRADO",
-    "AGENDADO"
+    "RETORNAR",
+    "RETORNAR_COMERCIAL",
+    "RETORNAR_RESIDENCIAL",
+    "VERIFICACAO_COMERCIAL",
+    "VERIFICACAO_RESIDENCIAL",
+    "APLICAR_T2",
+    "AGENDADO",
+    "T2_APLICADO"
   ];
 
   const STATUS_COLORS = {
     PENDENTE:"#123D68",
     CARTEIRA:"#123D68",
-    RETORNAR_COMERCIAL:"#16A34A",
-    RETORNAR_RESIDENCIA:"#7C3AED",
-    INICIADO:"#F59E0B",
-    RECUSADO:"#B91C1C",
+    RETORNAR:"#38BDF8",
+    RETORNAR_COMERCIAL:"#38BDF8",
+    RETORNAR_RESIDENCIAL:"#38BDF8",
+    VERIFICACAO_COMERCIAL:"#111111",
+    VERIFICACAO_RESIDENCIAL:"#16A34A",
+    APLICAR_T2:"#FACC15",
+    AGENDADO:"#FACC15",
 
-    // Compatibilidade com registros antigos já existentes no Firebase.
-    RETORNAR:"#06B6D4",
+    // Status finais (não permanecem no mapa do agente).
+    INICIADO:"#F59E0B",
     RECUSA:"#B91C1C",
     END_ERRADO:"#6B7280",
+    T2_APLICADO:"#FACC15",
+
+    // Compatibilidade com registros antigos.
+    RECUSADO:"#B91C1C",
+    RETORNAR_RESIDENCIA:"#38BDF8",
     NAO_CONHECEM:"#64748B"
   };
 
   const FINAL_STATUSES = new Set([
     "INICIADO",
-    "RECUSADO",
-    "END_ERRADO",
-    // Legados definitivos:
     "RECUSA",
+    "END_ERRADO",
+    "T2_APLICADO",
+    // Legados definitivos:
+    "RECUSADO",
     "NAO_CONHECEM"
   ]);
 
@@ -498,9 +544,13 @@ button{cursor:pointer}
     const div = L.DomUtil.create("div","legend");
     div.innerHTML = `
       <div class="legend-row"><span class="legend-dot" style="background:#123D68"></span>CARTEIRA</div>
-      <div class="legend-row"><span class="legend-dot" style="background:#16A34A"></span>RET. COMERCIAL</div>
-      <div class="legend-row"><span class="legend-dot" style="background:#7C3AED"></span>RET. RESIDÊNCIA</div>
-      <div class="legend-row"><span class="legend-dot scheduled"></span>AGENDADO</div>
+      <div class="legend-row"><span class="legend-dot" style="background:#38BDF8"></span>RETORNAR</div>
+      <div class="legend-row"><span class="legend-dot return-commercial"></span>RET. COMERCIAL</div>
+      <div class="legend-row"><span class="legend-dot return-residential"></span>RET. RESIDENCIAL</div>
+      <div class="legend-row"><span class="legend-dot verificacao-comercial"></span>VERIF. COMERCIAL</div>
+      <div class="legend-row"><span class="legend-dot verificacao-residencial"></span>VERIF. RESIDENCIAL</div>
+      <div class="legend-row"><span class="legend-t2">2</span>APLICAR T2</div>
+      <div class="legend-row"><span class="legend-dot agendado"></span>AGENDADO</div>
     `;
     return div;
   };
@@ -527,9 +577,9 @@ button{cursor:pointer}
     popupAnchor:[0,-22]
   });
 
-  const scheduledPointIcon = L.divIcon({
+  const t2PointIcon = L.divIcon({
     className:"",
-    html:'<div class="scheduled-pin"></div>',
+    html:'<div class="t2-pin">2</div>',
     iconSize:[24,24],
     iconAnchor:[12,12],
     popupAnchor:[0,-10]
@@ -629,7 +679,9 @@ button{cursor:pointer}
       .replace(/\s+/g,"_");
 
     if(!raw || raw === "PENDENTE") return "CARTEIRA";
-    if(raw === "RECUSA") return "RECUSA"; // legado definitivo
+    if(raw === "RECUSADO") return "RECUSA";
+    if(raw === "RETORNAR_RESIDENCIA") return "RETORNAR_RESIDENCIAL";
+    if(raw === "AGENDAMENTO") return "AGENDADO";
     return raw;
   }
 
@@ -644,22 +696,55 @@ button{cursor:pointer}
   }
 
   function markerTypeForStatus(status) {
-    return normalizeStatus(status) === "AGENDADO" ? "scheduled" : "circle";
+    return normalizeStatus(status) === "APLICAR_T2" ? "t2" : "circle";
   }
 
   function markerStyle(status) {
     const normalized = normalizeStatus(status);
-    const color = STATUS_COLORS[normalized] || STATUS_COLORS.CARTEIRA;
-    return {
+    const style = {
       renderer:pointRenderer,
       radius:7,
       color:"#ffffff",
       weight:1.5,
-      fillColor:color,
-      fillOpacity:.95,
+      fillColor:STATUS_COLORS[normalized] || STATUS_COLORS.CARTEIRA,
+      fillOpacity:.98,
       interactive:true,
       bubblingMouseEvents:false
     };
+
+    // Anel externo ocupa aproximadamente metade da área visual.
+    if(normalized === "RETORNAR_COMERCIAL") {
+      style.color = "#111111";
+      style.weight = 4;
+      style.fillColor = "#38BDF8";
+    } else if(normalized === "RETORNAR_RESIDENCIAL") {
+      style.color = "#ffffff";
+      style.weight = 4;
+      style.fillColor = "#38BDF8";
+    } else if(normalized === "VERIFICACAO_COMERCIAL") {
+      style.color = "#ffffff";
+      style.weight = 1.5;
+      style.fillColor = "#111111";
+    } else if(normalized === "VERIFICACAO_RESIDENCIAL") {
+      style.color = "#ffffff";
+      style.weight = 1.5;
+      style.fillColor = "#16A34A";
+    } else if(normalized === "AGENDADO") {
+      // Centro e anel externo amarelos.
+      style.color = "#FACC15";
+      style.weight = 2.5;
+      style.fillColor = "#FACC15";
+    } else if(normalized === "RETORNAR") {
+      style.color = "#ffffff";
+      style.weight = 1.5;
+      style.fillColor = "#38BDF8";
+    } else if(normalized === "CARTEIRA") {
+      style.color = "#ffffff";
+      style.weight = 1.5;
+      style.fillColor = "#123D68";
+    }
+
+    return style;
   }
 
   function schedulePayloadFromForm() {
@@ -1144,6 +1229,21 @@ button{cursor:pointer}
     return FINAL_STATUSES.has(normalizeStatus(status));
   }
 
+  function configureStatusOptions(currentStatus) {
+    const normalizedCurrent = normalizeStatus(currentStatus);
+
+    for(const option of [...el.actionStatus.options]) {
+      if(option.value === "T2_APLICADO") option.remove();
+    }
+
+    if(normalizedCurrent === "APLICAR_T2") {
+      const option = document.createElement("option");
+      option.value = "T2_APLICADO";
+      option.textContent = "T2_APLICADO";
+      el.actionStatus.appendChild(option);
+    }
+  }
+
   function hideActionPanel() {
     selectedCnpj = "";
     el.actionPanel.classList.remove("show");
@@ -1167,8 +1267,10 @@ button{cursor:pointer}
     const distance = currentPosition ? haversine(currentPosition,{lat,lng}) : Infinity;
 
     selectedCnpj = cnpj;
+    const currentStatus = statusFor(cnpj,props);
+    configureStatusOptions(currentStatus);
     el.actionTitle.textContent = props.NOME_FANTASIA || props.RAZAO_SOCIAL || "Ponto";
-    el.actionMeta.textContent = `CNPJ ${cnpj} • ${Number.isFinite(distance) ? Math.round(distance) + " m" : "GPS não ativo"}`;
+    el.actionMeta.textContent = `CNPJ ${cnpj} • ${Number.isFinite(distance) ? Math.round(distance) + " m" : "GPS não ativo"} • ${currentStatus}`;
     el.actionStatus.value = "";
     el.scheduleFields.classList.remove("show");
     el.scheduleDate.value = "";
@@ -1196,9 +1298,9 @@ button{cursor:pointer}
     const status = statusFor(cnpj,feature.properties || {});
     const markerType = markerTypeForStatus(status);
 
-    const marker = markerType === "scheduled"
+    const marker = markerType === "t2"
       ? L.marker([lat,lng],{
-          icon:scheduledPointIcon,
+          icon:t2PointIcon,
           pane:"pointsPane",
           interactive:true,
           keyboard:true
@@ -1226,7 +1328,7 @@ button{cursor:pointer}
     const desiredMarkerType = markerTypeForStatus(currentStatus);
     let marker = markersByCnpj.get(cnpj);
 
-    // INICIADO, RECUSADO e END_ERRADO desaparecem do mapa do agente.
+    // INICIADO, RECUSA, END_ERRADO e T2_APLICADO desaparecem do mapa do agente.
     // Os status legados definitivos também continuam ocultos.
     if(isCompletedStatus(currentStatus)) {
       if(marker) {
@@ -1285,6 +1387,14 @@ button{cursor:pointer}
     const feature = featuresByCnpj.get(cnpj);
     if(!feature) {
       const msg = "Ponto não encontrado no mapa.";
+      setNotice(msg, "err");
+      el.actionFeedback.textContent = msg;
+      return false;
+    }
+
+    const currentStatus = statusFor(cnpj,feature.properties || {});
+    if(status === "T2_APLICADO" && currentStatus !== "APLICAR_T2") {
+      const msg = "T2_APLICADO só pode ser usado em pontos com status APLICAR_T2.";
       setNotice(msg, "err");
       el.actionFeedback.textContent = msg;
       return false;
