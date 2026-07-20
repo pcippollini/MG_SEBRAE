@@ -1152,7 +1152,8 @@
     window.location.href
   ).href;
 
-  const GEO_CACHE = "mg-sebrae-mobile-geo-v9";
+  // Cache local apenas para contingência offline. A leitura normal é sempre da rede.
+  const GEO_CACHE = "mg-sebrae-mobile-geo-v11";
 
   const STATUS_ORDER = [
     "CARTEIRA",
@@ -4239,9 +4240,17 @@
   }
 
   async function fetchGeoJsonFromNetwork(cache){
+    // O parâmetro variável impede que o navegador ou o GitHub Pages devolvam
+    // uma cópia antiga do GeoJSON. A cópia atual é salva sob a URL estável.
+    const networkUrl = new URL(GEOJSON_URL);
+    networkUrl.searchParams.set("_atualizacao", String(Date.now()));
+
     const response = await fetch(
-      GEOJSON_URL,
-      {cache:"no-cache"}
+      networkUrl.href,
+      {
+        cache:"no-store",
+        headers:{"Cache-Control":"no-cache"}
+      }
     );
 
     if(!response.ok){
@@ -4265,25 +4274,30 @@
       cache = await caches.open(GEO_CACHE);
     }
 
-    if(!forceNetwork && cache){
-      const cached = await cache.match(GEOJSON_URL);
+    // Rede primeiro: evita exibir uma base antiga, como a versão de 1.642 pontos.
+    try{
+      const data = await fetchGeoJsonFromNetwork(cache);
+      setConnection(
+        forceNetwork
+          ? "Firebase conectado • base atualizada"
+          : "Firebase conectado • base atual carregada",
+        "ok"
+      );
+      return data;
+    }catch(error){
+      console.warn("Falha ao baixar GeoJSON atual; tentando cache local",error);
 
-      if(cached){
-        setConnection("Base local carregada", "ok");
+      if(cache){
+        const cached = await cache.match(GEOJSON_URL);
 
-        fetchGeoJsonFromNetwork(cache)
-          .then(() => {
-            setConnection("Firebase conectado • base atualizada em cache","ok");
-          })
-          .catch(() => {});
-
-        return cached.json();
+        if(cached){
+          setConnection("Sem rede • usando base local", "err");
+          return cached.json();
+        }
       }
-    }
 
-    const data = await fetchGeoJsonFromNetwork(cache);
-    setConnection("Firebase conectado • base baixada","ok");
-    return data;
+      throw error;
+    }
   }
 
   function clearPointLayers(){
