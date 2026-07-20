@@ -493,36 +493,51 @@ button{cursor:pointer}
     preferCanvas:true,
     rotate:true,
     touchRotate:false,
-    bearing:0
+    bearing:0,
+    // O leaflet-rotate 0.2.8 pode deslocar vetores durante a animação
+    // de zoom. O zoom continua funcionando, mas sem a transição instável.
+    zoomAnimation:false,
+    markerZoomAnimation:false,
+    fadeAnimation:false
   }).setView([-20.2,-44.2],8);
 
   if(typeof map.setBearing !== "function") {
     console.warn("leaflet-rotate não foi carregado; o mapa continuará com o norte para cima.");
   }
 
-  // Camadas separadas para evitar que GPS e precisão cubram os pontos no celular.
-  map.createPane("gpsAccuracyPane");
+  // IMPORTANTE PARA O MAPA ROTATIVO:
+  // vetores devem ser filhos do rotatePane e marcadores HTML devem ser
+  // filhos do norotatePane. Criar tudo diretamente no mapPane fazia os
+  // pontos se deslocarem em relação às ruas durante o zoom.
+  const rotatingPane = map._rotatePane || map._mapPane;
+  const fixedPane = map._norotatePane || map._mapPane;
+
+  map.createPane("gpsAccuracyPane",rotatingPane);
   map.getPane("gpsAccuracyPane").style.zIndex = 350;
   map.getPane("gpsAccuracyPane").style.pointerEvents = "none";
 
-  map.createPane("agentsPane");
-  map.getPane("agentsPane").style.zIndex = 620;
-  map.getPane("agentsPane").style.pointerEvents = "none";
-
-  map.createPane("routeLinePane");
+  map.createPane("routeLinePane",rotatingPane);
   map.getPane("routeLinePane").style.zIndex = 590;
   map.getPane("routeLinePane").style.pointerEvents = "none";
 
-  map.createPane("pointsPane");
-  map.getPane("pointsPane").style.zIndex = 650;
-  map.getPane("pointsPane").style.pointerEvents = "auto";
+  map.createPane("pointsVectorPane",rotatingPane);
+  map.getPane("pointsVectorPane").style.zIndex = 650;
+  map.getPane("pointsVectorPane").style.pointerEvents = "auto";
 
-  map.createPane("routeNumberPane");
+  map.createPane("agentsPane",fixedPane);
+  map.getPane("agentsPane").style.zIndex = 620;
+  map.getPane("agentsPane").style.pointerEvents = "none";
+
+  map.createPane("pointsMarkerPane",fixedPane);
+  map.getPane("pointsMarkerPane").style.zIndex = 650;
+  map.getPane("pointsMarkerPane").style.pointerEvents = "auto";
+
+  map.createPane("routeNumberPane",fixedPane);
   map.getPane("routeNumberPane").style.zIndex = 680;
   map.getPane("routeNumberPane").style.pointerEvents = "none";
 
   const pointRenderer = L.canvas({
-    pane:"pointsPane",
+    pane:"pointsVectorPane",
     padding:.5,
     tolerance:18
   });
@@ -533,6 +548,13 @@ button{cursor:pointer}
   const gpsAccuracyRenderer = L.svg({
     pane:"gpsAccuracyPane",
     padding:.5
+  });
+
+  map.on("zoomend",() => {
+    requestAnimationFrame(() => {
+      if(typeof pointRenderer._update === "function") pointRenderer._update();
+      if(typeof gpsAccuracyRenderer._update === "function") gpsAccuracyRenderer._update();
+    });
   });
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -1301,7 +1323,7 @@ button{cursor:pointer}
     const marker = markerType === "t2"
       ? L.marker([lat,lng],{
           icon:t2PointIcon,
-          pane:"pointsPane",
+          pane:"pointsMarkerPane",
           interactive:true,
           keyboard:true
         }).addTo(map)
