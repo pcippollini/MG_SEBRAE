@@ -1501,7 +1501,7 @@ body.connected #sair{display:none!important}
       const restPayload = {
         status,
         agente:el.nome.value.trim(),
-        agenteId,
+        agenteId:agentId,
         hora:{".sv":"timestamp"},
         ...(scheduleData || {})
       };
@@ -1533,7 +1533,7 @@ body.connected #sair{display:none!important}
       pointStatus.set(cnpj,{
         status,
         agente:el.nome.value.trim(),
-        agenteId,
+        agenteId:agentId,
         hora:Date.now(),
         ...(scheduleData || {})
       });
