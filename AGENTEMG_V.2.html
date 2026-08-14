@@ -30,12 +30,13 @@ button{cursor:pointer}
 .popup-title{font-size:16px;font-weight:700;margin-bottom:5px}
 .popup-line{margin:4px 0;color:#d6e0f0;line-height:1.3}
 .popup-muted{color:#aebbd0;font-size:12px}
-.popup-route,.popup-save{
+.popup-route,.popup-save,.popup-street{
   display:block;width:100%;margin-top:10px;padding:10px 12px;border:0;border-radius:9px;
   text-align:center;text-decoration:none;font-weight:700
 }
 .popup-route{background:#2563eb;color:#fff}
 .popup-save{background:#16a34a;color:#fff}
+.popup-street{background:#334155;color:#fff}
 .popup-select{
   width:100%;margin-top:9px;padding:10px;border-radius:8px;border:1px solid #3a4c6d;
   background:#17253d;color:#fff
@@ -330,6 +331,11 @@ body.connected .row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));w
   width:100%;min-height:44px;padding:9px 11px;border:1px solid #3a4c6d;border-radius:10px;
   background:#17253d;color:#fff;font-size:15px
 }
+.notes-textarea{
+  width:100%;min-height:220px;resize:vertical;padding:11px;border:1px solid #3a4c6d;border-radius:10px;
+  background:#17253d;color:#fff;font:inherit;font-size:14px;line-height:1.45
+}
+.notes-status{margin-top:7px;color:var(--muted);font-size:10px;line-height:1.35}
 .modal-primary,.modal-secondary,.modal-danger,.modal-warn{
   min-height:42px;padding:8px 11px;border-radius:10px;color:#fff;font-size:12px;font-weight:900
 }
@@ -723,6 +729,46 @@ body.connected #sair{display:none!important}
   </div>
 </div>
 
+<!-- Pesquisa livre no Google / Google Maps -->
+<div id="externalSearchModal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Pesquisa externa">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div id="externalSearchTitle" class="modal-title">Pesquisa</div>
+        <div id="externalSearchSubtitle" class="modal-subtitle">Digite livremente o que deseja procurar.</div>
+      </div>
+      <button id="externalSearchClose" class="modal-close" type="button">X</button>
+    </div>
+    <label id="externalSearchLabel" class="modal-label" for="externalSearchInput">PESQUISA</label>
+    <input id="externalSearchInput" class="modal-input" type="search" inputmode="search" autocomplete="off" placeholder="Digite sua pesquisa">
+    <div class="modal-actions one">
+      <button id="externalSearchGo" class="modal-primary" type="button">PESQUISAR</button>
+    </div>
+    <div class="login-note">Pesquisa livre. Os dados digitados não são salvos no Firebase.</div>
+  </div>
+</div>
+
+<!-- Bloco de notas local -->
+<div id="notesModal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Bloco de notas local">
+  <div class="modal-card wide">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">📝 Bloco de notas local</div>
+        <div class="modal-subtitle">Anotações deste navegador/aparelho. Não são enviadas ao Firebase.</div>
+      </div>
+      <button id="notesClose" class="modal-close" type="button">X</button>
+    </div>
+    <textarea id="notesText" class="notes-textarea" spellcheck="true" placeholder="Digite suas anotações de campo..."></textarea>
+    <div id="notesStatus" class="notes-status">Salvamento local automático.</div>
+    <div class="modal-actions">
+      <button id="notesSave" class="modal-primary" type="button">SALVAR</button>
+      <button id="notesCopy" class="modal-secondary" type="button">COPIAR</button>
+      <button id="notesExport" class="modal-secondary" type="button">EXPORTAR TXT</button>
+      <button id="notesClear" class="modal-danger" type="button">LIMPAR</button>
+    </div>
+  </div>
+</div>
+
 <!-- Confirmação END_ERRADO -->
 <div id="endWrongModal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Confirmar endereço errado">
   <div class="modal-card">
@@ -800,7 +846,7 @@ body.connected #sair{display:none!important}
     </div>
     <div class="help-section">
       <div class="help-title">4. Botões abaixo do zoom</div>
-      <div class="help-text">Abaixo dos botões <strong>+</strong> e <strong>−</strong> do mapa existem dois atalhos: <strong>⌖ CENTRALIZAR</strong>, que leva o mapa para sua posição GPS atual, e <strong>🔍 BUSCAR</strong>, que abre a pesquisa de estabelecimentos.</div>
+      <div class="help-text">Abaixo dos botões <strong>+</strong> e <strong>−</strong> do mapa ficam os atalhos compactos: <strong>⌖ CENTRALIZAR</strong>, <strong>🔍 BUSCAR</strong>, <strong>G GOOGLE</strong>, <strong>📍 GOOGLE MAPS</strong> e <strong>📝 NOTAS</strong>. Eles mantêm o mesmo tamanho dos controles atuais e só executam alguma ação quando você toca neles.</div>
     </div>
     <div class="help-section">
       <div class="help-title">5. Buscar ponto</div>
@@ -843,6 +889,10 @@ body.connected #sair{display:none!important}
     <div class="help-section">
       <div class="help-title">12. Menu e encerramento</div>
       <div class="help-text">Use <strong>☰ MENU</strong> para consultar legenda, nome do agente, situação e precisão do GPS, acessar BUSCA e CENTRALIZAR e encerrar a sessão. Ao terminar o trabalho, toque em <strong>ENCERRAR SESSÃO</strong> para parar o acompanhamento do GPS e registrar o agente como offline.</div>
+    </div>
+    <div class="help-section">
+      <div class="help-title">13. Google, Maps, Street View e notas</div>
+      <div class="help-text"><strong>G GOOGLE:</strong> abre um campo livre; digite o que quiser pesquisar e a busca será aberta no navegador. <strong>📍 GOOGLE MAPS:</strong> também usa um campo livre e abre a pesquisa no Google Maps, podendo ser direcionada ao aplicativo quando disponível. <strong>📷 STREET VIEW:</strong> aparece dentro do popup de cada ponto e usa diretamente a latitude/longitude daquele ponto, sem depender da qualidade do nome ou endereço da base. <strong>📝 NOTAS:</strong> abre um bloco local com salvamento automático, copiar, exportar TXT e limpar. As notas ficam somente neste navegador/aparelho, não usam Firebase e podem ser perdidas se os dados do navegador forem apagados.</div>
     </div>
   </div>
 </div>
@@ -957,7 +1007,10 @@ body.connected #sair{display:none!important}
     "selectorTitle","selectorSubtitle","selectorClose","selectorStatusGrid","selectorAll",
     "selectorClear","selectorQtyBlock","selectorRun","nextResultModal","nextResultClose",
     "nextResultName","nextResultStatus","nextResultDistance","nextResultAddress",
-    "nextResultCenter","nextResultRoute","endWrongModal","endWrongNo","endWrongYes"
+    "nextResultCenter","nextResultRoute","endWrongModal","endWrongNo","endWrongYes",
+    "externalSearchModal","externalSearchTitle","externalSearchSubtitle","externalSearchLabel",
+    "externalSearchInput","externalSearchGo","externalSearchClose",
+    "notesModal","notesClose","notesText","notesStatus","notesSave","notesCopy","notesExport","notesClear"
   ].map(id => [id,document.getElementById(id)]));
   el.actionPanel = el.actionForm;
 
@@ -1034,6 +1087,24 @@ body.connected #sair{display:none!important}
       search.title = "Buscar ponto";
       search.setAttribute("aria-label","Buscar ponto");
 
+      const google = L.DomUtil.create("a","",container);
+      google.href = "#";
+      google.innerHTML = "G";
+      google.title = "Pesquisar no Google";
+      google.setAttribute("aria-label","Pesquisar no Google");
+
+      const googleMaps = L.DomUtil.create("a","",container);
+      googleMaps.href = "#";
+      googleMaps.innerHTML = "📍";
+      googleMaps.title = "Pesquisar no Google Maps";
+      googleMaps.setAttribute("aria-label","Pesquisar no Google Maps");
+
+      const notes = L.DomUtil.create("a","",container);
+      notes.href = "#";
+      notes.innerHTML = "📝";
+      notes.title = "Bloco de notas local";
+      notes.setAttribute("aria-label","Bloco de notas local");
+
       L.DomEvent.disableClickPropagation(container);
       L.DomEvent.disableScrollPropagation(container);
       L.DomEvent.on(center,"click",event => {
@@ -1043,6 +1114,18 @@ body.connected #sair{display:none!important}
       L.DomEvent.on(search,"click",event => {
         L.DomEvent.preventDefault(event);
         openSearch();
+      });
+      L.DomEvent.on(google,"click",event => {
+        L.DomEvent.preventDefault(event);
+        openExternalSearch("google");
+      });
+      L.DomEvent.on(googleMaps,"click",event => {
+        L.DomEvent.preventDefault(event);
+        openExternalSearch("maps");
+      });
+      L.DomEvent.on(notes,"click",event => {
+        L.DomEvent.preventDefault(event);
+        openLocalNotes();
       });
       return container;
     }
@@ -1091,6 +1174,9 @@ body.connected #sair{display:none!important}
 
   const idKey = "pilotomg_v04_agent_id";
   const nameKey = "pilotomg_v04_agent_name";
+  const notesKey = "agentemg_v2_local_notes";
+  let externalSearchMode = "google";
+  let notesSaveTimer = null;
   let agentId = localStorage.getItem(idKey);
 
   if(!agentId){
@@ -1181,6 +1267,104 @@ body.connected #sair{display:none!important}
 
   function routeUrl(lat,lng){
     return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+  }
+
+  function streetViewUrl(lat,lng){
+    return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(`${lat},${lng}`)}`;
+  }
+
+  function openExternalSearch(mode="google"){
+    externalSearchMode = mode === "maps" ? "maps" : "google";
+    const mapsMode = externalSearchMode === "maps";
+    el.externalSearchTitle.textContent = mapsMode ? "Pesquisar no Google Maps" : "Pesquisar no Google";
+    el.externalSearchSubtitle.textContent = mapsMode
+      ? "Digite livremente empresa, rua, endereço, local ou referência."
+      : "Digite livremente qualquer termo que deseja pesquisar.";
+    el.externalSearchLabel.textContent = mapsMode ? "PESQUISA NO MAPS" : "PESQUISA NO GOOGLE";
+    el.externalSearchInput.placeholder = mapsMode ? "Ex.: nome da empresa ou endereço" : "Digite sua pesquisa";
+    el.externalSearchGo.textContent = mapsMode ? "ABRIR GOOGLE MAPS" : "PESQUISAR NO GOOGLE";
+    el.externalSearchInput.value = "";
+    el.externalSearchModal.classList.add("show");
+    setTimeout(() => el.externalSearchInput.focus(),100);
+  }
+
+  function runExternalSearch(){
+    const query = String(el.externalSearchInput.value || "").trim();
+    if(!query){
+      el.externalSearchInput.focus();
+      return;
+    }
+    const url = externalSearchMode === "maps"
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+      : `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+    window.open(url,"_blank","noopener");
+  }
+
+  function setNotesStatus(message){
+    el.notesStatus.textContent = message;
+  }
+
+  function saveLocalNotes(showMessage=true){
+    try{
+      localStorage.setItem(notesKey,el.notesText.value || "");
+      setNotesStatus(showMessage ? "Salvo localmente neste aparelho/navegador." : "Salvamento local automático.");
+      return true;
+    }catch(error){
+      console.error("Falha ao salvar notas locais",error);
+      setNotesStatus("Não foi possível salvar localmente neste navegador.");
+      return false;
+    }
+  }
+
+  function openLocalNotes(){
+    el.notesText.value = localStorage.getItem(notesKey) || "";
+    setNotesStatus("Salvamento local automático. Nenhuma nota é enviada ao Firebase.");
+    el.notesModal.classList.add("show");
+    setTimeout(() => el.notesText.focus(),100);
+  }
+
+  async function copyLocalNotes(){
+    const text = el.notesText.value || "";
+    if(!text.trim()){
+      setNotesStatus("Não há texto para copiar.");
+      return;
+    }
+    try{
+      await navigator.clipboard.writeText(text);
+      setNotesStatus("Notas copiadas.");
+    }catch{
+      el.notesText.focus();
+      el.notesText.select();
+      const copied = document.execCommand("copy");
+      setNotesStatus(copied ? "Notas copiadas." : "Não foi possível copiar automaticamente.");
+    }
+  }
+
+  function exportLocalNotes(){
+    const text = el.notesText.value || "";
+    if(!text.trim()){
+      setNotesStatus("Não há texto para exportar.");
+      return;
+    }
+    saveLocalNotes(false);
+    const blob = new Blob([text],{type:"text/plain;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0,10);
+    link.href = url;
+    link.download = `AGENTEMG_NOTAS_${stamp}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url),1000);
+    setNotesStatus("Arquivo TXT gerado.");
+  }
+
+  function clearLocalNotes(){
+    if(!window.confirm("Limpar todas as anotações locais deste navegador?")) return;
+    el.notesText.value = "";
+    localStorage.removeItem(notesKey);
+    setNotesStatus("Notas locais apagadas.");
   }
 
   function pointIcon(status){
@@ -1278,6 +1462,7 @@ body.connected #sair{display:none!important}
         <div class="popup-line popup-muted"><strong>Marcado em:</strong> ${escapeHtml(formatDateTime(statusData.hora))}</div>
       ` : ""}
       <div class="popup-line"><strong>Distância:</strong> ${escapeHtml(distanceText)}</div>
+      <a class="popup-street" target="_blank" rel="noopener" href="${streetViewUrl(lat,lng)}">📷 STREET VIEW</a>
       ${actionHtml}
     `;
   }
@@ -2487,6 +2672,29 @@ body.connected #sair{display:none!important}
   el.menuHelp.addEventListener("click",openHelp);
   el.menuEndSession.addEventListener("click",endSession);
   el.helpClose.addEventListener("click",() => el.helpModal.classList.remove("show"));
+
+  el.externalSearchClose.addEventListener("click",() => el.externalSearchModal.classList.remove("show"));
+  el.externalSearchGo.addEventListener("click",runExternalSearch);
+  el.externalSearchInput.addEventListener("keydown",event => {
+    if(event.key === "Enter"){
+      event.preventDefault();
+      runExternalSearch();
+    }
+  });
+
+  el.notesClose.addEventListener("click",() => {
+    saveLocalNotes(false);
+    el.notesModal.classList.remove("show");
+  });
+  el.notesSave.addEventListener("click",() => saveLocalNotes(true));
+  el.notesCopy.addEventListener("click",copyLocalNotes);
+  el.notesExport.addEventListener("click",exportLocalNotes);
+  el.notesClear.addEventListener("click",clearLocalNotes);
+  el.notesText.addEventListener("input",() => {
+    clearTimeout(notesSaveTimer);
+    setNotesStatus("Alterações ainda não gravadas...");
+    notesSaveTimer = setTimeout(() => saveLocalNotes(false),450);
+  });
 
   el.searchClose.addEventListener("click",closeSearch);
   el.searchClear.addEventListener("click",() => {
