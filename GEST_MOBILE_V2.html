@@ -1166,7 +1166,7 @@
     </div>
     <div class="help-content">
       <h3>Entrada e GPS</h3>
-      <p>Para entrar, informe <strong>PRAXIAN</strong>. O gestor fica conectado por no máximo <strong>8 horas</strong>. Durante a sessão, o GPS do aparelho é registrado no Firebase junto com entrada, última atualização e precisão.</p>
+      <p>Para entrar, informe <strong>PRAXIAN</strong>. O gestor fica conectado pelo tempo máximo definido no Firebase: <strong><span id="helpSessionHours">8 horas</span></strong>. Durante a sessão, o GPS do aparelho é registrado no Firebase junto com entrada, última atualização e precisão.</p>
       <h3>AGENTES</h3>
       <p>Mostra os agentes conhecidos, produção atual de hoje e localização. Verde indica agente com posição atualizada; amarelo indica posição recente porém atrasada; cinza indica offline. Use ACOMPANHAR para manter o mapa seguindo um agente.</p>
       <h3>PRÓXIMO</h3>
@@ -1411,6 +1411,7 @@
   import {
     getDatabase,
     ref,
+    get,
     onValue,
     set,
     update,
@@ -1518,6 +1519,7 @@
     moreSheet:document.getElementById("moreSheet"),
     helpSheet:document.getElementById("helpSheet"),
     managerSessionInfo:document.getElementById("managerSessionInfo"),
+    helpSessionHours:document.getElementById("helpSessionHours"),
     loginOverlay:document.getElementById("loginOverlay"),
     managerLoginForm:document.getElementById("managerLoginForm"),
     managerName:document.getElementById("managerName"),
@@ -1746,7 +1748,8 @@
 
   const ORS_KEY_STORAGE = "mg_sebrae_ors_api_key_v2";
   const MANAGER_NAME = "PRAXIAN";
-  const MANAGER_SESSION_MS = 8 * 60 * 60 * 1000;
+  let managerSessionHours = 8;
+  let managerSessionMs = managerSessionHours * 60 * 60 * 1000;
   const MANAGER_ID_KEY = "mg_sebrae_manager_device_id_v2";
   let managerId = localStorage.getItem(MANAGER_ID_KEY);
   if(!managerId){
@@ -2653,23 +2656,71 @@
     };
   }
 
+  function managerSessionHoursLabel(){
+    const value = Number(managerSessionHours) || 8;
+    return `${value} hora${value === 1 ? "" : "s"}`;
+  }
+
+  function scheduleManagerSessionTimeout(){
+    clearTimeout(managerSessionTimer);
+    managerSessionTimer = null;
+
+    if(!managerSessionStartedAt) return;
+
+    const remaining = managerSessionMs - (Date.now() - managerSessionStartedAt);
+    if(remaining <= 0){
+      endManagerSession("LIMITE_SESSAO").catch(console.error);
+      return;
+    }
+
+    managerSessionTimer = setTimeout(() => {
+      endManagerSession("LIMITE_SESSAO").catch(console.error);
+    },remaining);
+  }
+
+  function applyManagerConfig(config={}){
+    radiusNext = Number(config.raioProximo) || 1000;
+    gpsSeconds = Number(config.gpsAtualizacaoSegundos) || 60;
+    gpsDistance = Number(config.gpsDistanciaMinima) || 100;
+
+    const configuredHours = Number(config.sessaoGestorHoras);
+    managerSessionHours = Number.isFinite(configuredHours) && configuredHours > 0
+      ? configuredHours
+      : 8;
+    managerSessionMs = managerSessionHours * 60 * 60 * 1000;
+
+    if(el.helpSessionHours){
+      el.helpSessionHours.textContent = managerSessionHoursLabel();
+    }
+
+    if(managerSessionStartedAt){
+      scheduleManagerSessionTimeout();
+      updateManagerSessionInfo();
+    }
+  }
+
+  async function loadManagerConfigOnce(){
+    const snapshot = await get(ref(db,"CONFIG"));
+    applyManagerConfig(snapshot.val() || {});
+  }
+
   function updateManagerSessionInfo(){
     if(!managerSessionStartedAt){
       el.managerSessionInfo.textContent = "Sessão do gestor não iniciada.";
       return;
     }
     const elapsed = Date.now() - managerSessionStartedAt;
-    const remaining = Math.max(0,MANAGER_SESSION_MS - elapsed);
+    const remaining = Math.max(0,managerSessionMs - elapsed);
     const hours = Math.floor(remaining / 3600000);
     const minutes = Math.floor((remaining % 3600000) / 60000);
     el.managerSessionInfo.textContent =
-      `Gestor: PRAXIAN • sessão ativa • restante aproximado ${hours}h ${minutes}min`;
+      `Gestor: PRAXIAN • limite ${managerSessionHoursLabel()} • restante aproximado ${hours}h ${minutes}min`;
   }
 
   async function sendManagerPosition(force=false){
     if(!managerRef || !managerPosition) return;
-    if(Date.now() - managerSessionStartedAt >= MANAGER_SESSION_MS){
-      await endManagerSession("LIMITE_8H");
+    if(Date.now() - managerSessionStartedAt >= managerSessionMs){
+      await endManagerSession("LIMITE_SESSAO");
       return;
     }
 
@@ -2784,6 +2835,10 @@
     el.managerLoginFeedback.textContent = "Registrando entrada e solicitando o GPS...";
 
     try{
+      // Lê a CONFIG antes de iniciar a sessão para respeitar
+      // sessaoGestorHoras, gpsAtualizacaoSegundos e gpsDistanciaMinima.
+      await loadManagerConfigOnce();
+
       managerSessionStartedAt = Date.now();
       const local = localDateTimeParts(managerSessionStartedAt);
       managerRef = ref(db,`GESTORES_ONLINE/${managerId}`);
@@ -2803,25 +2858,29 @@
         entrada:serverTimestamp(),
         dataEntrada:local.data,
         horaEntrada:local.hora,
-        sessaoMaximaHoras:8,
+        sessaoMaximaHoras:managerSessionHours,
         ultimaAtualizacao:serverTimestamp()
       });
 
-      clearTimeout(managerSessionTimer);
-      managerSessionTimer = setTimeout(() => {
-        endManagerSession("LIMITE_8H").catch(console.error);
-      },MANAGER_SESSION_MS);
+      scheduleManagerSessionTimeout();
 
       startRealtimeListeners();
       el.loginOverlay.classList.remove("show");
       startManagerGps();
       updateManagerSessionInfo();
-      toast("Gestor PRAXIAN conectado • sessão de até 8 horas");
+      toast(`Gestor PRAXIAN conectado • sessão de até ${managerSessionHoursLabel()}`);
       return true;
     }catch(error){
       console.error(error);
       managerSessionStartedAt = 0;
-      el.managerLoginFeedback.textContent = "Não foi possível iniciar a sessão do gestor.";
+      clearTimeout(managerSessionTimer);
+      managerSessionTimer = null;
+      try{
+        if(managerDisconnect) await managerDisconnect.cancel();
+      }catch{}
+      managerRef = null;
+      managerDisconnect = null;
+      el.managerLoginFeedback.textContent = "Não foi possível iniciar a sessão do gestor. Confira a conexão e as Rules do Firebase.";
       return false;
     }finally{
       el.managerLoginBtn.disabled = false;
@@ -2873,10 +2932,12 @@
     closeSheets();
     el.loginOverlay.classList.add("show");
     el.managerName.value = "";
-    el.managerLoginFeedback.textContent = reason === "LIMITE_8H"
-      ? "Sessão encerrada após 8 horas. Informe PRAXIAN para entrar novamente."
+    el.managerLoginFeedback.textContent = reason === "LIMITE_SESSAO"
+      ? `Sessão encerrada após ${managerSessionHoursLabel()}. Informe PRAXIAN para entrar novamente.`
       : "Sessão encerrada. Informe PRAXIAN para entrar novamente.";
-    toast(reason === "LIMITE_8H" ? "Sessão de 8 horas encerrada" : "Sessão encerrada");
+    toast(reason === "LIMITE_SESSAO"
+      ? `Sessão de ${managerSessionHoursLabel()} encerrada`
+      : "Sessão encerrada");
   }
 
   function renderStatusChoiceGrid(container,selectedSet,statusesList=ACTIVE_STATUSES){
@@ -5252,10 +5313,7 @@
     realtimeUnsubs.push(onValue(
       ref(db,"CONFIG"),
       snapshot => {
-        const config = snapshot.val() || {};
-        radiusNext = Number(config.raioProximo) || 1000;
-        gpsSeconds = Number(config.gpsAtualizacaoSegundos) || 60;
-        gpsDistance = Number(config.gpsDistanciaMinima) || 100;
+        applyManagerConfig(snapshot.val() || {});
       }
     ));
 
