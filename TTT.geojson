@@ -1,0 +1,12 @@
+{
+"type": "FeatureCollection",
+"name": "TTT",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "cod": "13/08/2026", "cnpj": "21506610000131", "LATITUDE": "-19.2187366", "LONGITUDE": "-45.0021204" }, "geometry": { "type": "Point", "coordinates": [ -45.0021204, -19.2187366 ] } },
+{ "type": "Feature", "properties": { "cod": "13/08/2026", "cnpj": "14222214000117", "LATITUDE": "-19.2184659", "LONGITUDE": "-45.0029744" }, "geometry": { "type": "Point", "coordinates": [ -45.0029744, -19.2184659 ] } },
+{ "type": "Feature", "properties": { "cod": "13/08/2026", "cnpj": "71025845000180", "LATITUDE": "-19.2173561", "LONGITUDE": "-45.0005304" }, "geometry": { "type": "Point", "coordinates": [ -45.0005304, -19.2173561 ] } },
+{ "type": "Feature", "properties": { "cod": "13/08/2026", "cnpj": "06148079000189", "LATITUDE": "-19.2173259", "LONGITUDE": "-45.0002134" }, "geometry": { "type": "Point", "coordinates": [ -45.0002134, -19.2173259 ] } },
+{ "type": "Feature", "properties": { "cod": "13/08/2026", "cnpj": "25371265000127", "LATITUDE": "-19.2165787", "LONGITUDE": "-44.9990624" }, "geometry": { "type": "Point", "coordinates": [ -44.9990624, -19.2165787 ] } }
+]
+}
