@@ -7,8 +7,6 @@
   <title>GEST_MOBILE V2 — Gestão operacional</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 
   <style>
     :root{
@@ -979,22 +977,6 @@
       border-color:#60a5fa;
     }
 
-    .manager-cluster{
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      width:100%;
-      height:100%;
-      border:3px solid #fff;
-      border-radius:50%;
-      background:#17243a;
-      color:#fff;
-      box-shadow:0 3px 14px rgba(0,0,0,.45);
-      font-weight:900;
-    }
-    .manager-cluster strong{font-size:13px;line-height:1}
-    .manager-cluster span{margin-top:2px;font-size:7px;line-height:1}
 
     .point-pin{
       width:22px;height:22px;border-radius:50%;
@@ -1402,7 +1384,6 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
 <script type="module">
   import { initializeApp } from
@@ -1634,35 +1615,8 @@
     }
   ).addTo(map);
 
-  const pointClusterGroup = L.markerClusterGroup({
-    chunkedLoading:true,
-    chunkInterval:120,
-    chunkDelay:30,
-    removeOutsideVisibleBounds:true,
-    showCoverageOnHover:false,
-    zoomToBoundsOnClick:true,
-    spiderfyOnMaxZoom:true,
-    maxClusterRadius:zoom => {
-      if(zoom <= 8) return 85;
-      if(zoom <= 10) return 70;
-      if(zoom <= 12) return 58;
-      if(zoom <= 14) return 46;
-      if(zoom === 15) return 24;
-      if(zoom === 16) return 12;
-      if(zoom === 17) return 6;
-      return 1;
-    },
-    iconCreateFunction:cluster => {
-      const count = cluster.getChildCount();
-      const size = count < 10 ? 36 : count < 100 ? 44 : 52;
-      return L.divIcon({
-        className:"",
-        html:`<div class="manager-cluster"><strong>${count}</strong><span>PONTOS</span></div>`,
-        iconSize:[size,size],
-        iconAnchor:[size/2,size/2]
-      });
-    }
-  }).addTo(map);
+  // Camada simples de pontos: sem clusterização.
+  const pointLayerGroup = L.layerGroup().addTo(map);
 
   const QuickMapControl = L.Control.extend({
     options:{position:"topleft"},
@@ -2108,15 +2062,14 @@
       marker.setIcon(pointIcon(status,manualRouteSelection.has(cnpj)));
 
       const visible = pointMatchesFilters(cnpj,feature);
-      const inCluster = pointClusterGroup.hasLayer(marker);
+      const inLayer = pointLayerGroup.hasLayer(marker);
 
-      if(visible && !inCluster) toAdd.push(marker);
-      if(!visible && inCluster) toRemove.push(marker);
+      if(visible && !inLayer) toAdd.push(marker);
+      if(!visible && inLayer) toRemove.push(marker);
     }
 
-    if(toRemove.length) pointClusterGroup.removeLayers(toRemove);
-    if(toAdd.length) pointClusterGroup.addLayers(toAdd);
-    pointClusterGroup.refreshClusters();
+    for(const marker of toRemove) pointLayerGroup.removeLayer(marker);
+    for(const marker of toAdd) pointLayerGroup.addLayer(marker);
     updateSummary();
   }
 
@@ -2131,7 +2084,6 @@
         manualRouteSelection.has(cnpj)
       )
     );
-    if(pointClusterGroup.hasLayer(marker)) pointClusterGroup.refreshClusters(marker);
   }
 
   function focusPointOnMap(cnpj,openDetails=true){
@@ -2139,21 +2091,19 @@
     const marker = pointMarkers.get(cnpj) || (feature ? addPointMarker(cnpj,feature) : null);
     if(!feature || !marker) return;
 
-    if(!pointClusterGroup.hasLayer(marker)){
-      pointClusterGroup.addLayer(marker);
+    if(!pointLayerGroup.hasLayer(marker)){
+      pointLayerGroup.addLayer(marker);
     }
 
-    pointClusterGroup.zoomToShowLayer(marker,() => {
-      const coordinates = feature.geometry.coordinates || [];
-      const lng = Number(coordinates[0]);
-      const lat = Number(coordinates[1]);
-      if(Number.isFinite(lat) && Number.isFinite(lng)){
-        map.setView([lat,lng],18,{animate:true});
-      }
-      marker.setPopupContent(pointPopupHtml(cnpj,feature));
-      marker.openPopup();
-      if(openDetails) setTimeout(() => showPointDetails(cnpj),180);
-    });
+    const coordinates = feature.geometry.coordinates || [];
+    const lng = Number(coordinates[0]);
+    const lat = Number(coordinates[1]);
+    if(Number.isFinite(lat) && Number.isFinite(lng)){
+      map.setView([lat,lng],18,{animate:true});
+    }
+    marker.setPopupContent(pointPopupHtml(cnpj,feature));
+    marker.openPopup();
+    if(openDetails) setTimeout(() => showPointDetails(cnpj),180);
   }
 
   function agentPresenceState(agent){
@@ -5056,7 +5006,7 @@
   }
 
   function clearPointLayers(){
-    pointClusterGroup.clearLayers();
+    pointLayerGroup.clearLayers();
     pointFeatures.clear();
     pointMarkers.clear();
     pointSearchIndex.clear();
