@@ -1778,6 +1778,7 @@
 
   function currentStatus(cnpj,properties){
     const raw = statuses.get(cnpj)?.status ||
+      properties?.STATUS_OPERACIONAL ||
       properties?.STATUS ||
       "CARTEIRA";
 
@@ -1948,7 +1949,10 @@
       <div class="point-popup-row"><strong>MUNICIPIO:</strong> ${escapeHtml(properties.MUNICIPIO || "—")}</div>
       <div class="point-popup-row"><strong>ENDEE:</strong> ${escapeHtml(properties.ENDEE || "—")}</div>
       <div class="point-popup-row"><strong>BANCO:</strong> ${escapeHtml(properties.BANCO || "—")}</div>
-      <div class="point-popup-row"><strong>STATUS:</strong> ${escapeHtml(status.replaceAll("_"," "))}</div>
+      <div class="point-popup-row"><strong>AGENCIA_NOME:</strong> ${escapeHtml(properties.AGENCIA_NOME || "—")}</div>
+      <div class="point-popup-row"><strong>LINHA_AVAL_NOME:</strong> ${escapeHtml(properties.LINHA_AVAL_NOME || "—")}</div>
+      <div class="point-popup-row"><strong>DESCRICAOSITUACAO:</strong> ${escapeHtml(properties.DESCRICAOSITUACAO || "—")}</div>
+      <div class="point-popup-row"><strong>STATUS_OPERACIONAL:</strong> ${escapeHtml(status.replaceAll("_"," "))}</div>
       ${saved ? `
         <div class="point-popup-row"><strong>AGENTE:</strong> ${escapeHtml(saved.agente || "—")}</div>
         <div class="point-popup-row"><strong>ATUALIZADO EM:</strong> ${escapeHtml(formatDate(saved.hora))}</div>
@@ -2237,7 +2241,10 @@
       <div class="detail-row"><span>MUNICIPIO</span><strong>${escapeHtml(properties.MUNICIPIO || "—")}</strong></div>
       <div class="detail-row"><span>ENDEE</span><strong>${escapeHtml(properties.ENDEE || "—")}</strong></div>
       <div class="detail-row"><span>BANCO</span><strong>${escapeHtml(properties.BANCO || "—")}</strong></div>
-      <div class="detail-row"><span>STATUS</span><strong>${statusSymbolHtml(status)}${escapeHtml(status.replaceAll("_"," "))}</strong></div>
+      <div class="detail-row"><span>AGENCIA_NOME</span><strong>${escapeHtml(properties.AGENCIA_NOME || "—")}</strong></div>
+      <div class="detail-row"><span>LINHA_AVAL_NOME</span><strong>${escapeHtml(properties.LINHA_AVAL_NOME || "—")}</strong></div>
+      <div class="detail-row"><span>DESCRICAOSITUACAO</span><strong>${escapeHtml(properties.DESCRICAOSITUACAO || "—")}</strong></div>
+      <div class="detail-row"><span>STATUS_OPERACIONAL</span><strong>${statusSymbolHtml(status)}${escapeHtml(status.replaceAll("_"," "))}</strong></div>
       <div class="detail-row"><span>Distância</span><strong>${distanceLabel(distance)}</strong></div>
       <div class="detail-row"><span>Agente</span><strong>${escapeHtml(statusData?.agente || "—")}</strong></div>
       <div class="detail-row"><span>Atualizado em</span><strong>${formatDate(statusData?.hora)}</strong></div>
