@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <meta name="theme-color" content="#07111f">
-  <title>GEST_MOBILE V3 — Gestão operacional</title>
+  <title>GEST_MOBILE V2 — Gestão operacional</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 
@@ -1094,7 +1094,7 @@
 <body>
 <div id="app">
   <header class="topbar">
-    <div class="brand" title="Versão 3">GEST_MOBILE V3</div>
+    <div class="brand" title="Versão 2">GEST_MOBILE V2</div>
     <div class="connection">
       <span id="connectionDot" class="connection-dot"></span>
       <span id="connectionText">Conectando...</span>
@@ -1143,7 +1143,7 @@
 
   <section id="helpSheet" class="sheet help-sheet" aria-label="Ajuda">
     <div class="sheet-head">
-      <div class="sheet-title">Ajuda — GEST_MOBILE V3</div>
+      <div class="sheet-title">Ajuda — GEST_MOBILE V2</div>
       <button class="close-btn" data-close-sheet="helpSheet">X</button>
     </div>
     <div class="help-content">
@@ -1159,8 +1159,8 @@
       <p>Pesquisa por CNPJ, nome fantasia, razão social, endereço, município, responsável e banco. Os resultados são ordenados por relevância e, com GPS ativo, também mostram distância.</p>
       <h3>FILTROS</h3>
       <p>Combine status, situação operacional, município, banco e agente. Os filtros afetam somente a visualização; não modificam o Firebase.</p>
-      <h3>PONTOS NO MAPA</h3>
-      <p>Os estabelecimentos são exibidos diretamente como pontos individuais, sem agrupamento automático. Use o zoom para facilitar a leitura de pontos próximos. Quando dois ou mais registros possuem exatamente a mesma coordenada, use BUSCAR para selecionar diretamente o estabelecimento desejado.</p>
+      <h3>AGRUPAMENTO</h3>
+      <p>Em zoom distante os pontos são agrupados. Conforme você aproxima, os grupos se abrem; nos maiores zooms os estabelecimentos ficam individualizados. Pontos com a mesma coordenada podem abrir em leque para permitir seleção individual.</p>
       <h3>T2, T3 e T4</h3>
       <p>APLICAR T2, T3 e T4 são mostrados com os números 2, 3 e 4. T2_APLICADO, T3_APLICADO e T4_APLICADO aparecem com indicação de concluído.</p>
       <h3>Atalhos no mapa</h3>
@@ -1186,7 +1186,7 @@
 
   <div id="loginOverlay" class="login-overlay show" aria-modal="true" role="dialog" aria-label="Identificação do gestor">
     <form id="managerLoginForm" class="login-card">
-      <div class="login-title">GEST_MOBILE V3</div>
+      <div class="login-title">GEST_MOBILE V2</div>
       <div class="login-subtitle">Identificação do gestor</div>
       <input id="managerName" class="search-input" type="text" maxlength="30" autocomplete="off" placeholder="Nome do gestor">
       <button id="managerLoginBtn" class="wide-btn primary" type="submit">ENTRAR E ATIVAR GPS</button>
@@ -1650,7 +1650,6 @@
   const pointMarkers = new Map();
   const pointSearchIndex = new Map();
   const statuses = new Map();
-  const pointIconCache = new Map();
   const agents = new Map();
   const agentMarkers = new Map();
   const routeLayerGroup = L.layerGroup().addTo(map);
@@ -1779,6 +1778,7 @@
 
   function currentStatus(cnpj,properties){
     const raw = statuses.get(cnpj)?.status ||
+      properties?.STATUS_OPERACIONAL ||
       properties?.STATUS ||
       "CARTEIRA";
 
@@ -1867,9 +1867,6 @@
 
   function pointIcon(status,selected=false){
     const normalized = normalizeStatus(status);
-    const cacheKey = `${normalized}|${selected ? "1" : "0"}`;
-    if(pointIconCache.has(cacheKey)) return pointIconCache.get(cacheKey);
-
     let classes = ["point-pin"];
     let text = "";
 
@@ -1896,15 +1893,13 @@
       : `style="background:${color}"`;
     const size = normalized.startsWith("APLICAR_T") || normalized.endsWith("_APLICADO") ? 24 : 22;
 
-    const icon = L.divIcon({
+    return L.divIcon({
       className:"",
       html:`<div class="${classes.join(" ")}" ${style}>${text}</div>`,
       iconSize:[size,size],
       iconAnchor:[size/2,size/2],
       popupAnchor:[0,-Math.round(size/2)]
     });
-    pointIconCache.set(cacheKey,icon);
-    return icon;
   }
 
   function statusSymbolHtml(status){
@@ -1954,7 +1949,10 @@
       <div class="point-popup-row"><strong>MUNICIPIO:</strong> ${escapeHtml(properties.MUNICIPIO || "—")}</div>
       <div class="point-popup-row"><strong>ENDEE:</strong> ${escapeHtml(properties.ENDEE || "—")}</div>
       <div class="point-popup-row"><strong>BANCO:</strong> ${escapeHtml(properties.BANCO || "—")}</div>
-      <div class="point-popup-row"><strong>STATUS:</strong> ${escapeHtml(status.replaceAll("_"," "))}</div>
+      <div class="point-popup-row"><strong>AGENCIA_NOME:</strong> ${escapeHtml(properties.AGENCIA_NOME || "—")}</div>
+      <div class="point-popup-row"><strong>LINHA_AVAL_NOME:</strong> ${escapeHtml(properties.LINHA_AVAL_NOME || "—")}</div>
+      <div class="point-popup-row"><strong>DESCRICAOSITUACAO:</strong> ${escapeHtml(properties.DESCRICAOSITUACAO || "—")}</div>
+      <div class="point-popup-row"><strong>STATUS_OPERACIONAL:</strong> ${escapeHtml(status.replaceAll("_"," "))}</div>
       ${saved ? `
         <div class="point-popup-row"><strong>AGENTE:</strong> ${escapeHtml(saved.agente || "—")}</div>
         <div class="point-popup-row"><strong>ATUALIZADO EM:</strong> ${escapeHtml(formatDate(saved.hora))}</div>
@@ -2005,14 +2003,12 @@
     if(!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
     const status = currentStatus(cnpj,feature.properties);
-    const selected = manualRouteSelection.has(cnpj);
     const marker = L.marker([lat,lng],{
       pane:"pointsPane",
-      icon:pointIcon(status,selected),
+      icon:pointIcon(status,manualRouteSelection.has(cnpj)),
       keyboard:false,
       riseOnHover:true
     });
-    marker._pointIconKey = `${normalizeStatus(status)}|${selected ? "1" : "0"}`;
 
     bindPointMarkerEvents(marker,cnpj,feature);
     pointMarkers.set(cnpj,marker);
@@ -2067,12 +2063,7 @@
       if(!marker) continue;
 
       const status = currentStatus(cnpj,feature.properties);
-      const selected = manualRouteSelection.has(cnpj);
-      const iconKey = `${normalizeStatus(status)}|${selected ? "1" : "0"}`;
-      if(marker._pointIconKey !== iconKey){
-        marker.setIcon(pointIcon(status,selected));
-        marker._pointIconKey = iconKey;
-      }
+      marker.setIcon(pointIcon(status,manualRouteSelection.has(cnpj)));
 
       const visible = pointMatchesFilters(cnpj,feature);
       const inLayer = pointLayerGroup.hasLayer(marker);
@@ -2091,13 +2082,12 @@
     if(!feature) return;
     const marker = ensurePointMarker(cnpj,feature);
     if(!marker) return;
-    const status = currentStatus(cnpj,feature.properties);
-    const selected = manualRouteSelection.has(cnpj);
-    const iconKey = `${normalizeStatus(status)}|${selected ? "1" : "0"}`;
-    if(marker._pointIconKey !== iconKey){
-      marker.setIcon(pointIcon(status,selected));
-      marker._pointIconKey = iconKey;
-    }
+    marker.setIcon(
+      pointIcon(
+        currentStatus(cnpj,feature.properties),
+        manualRouteSelection.has(cnpj)
+      )
+    );
   }
 
   function focusPointOnMap(cnpj,openDetails=true){
@@ -2251,7 +2241,10 @@
       <div class="detail-row"><span>MUNICIPIO</span><strong>${escapeHtml(properties.MUNICIPIO || "—")}</strong></div>
       <div class="detail-row"><span>ENDEE</span><strong>${escapeHtml(properties.ENDEE || "—")}</strong></div>
       <div class="detail-row"><span>BANCO</span><strong>${escapeHtml(properties.BANCO || "—")}</strong></div>
-      <div class="detail-row"><span>STATUS</span><strong>${statusSymbolHtml(status)}${escapeHtml(status.replaceAll("_"," "))}</strong></div>
+      <div class="detail-row"><span>AGENCIA_NOME</span><strong>${escapeHtml(properties.AGENCIA_NOME || "—")}</strong></div>
+      <div class="detail-row"><span>LINHA_AVAL_NOME</span><strong>${escapeHtml(properties.LINHA_AVAL_NOME || "—")}</strong></div>
+      <div class="detail-row"><span>DESCRICAOSITUACAO</span><strong>${escapeHtml(properties.DESCRICAOSITUACAO || "—")}</strong></div>
+      <div class="detail-row"><span>STATUS_OPERACIONAL</span><strong>${statusSymbolHtml(status)}${escapeHtml(status.replaceAll("_"," "))}</strong></div>
       <div class="detail-row"><span>Distância</span><strong>${distanceLabel(distance)}</strong></div>
       <div class="detail-row"><span>Agente</span><strong>${escapeHtml(statusData?.agente || "—")}</strong></div>
       <div class="detail-row"><span>Atualizado em</span><strong>${formatDate(statusData?.hora)}</strong></div>
@@ -5291,10 +5284,9 @@
           if(cnpj === "TEMP" || cnpj === "TESTE_MANUAL") continue;
           if(!value) continue;
           statuses.set(cnpj,value);
+          updatePointStyle(cnpj);
         }
 
-        // applyPointFilters já atualiza a visibilidade e o ícone apenas quando
-        // o estado visual do ponto mudou; evita uma segunda passada de setIcon.
         applyPointFilters();
         updateSummary();
         refreshRouteCities();

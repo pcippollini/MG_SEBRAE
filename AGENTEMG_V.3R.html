@@ -3,10 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
-  <title>AGENTEMG V.2 — Mapa do Agente</title>
+  <title>AGENTEMG V.2R — Mapa do Agente</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
   <style>
     
 :root{
@@ -384,14 +382,6 @@ body.connected .row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));w
 .point-pin.t3{background:#14B8A6;border-color:#14B8A6;color:#061817}
 .point-pin.t4{background:#F97316;border-color:#F97316;color:#17100a}
 
-.agent-cluster{
-  width:100%;height:100%;border-radius:50%;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;background:#253858;color:#fff;
-  border:3px solid rgba(255,255,255,.95);box-shadow:0 3px 14px rgba(0,0,0,.45);
-  font-weight:900;line-height:1
-}
-.agent-cluster strong{font-size:13px}
-.agent-cluster span{margin-top:2px;font-size:7px;letter-spacing:.2px}
 
 .next-result-status{display:inline-flex;align-items:center;gap:6px;margin:5px 0;padding:5px 8px;border-radius:999px;background:#17253d;color:#fff;font-size:10px;font-weight:900}
 .next-result-distance{font-size:26px;font-weight:900;margin:8px 0;color:#fff}
@@ -551,7 +541,51 @@ body.connected #sair{display:none!important}
   .search-results{max-height:48dvh}
 }
 
-  </style>
+  
+/* ===== AGENTEMG V.2R — extensão localizada do módulo de rotas ===== */
+.ors-route-box{
+  margin-top:10px;padding:10px;border:1px solid #334867;border-radius:11px;
+  background:#111e32
+}
+.ors-route-status{
+  padding:8px 9px;border:1px solid #405578;border-radius:9px;background:#0e1a2c;
+  color:#dbe7f8;font-size:10px;font-weight:800;line-height:1.4
+}
+.ors-route-actions{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:7px
+}
+.ors-route-actions button{
+  min-height:36px;padding:6px;border-radius:8px;color:#fff;font-size:9px;font-weight:900
+}
+.ors-save{background:#2563eb;border:1px solid #3b82f6}
+.ors-test{background:#15803d;border:1px solid #22c55e}
+.ors-delete{background:#7f1d1d;border:1px solid #ef4444}
+.ors-route-actions button:disabled{opacity:.5;cursor:not-allowed}
+.manual-route-start{
+  width:100%;min-height:40px;margin-top:8px;border:1px solid #a78bfa;border-radius:9px;
+  background:#6d28d9;color:#fff;font-size:11px;font-weight:900
+}
+.manual-route-bar{
+  position:fixed;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
+  bottom:max(8px,env(safe-area-inset-bottom));z-index:10020;display:none;align-items:center;gap:7px;
+  min-height:54px;padding:8px;border:1px solid #a78bfa;border-radius:12px;
+  background:rgba(9,18,33,.98);box-shadow:0 8px 28px rgba(0,0,0,.46)
+}
+.manual-route-bar.show{display:flex}
+.manual-route-count{flex:1;min-width:0;color:#fff;font-size:11px;font-weight:900}
+.manual-route-bar button{
+  min-height:36px;padding:0 10px;border-radius:9px;color:#fff;font-size:10px;font-weight:900
+}
+.manual-route-generate{background:#15803d;border:1px solid #22c55e}
+.manual-route-cancel{background:#7f1d1d;border:1px solid #ef4444}
+.manual-route-generate:disabled{opacity:.5;cursor:not-allowed}
+.help-link-btn{
+  display:block;width:100%;margin-top:9px;padding:10px 12px;border:1px solid #3b82f6;
+  border-radius:9px;background:#1d4ed8;color:#fff;text-align:center;text-decoration:none;
+  font-size:11px;font-weight:900
+}
+
+</style>
 
   <!-- Google Analytics GA4 -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-E59KMQFDEK"></script>
@@ -565,7 +599,7 @@ body.connected #sair{display:none!important}
 <body>
 <div class="app">
   <header>
-    <h1>AGENTEMG V.2</h1>
+    <h1>AGENTEMG V.2R</h1>
     <div class="header-actions">
       <button id="menuBtn" class="header-btn" type="button" title="Menu"><span class="header-icon">☰</span><span class="header-label"> MENU</span></button>
       <button id="searchBtn" class="header-btn search-header-btn" type="button" title="Buscar ponto"><span class="header-icon">🔎</span><span class="header-label"> BUSCAR</span></button>
@@ -642,6 +676,12 @@ body.connected #sair{display:none!important}
   </div>
 </section>
 
+<div id="manualRouteBar" class="manual-route-bar" aria-live="polite">
+  <div id="manualRouteCount" class="manual-route-count">Selecionados: 0/10</div>
+  <button id="manualRouteGenerate" class="manual-route-generate" type="button">GERAR</button>
+  <button id="manualRouteCancel" class="manual-route-cancel" type="button">CANCELAR</button>
+</div>
+
 <!-- Identificação inicial -->
 <div id="loginModal" class="modal-overlay show" role="dialog" aria-modal="true" aria-label="Identificação do agente">
   <div class="modal-card">
@@ -682,6 +722,17 @@ body.connected #sair{display:none!important}
         <button class="qty-btn" type="button" data-route-qty="5">5</button>
         <button class="qty-btn active" type="button" data-route-qty="10">10</button>
       </div>
+    </div>
+    <div id="routeOrsBlock" class="ors-route-box" style="display:none">
+      <div class="help-title">OpenRouteService — opcional</div>
+      <div id="orsKeyStatus" class="ors-route-status">Chave OpenRouteService: não configurada.</div>
+      <div class="ors-route-actions">
+        <button id="orsKeySave" class="ors-save" type="button">CONFIGURAR</button>
+        <button id="orsKeyTest" class="ors-test" type="button">TESTAR</button>
+        <button id="orsKeyDelete" class="ors-delete" type="button">APAGAR</button>
+      </div>
+      <div class="login-note">Com uma chave própria, a ordem dos pontos é otimizada pelo OpenRouteService. Sem chave ou se o serviço falhar, permanece a otimização local atual.</div>
+      <button id="manualRouteStart" class="manual-route-start" type="button">ESCOLHER ATÉ 10 NO MAPA</button>
     </div>
     <div class="modal-actions one">
       <button id="selectorRun" class="modal-primary" type="button">CONTINUAR</button>
@@ -880,11 +931,11 @@ body.connected #sair{display:none!important}
     </div>
     <div class="help-section">
       <div class="help-title">10. ROTA</div>
-      <div class="help-text">Toque em <strong>ROTA</strong>, escolha os tipos de ponto e selecione <strong>3, 5 ou 10</strong> estabelecimentos. É possível escolher vários tipos ou TODOS. O sistema procura uma sequência curta a partir da sua localização, sem limite de 1 km, informa a distância aproximada e permite abrir os trechos no Google Maps. Para 10 pontos, a rota é dividida em dois trechos para maior compatibilidade com celulares.</div>
+      <div class="help-text">Toque em <strong>ROTA</strong>, escolha os tipos de ponto e selecione <strong>3, 5 ou 10</strong> estabelecimentos. É possível escolher vários tipos ou TODOS. Se uma chave própria do OpenRouteService estiver configurada, a sequência é otimizada pelo serviço; sem chave ou em caso de falha, o sistema mantém a otimização local atual. Também existe <strong>ESCOLHER ATÉ 10 NO MAPA</strong>: selecione os tipos permitidos, toque nessa opção e depois toque diretamente em até 10 estabelecimentos. Para rotas maiores que 5 pontos, a abertura no Google Maps continua dividida em dois trechos para maior compatibilidade com celulares.</div>
     </div>
     <div class="help-section">
       <div class="help-title">11. Distâncias da rota</div>
-      <div class="help-text">As distâncias mostradas dentro do mapa são estimativas geográficas entre os pontos. Ao abrir no Google Maps, o aplicativo recalcula o trajeto pelas ruas e pode apresentar uma distância diferente.</div>
+      <div class="help-text">Quando o OpenRouteService consegue calcular o trajeto pelas ruas, a distância exibida usa esse percurso. Se esse cálculo não estiver disponível, o sistema usa a estimativa geográfica atual. Ao abrir no Google Maps, o aplicativo pode recalcular o trajeto e apresentar pequena diferença.</div>
     </div>
     <div class="help-section">
       <div class="help-title">12. Menu e encerramento</div>
@@ -894,11 +945,25 @@ body.connected #sair{display:none!important}
       <div class="help-title">13. Google, Maps, Street View e notas</div>
       <div class="help-text"><strong>G GOOGLE:</strong> abre um campo livre; digite o que quiser pesquisar e a busca será aberta no navegador. <strong>📍 GOOGLE MAPS:</strong> também usa um campo livre e abre a pesquisa no Google Maps, podendo ser direcionada ao aplicativo quando disponível. <strong>📷 STREET VIEW:</strong> aparece dentro do popup de cada ponto e usa diretamente a latitude/longitude daquele ponto, sem depender da qualidade do nome ou endereço da base. <strong>📝 NOTAS:</strong> abre um bloco local com salvamento automático, copiar, exportar TXT e limpar. As notas ficam somente neste navegador/aparelho, não usam Firebase e podem ser perdidas se os dados do navegador forem apagados.</div>
     </div>
+    <div class="help-section">
+      <div class="help-title">14. Como ativar a otimização OpenRouteService</div>
+      <div class="help-text">
+        A chave é <strong>opcional e individual</strong>. Cada agente deve usar a própria chave e não deve compartilhá-la.<br><br>
+        <strong>Passo 1:</strong> abra a página oficial da conta HeiGIT pelo botão abaixo.<br>
+        <strong>Passo 2:</strong> crie sua conta ou faça login e confirme o e-mail quando solicitado.<br>
+        <strong>Passo 3:</strong> na sua conta, obtenha sua API Key do OpenRouteService/HeiGIT.<br>
+        <strong>Passo 4:</strong> volte ao mapa e toque em <strong>ROTA</strong>.<br>
+        <strong>Passo 5:</strong> em OpenRouteService, toque em <strong>CONFIGURAR</strong> e cole sua chave.<br>
+        <strong>Passo 6:</strong> toque em <strong>TESTAR</strong>. Se a validação for concluída, as rotas passam a usar a otimização do OpenRouteService quando disponível.<br>
+        <strong>Passo 7:</strong> para retirar a chave deste aparelho, use <strong>APAGAR</strong>.<br><br>
+        A chave fica somente no <strong>localStorage deste navegador/aparelho</strong>; não é enviada ao Firebase. Se os dados do navegador forem apagados ou o aparelho for trocado, será necessário configurá-la novamente. Sem chave, o mapa continua funcionando com a otimização local atual.
+      </div>
+      <a class="help-link-btn" href="https://account.heigit.org/" target="_blank" rel="noopener">ABRIR CONTA HEIGIT / OPENROUTESERVICE</a>
+    </div>
   </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
   import {
@@ -1005,8 +1070,9 @@ body.connected #sair{display:none!important}
     "routeShare","routeClear","loginModal","menuBtn","searchBtn","helpBtn","menuModal","menuClose",
     "menuSearch","menuCenter","menuHelp","menuEndSession","sessionInfo","helpModal","helpClose","searchModal","searchClose","searchInput","searchClear","searchCount","searchResults","selectorModal",
     "selectorTitle","selectorSubtitle","selectorClose","selectorStatusGrid","selectorAll",
-    "selectorClear","selectorQtyBlock","selectorRun","nextResultModal","nextResultClose",
-    "nextResultName","nextResultStatus","nextResultDistance","nextResultAddress",
+    "selectorClear","selectorQtyBlock","routeOrsBlock","orsKeyStatus","orsKeySave","orsKeyTest","orsKeyDelete",
+    "manualRouteStart","selectorRun","manualRouteBar","manualRouteCount","manualRouteGenerate","manualRouteCancel",
+    "nextResultModal","nextResultClose","nextResultName","nextResultStatus","nextResultDistance","nextResultAddress",
     "nextResultCenter","nextResultRoute","endWrongModal","endWrongNo","endWrongYes",
     "externalSearchModal","externalSearchTitle","externalSearchSubtitle","externalSearchLabel",
     "externalSearchInput","externalSearchGo","externalSearchClose",
@@ -1041,35 +1107,8 @@ body.connected #sair{display:none!important}
     attribution:"&copy; OpenStreetMap"
   }).addTo(map);
 
-  const pointClusterGroup = L.markerClusterGroup({
-    chunkedLoading:true,
-    chunkInterval:120,
-    chunkDelay:30,
-    removeOutsideVisibleBounds:true,
-    showCoverageOnHover:false,
-    zoomToBoundsOnClick:true,
-    spiderfyOnMaxZoom:true,
-    maxClusterRadius:zoom => {
-      if(zoom <= 8) return 85;
-      if(zoom <= 10) return 70;
-      if(zoom <= 12) return 58;
-      if(zoom <= 14) return 46;
-      if(zoom === 15) return 24;
-      if(zoom === 16) return 12;
-      if(zoom === 17) return 6;
-      return 1;
-    },
-    iconCreateFunction:cluster => {
-      const count = cluster.getChildCount();
-      const size = count < 10 ? 36 : count < 100 ? 44 : 52;
-      return L.divIcon({
-        className:"",
-        html:`<div class="agent-cluster"><strong>${count}</strong><span>PONTOS</span></div>`,
-        iconSize:[size,size],
-        iconAnchor:[size/2,size/2]
-      });
-    }
-  }).addTo(map);
+  // Camada simples de pontos: sem clusterização.
+  const pointLayerGroup = L.layerGroup().addTo(map);
 
   const QuickMapControl = L.Control.extend({
     options:{position:"topleft"},
@@ -1146,6 +1185,7 @@ body.connected #sair{display:none!important}
   const pointStatus = new Map();
   const otherAgentMarkers = new Map();
   const routeLayer = L.layerGroup().addTo(map);
+  const manualRouteLayer = L.layerGroup().addTo(map);
 
   let ownMarker = null;
   let ownAccuracy = null;
@@ -1163,10 +1203,16 @@ body.connected #sair{display:none!important}
   let selectedCnpj = "";
   let activeRoute = [];
   let activeRouteStatuses = new Set(["CARTEIRA"]);
+  let activeRouteGeometry = null;
+  let activeRouteRoadDistance = null;
+  let activeRouteRoadDuration = null;
+  let activeRouteSource = "local";
   let selectorMode = "next";
   let routeQuantity = 10;
   let nextStatusSelection = new Set(["CARTEIRA"]);
   let routeStatusSelection = new Set(["CARTEIRA"]);
+  let manualRouteMode = false;
+  const manualRouteSelection = new Set();
   let nextResult = null;
   let endWrongResolver = null;
   let searchDebounceId = null;
@@ -1175,6 +1221,9 @@ body.connected #sair{display:none!important}
   const idKey = "pilotomg_v04_agent_id";
   const nameKey = "pilotomg_v04_agent_name";
   const notesKey = "agentemg_v2_local_notes";
+  const orsKeyStorage = "agentemg_v2r_ors_api_key";
+  const ORS_OPTIMIZATION_URL = "https://api.heigit.org/vroom/v0";
+  const ORS_DIRECTIONS_URL = "https://api.heigit.org/openrouteservice/v2/directions/foot-walking/geojson";
   let externalSearchMode = "google";
   let notesSaveTimer = null;
   let agentId = localStorage.getItem(idKey);
@@ -1218,7 +1267,7 @@ body.connected #sair{display:none!important}
   }
 
   function statusFor(cnpj,props){
-    return normalizeStatus(pointStatus.get(cnpj)?.status || props?.STATUS || "CARTEIRA");
+    return normalizeStatus(pointStatus.get(cnpj)?.status || props?.STATUS_OPERACIONAL || props?.STATUS || "CARTEIRA");
   }
 
   function statusLabel(status){
@@ -1452,7 +1501,10 @@ body.connected #sair{display:none!important}
       <div class="popup-line"><strong>MUNICIPIO:</strong> ${escapeHtml(p.MUNICIPIO || "—")}</div>
       <div class="popup-line"><strong>ENDEE:</strong> ${escapeHtml(p.ENDEE || "—")}</div>
       <div class="popup-line"><strong>BANCO:</strong> ${escapeHtml(p.BANCO || "—")}</div>
-      <div class="popup-line"><strong>STATUS:</strong> ${escapeHtml(statusLabel(status))}</div>
+      <div class="popup-line"><strong>AGENCIA_NOME:</strong> ${escapeHtml(p.AGENCIA_NOME || "—")}</div>
+      <div class="popup-line"><strong>LINHA_AVAL_NOME:</strong> ${escapeHtml(p.LINHA_AVAL_NOME || "—")}</div>
+      <div class="popup-line"><strong>DESCRICAOSITUACAO:</strong> ${escapeHtml(p.DESCRICAOSITUACAO || "—")}</div>
+      <div class="popup-line"><strong>STATUS_OPERACIONAL:</strong> ${escapeHtml(statusLabel(status))}</div>
       ${status === "AGENDADO" ? `
         <div class="popup-line"><strong>DATA:</strong> ${escapeHtml(statusData?.dataAgendamento || p.DATA || "—")}</div>
         <div class="popup-line"><strong>HORA:</strong> ${escapeHtml(statusData?.horaAgendamento || p.HORA || "—")}</div>
@@ -1481,20 +1533,27 @@ body.connected #sair{display:none!important}
 
     marker.bindPopup(buildPopup(cnpj),{maxWidth:330,autoPan:true});
     marker.on("click",() => {
+      if(manualRouteMode){
+        marker.closePopup();
+        map.closePopup();
+        hideActionPanel();
+        toggleManualRoutePoint(cnpj);
+        return;
+      }
       marker.setPopupContent(buildPopup(cnpj));
       marker.openPopup();
       selectPoint(cnpj);
     });
 
     markersByCnpj.set(cnpj,marker);
-    pointClusterGroup.addLayer(marker);
+    pointLayerGroup.addLayer(marker);
     return marker;
   }
 
   function removePointMarker(cnpj){
     const marker = markersByCnpj.get(cnpj);
     if(!marker) return;
-    pointClusterGroup.removeLayer(marker);
+    pointLayerGroup.removeLayer(marker);
     markersByCnpj.delete(cnpj);
     if(selectedCnpj === cnpj) hideActionPanel();
   }
@@ -1887,17 +1946,15 @@ body.connected #sair{display:none!important}
     hideActionPanel();
     map.closePopup();
 
-    pointClusterGroup.zoomToShowLayer(marker,() => {
-      const latlng = marker.getLatLng();
-      if(map.getZoom() < 18) map.setView(latlng,18,{animate:true});
-      else map.panTo(latlng,{animate:true});
+    const latlng = marker.getLatLng();
+    if(map.getZoom() < 18) map.setView(latlng,18,{animate:true});
+    else map.panTo(latlng,{animate:true});
 
-      setTimeout(() => {
-        marker.setPopupContent(buildPopup(cnpj));
-        marker.openPopup();
-        selectPoint(cnpj);
-      },180);
-    });
+    setTimeout(() => {
+      marker.setPopupContent(buildPopup(cnpj));
+      marker.openPopup();
+      selectPoint(cnpj);
+    },180);
   }
 
   function renderSelectorStatusGrid(selected){
@@ -1927,9 +1984,11 @@ body.connected #sair{display:none!important}
       ? "Escolha um ou mais tipos e 3, 5 ou 10 pontos. Não há limite máximo de distância."
       : "Escolha um ou mais tipos. O sistema buscará o mais próximo, mesmo acima de 1 km.";
     el.selectorQtyBlock.style.display = isRoute ? "block" : "none";
+    el.routeOrsBlock.style.display = isRoute ? "block" : "none";
     el.selectorRun.textContent = isRoute ? "GERAR ROTA" : "LOCALIZAR PRÓXIMO";
     renderSelectorStatusGrid(selected);
     updateQtyButtons();
+    if(isRoute) updateOrsKeyStatus();
     el.selectorModal.classList.add("show");
   }
 
@@ -1985,6 +2044,354 @@ body.connected #sair{display:none!important}
         selectPoint(nextResult.cnpj);
       }
     },250);
+  }
+
+  function getOrsKey(){
+    try{
+      return (localStorage.getItem(orsKeyStorage) || "").replace(/\s+/g,"").trim();
+    }catch(error){
+      console.error("Falha ao ler chave OpenRouteService",error);
+      return "";
+    }
+  }
+
+  function updateOrsKeyStatus(){
+    const key = getOrsKey();
+    const configured = Boolean(key);
+    el.orsKeyStatus.textContent = configured
+      ? `Chave OpenRouteService: configurada • final ${key.slice(-4)}`
+      : "Chave OpenRouteService: não configurada.";
+    el.orsKeyTest.disabled = !configured;
+    el.orsKeyDelete.disabled = !configured;
+  }
+
+  function saveOrsKey(){
+    const value = window.prompt(
+      "Cole sua API Key do OpenRouteService/HeiGIT. Ela ficará somente neste navegador:"
+    );
+    if(value === null) return false;
+
+    const cleaned = value.replace(/\s+/g,"").trim();
+    if(cleaned.length < 20){
+      setNotice("CHAVE OPENROUTESERVICE INVÁLIDA OU INCOMPLETA","err");
+      return false;
+    }
+
+    try{
+      localStorage.setItem(orsKeyStorage,cleaned);
+    }catch(error){
+      console.error("Falha ao salvar chave OpenRouteService",error);
+      setNotice("NÃO FOI POSSÍVEL SALVAR A CHAVE NESTE NAVEGADOR","err");
+      return false;
+    }
+
+    updateOrsKeyStatus();
+    setNotice(`CHAVE OPENROUTESERVICE SALVA • FINAL ${cleaned.slice(-4)}`,"ok");
+    return true;
+  }
+
+  function removeOrsKey(){
+    if(!getOrsKey()) return;
+    if(!window.confirm("Apagar a chave OpenRouteService salva neste navegador?")) return;
+    try{
+      localStorage.removeItem(orsKeyStorage);
+    }catch(error){
+      console.error("Falha ao remover chave OpenRouteService",error);
+    }
+    updateOrsKeyStatus();
+    setNotice("CHAVE OPENROUTESERVICE APAGADA","ok");
+  }
+
+  function describeOrsError(error){
+    if(error?.name === "AbortError") return "tempo excedido ao acessar o OpenRouteService";
+    if(error?.status === 401 || error?.status === 403) return "chave recusada pelo OpenRouteService";
+    if(error?.status === 429) return "limite da chave OpenRouteService atingido";
+    return String(error?.message || "falha ao acessar o OpenRouteService");
+  }
+
+  async function orsPost(url,payload,serviceName,timeoutMs=30000){
+    const key = getOrsKey();
+    if(!key) throw new Error("Chave OpenRouteService não configurada");
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(),timeoutMs);
+
+    try{
+      const response = await fetch(url,{
+        method:"POST",
+        mode:"cors",
+        cache:"no-store",
+        referrerPolicy:"no-referrer",
+        signal:controller.signal,
+        headers:{
+          "Accept":"application/json, application/geo+json",
+          "Authorization":key,
+          "Content-Type":"application/json"
+        },
+        body:JSON.stringify(payload)
+      });
+
+      const raw = await response.text();
+      let data = {};
+      try{
+        data = raw ? JSON.parse(raw) : {};
+      }catch{
+        data = {message:raw};
+      }
+
+      if(!response.ok){
+        const message = data?.error?.message || data?.error || data?.message || `HTTP ${response.status}`;
+        const error = new Error(`${serviceName}: ${String(message)}`);
+        error.status = response.status;
+        throw error;
+      }
+
+      return data;
+    }finally{
+      clearTimeout(timeoutId);
+    }
+  }
+
+  async function testOrsKey(){
+    if(!getOrsKey()){
+      setNotice("CONFIGURE SUA CHAVE OPENROUTESERVICE PRIMEIRO","err");
+      return false;
+    }
+
+    el.orsKeyTest.disabled = true;
+    el.orsKeyTest.textContent = "TESTANDO...";
+
+    const payload = {
+      jobs:[{id:1,location:[-44.06000,-20.67000],service:0}],
+      vehicles:[{id:1,profile:"foot-walking",start:[-44.06469,-20.67458]}]
+    };
+
+    try{
+      const data = await orsPost(ORS_OPTIMIZATION_URL,payload,"Teste da chave",20000);
+      if(!data?.routes?.[0]) throw new Error("o serviço não retornou uma rota de teste");
+      setNotice(`CHAVE OPENROUTESERVICE VALIDADA • FINAL ${getOrsKey().slice(-4)}`,"ok");
+      return true;
+    }catch(error){
+      console.error("Teste OpenRouteService",error);
+      setNotice(`FALHA NO TESTE ORS • ${describeOrsError(error).toUpperCase()}`,"err");
+      return false;
+    }finally{
+      el.orsKeyTest.textContent = "TESTAR";
+      updateOrsKeyStatus();
+    }
+  }
+
+  function updateManualRouteBar(){
+    el.manualRouteCount.textContent = `Selecionados: ${manualRouteSelection.size}/10`;
+    el.manualRouteGenerate.disabled = manualRouteSelection.size === 0;
+  }
+
+  function redrawManualRouteSelection(){
+    manualRouteLayer.clearLayers();
+    let index = 0;
+    for(const cnpj of manualRouteSelection){
+      const feature = featuresByCnpj.get(cnpj);
+      const item = feature ? pointData(cnpj,feature) : null;
+      if(!item) continue;
+      index += 1;
+      L.marker([item.lat,item.lng],{
+        pane:"routeNumberPane",
+        icon:routeNumberIcon(index),
+        interactive:false,
+        keyboard:false
+      }).addTo(manualRouteLayer);
+    }
+  }
+
+  function startManualRouteSelection(){
+    if(!currentPosition){
+      setNotice("ATIVE O GPS PARA ESCOLHER OS PONTOS","err");
+      return;
+    }
+
+    const statuses = readSelectorStatuses();
+    if(!statuses.size){
+      setNotice("SELECIONE AO MENOS UM TIPO DE PONTO","err");
+      return;
+    }
+
+    routeStatusSelection = new Set(statuses);
+    manualRouteMode = true;
+    manualRouteSelection.clear();
+    manualRouteLayer.clearLayers();
+    el.selectorModal.classList.remove("show");
+    el.routePanel.classList.remove("show");
+    el.manualRouteBar.classList.add("show");
+    updateManualRouteBar();
+    hideActionPanel();
+    map.closePopup();
+    setNotice("SELEÇÃO MANUAL • TOQUE EM ATÉ 10 PONTOS NO MAPA","ok");
+  }
+
+  function cancelManualRouteSelection(showMessage=true){
+    manualRouteMode = false;
+    manualRouteSelection.clear();
+    manualRouteLayer.clearLayers();
+    el.manualRouteBar.classList.remove("show");
+    updateManualRouteBar();
+    if(showMessage) setNotice("SELEÇÃO MANUAL CANCELADA","ok");
+  }
+
+  function toggleManualRoutePoint(cnpj){
+    if(!manualRouteMode) return;
+    const feature = featuresByCnpj.get(cnpj);
+    const item = feature ? pointData(cnpj,feature) : null;
+
+    if(!item || !isDisplayStatus(item.status) || !routeStatusSelection.has(item.status)){
+      setNotice("ESTE PONTO NÃO ESTÁ ENTRE OS TIPOS SELECIONADOS PARA A ROTA","err");
+      return;
+    }
+
+    if(manualRouteSelection.has(cnpj)){
+      manualRouteSelection.delete(cnpj);
+    }else{
+      if(manualRouteSelection.size >= 10){
+        setNotice("LIMITE DE 10 PONTOS ATINGIDO","err");
+        return;
+      }
+      manualRouteSelection.add(cnpj);
+    }
+
+    redrawManualRouteSelection();
+    updateManualRouteBar();
+    setNotice(`SELEÇÃO MANUAL • ${manualRouteSelection.size}/10 PONTOS`,"ok");
+  }
+
+  async function optimizeRouteWithOrs(points){
+    if(points.length <= 1) return [...points];
+    const payload = {
+      jobs:points.map((item,index) => ({
+        id:index + 1,
+        location:[item.lng,item.lat],
+        service:0
+      })),
+      vehicles:[{
+        id:1,
+        profile:"foot-walking",
+        start:[currentPosition.lng,currentPosition.lat]
+      }]
+    };
+
+    const data = await orsPost(ORS_OPTIMIZATION_URL,payload,"Otimização");
+    const route = data?.routes?.[0];
+    if(!route) throw new Error("A otimização não retornou uma rota");
+
+    const byJobId = new Map(points.map((item,index) => [index + 1,item]));
+    const ordered = (route.steps || [])
+      .filter(step => step.type === "job")
+      .map(step => byJobId.get(Number(step.id ?? step.job)))
+      .filter(Boolean);
+
+    if(ordered.length !== points.length){
+      throw new Error("Nem todos os pontos foram incluídos na otimização");
+    }
+
+    return ordered;
+  }
+
+  async function fetchOrsDirections(points){
+    if(!points.length) return null;
+    const coordinates = [
+      [currentPosition.lng,currentPosition.lat],
+      ...points.map(point => [point.lng,point.lat])
+    ];
+    const data = await orsPost(
+      ORS_DIRECTIONS_URL,
+      {coordinates},
+      "Traçado da rota",
+      30000
+    );
+
+    const feature = data?.features?.[0];
+    const geometry = feature?.geometry?.coordinates;
+    const summary = feature?.properties?.summary || {};
+    const segments = feature?.properties?.segments || [];
+
+    if(!Array.isArray(geometry) || geometry.length < 2){
+      throw new Error("O traçado pelas ruas não retornou geometria válida");
+    }
+
+    return {
+      geometry:geometry.map(coord => [Number(coord[1]),Number(coord[0])]),
+      distance:Number(summary.distance || 0),
+      duration:Number(summary.duration || 0),
+      legDistances:segments.map(segment => Number(segment?.distance || 0))
+    };
+  }
+
+  async function applyRouteOptimization(baseRoute){
+    let route = attachLegDistances(baseRoute);
+    activeRouteGeometry = null;
+    activeRouteRoadDistance = null;
+    activeRouteRoadDuration = null;
+    activeRouteSource = "local";
+
+    if(!getOrsKey() || route.length <= 1) return route;
+
+    try{
+      setNotice("OTIMIZANDO ROTA COM OPENROUTESERVICE...","ok");
+      route = attachLegDistances(await optimizeRouteWithOrs(baseRoute));
+      activeRouteSource = "ors";
+
+      try{
+        const directions = await fetchOrsDirections(route);
+        if(directions){
+          activeRouteGeometry = directions.geometry;
+          activeRouteRoadDistance = directions.distance > 0 ? directions.distance : null;
+          activeRouteRoadDuration = directions.duration > 0 ? directions.duration : null;
+          if(directions.legDistances.length === route.length){
+            route = route.map((point,index) => ({
+              ...point,
+              legDistance:directions.legDistances[index] > 0
+                ? directions.legDistances[index]
+                : point.legDistance
+            }));
+          }
+        }
+      }catch(error){
+        console.warn("Falha no traçado OpenRouteService; mantendo ordem otimizada",error);
+      }
+
+      return route;
+    }catch(error){
+      console.warn("Falha na otimização OpenRouteService; usando algoritmo local",error);
+      setNotice(`ORS INDISPONÍVEL • USANDO OTIMIZAÇÃO LOCAL • ${describeOrsError(error).toUpperCase()}`,"err");
+      activeRouteGeometry = null;
+      activeRouteRoadDistance = null;
+      activeRouteRoadDuration = null;
+      activeRouteSource = "local";
+      return attachLegDistances(baseRoute);
+    }
+  }
+
+  async function finishManualRouteSelection(){
+    if(!manualRouteSelection.size){
+      setNotice("SELECIONE AO MENOS UM PONTO","err");
+      return;
+    }
+
+    const selected = [...manualRouteSelection]
+      .map(cnpj => {
+        const feature = featuresByCnpj.get(cnpj);
+        return feature ? pointData(cnpj,feature) : null;
+      })
+      .filter(Boolean);
+
+    if(!selected.length){
+      setNotice("OS PONTOS SELECIONADOS NÃO ESTÃO MAIS DISPONÍVEIS","err");
+      cancelManualRouteSelection(false);
+      return;
+    }
+
+    const statuses = new Set(selected.map(item => item.status));
+    const localBase = optimizeSelectedRoute(selected,selected.length);
+    cancelManualRouteSelection(false);
+    await finalizeRoute(localBase,statuses,"manual");
   }
 
   function routePathDistance(points){
@@ -2135,15 +2542,19 @@ body.connected #sair{display:none!important}
     routeLayer.clearLayers();
     if(!currentPosition || !activeRoute.length) return;
 
-    L.polyline([
-      [currentPosition.lat,currentPosition.lng],
-      ...activeRoute.map(point => [point.lat,point.lng])
-    ],{
+    const routeCoordinates = Array.isArray(activeRouteGeometry) && activeRouteGeometry.length > 1
+      ? activeRouteGeometry
+      : [
+          [currentPosition.lat,currentPosition.lng],
+          ...activeRoute.map(point => [point.lat,point.lng])
+        ];
+
+    L.polyline(routeCoordinates,{
       pane:"routeLinePane",
       color:"#7c3aed",
       weight:5,
       opacity:.86,
-      dashArray:"8 7",
+      dashArray:activeRouteGeometry ? null : "8 7",
       interactive:false
     }).addTo(routeLayer);
 
@@ -2168,9 +2579,13 @@ body.connected #sair{display:none!important}
     }
 
     const segments = buildRouteSegments();
-    const totalDistance = routePathDistance(activeRoute);
+    const totalDistance = Number.isFinite(activeRouteRoadDistance) && activeRouteRoadDistance > 0
+      ? activeRouteRoadDistance
+      : routePathDistance(activeRoute);
     const statusText = [...activeRouteStatuses].map(statusLabel).join(", ");
-    el.routeMeta.textContent = `${activeRoute.length} pontos • ${formatDistance(totalDistance)} aprox. • ${statusText}`;
+    const sourceText = activeRouteSource === "ors" ? "OpenRouteService" : "otimização local";
+    const distanceSuffix = activeRouteRoadDistance ? "" : " aprox.";
+    el.routeMeta.textContent = `${activeRoute.length} pontos • ${formatDistance(totalDistance)}${distanceSuffix} • ${sourceText} • ${statusText}`;
 
     el.routeList.innerHTML = activeRoute.map((point,index) => `
       <button type="button" class="route-list-item" data-route-cnpj="${escapeHtml(point.cnpj)}">
@@ -2212,6 +2627,10 @@ body.connected #sair{display:none!important}
 
   function clearRoute(showMessage=true){
     activeRoute = [];
+    activeRouteGeometry = null;
+    activeRouteRoadDistance = null;
+    activeRouteRoadDuration = null;
+    activeRouteSource = "local";
     routeLayer.clearLayers();
     el.routePanel.classList.remove("show");
     renderRoutePanel();
@@ -2232,6 +2651,10 @@ body.connected #sair{display:none!important}
 
     if(activeRoute.length === previousLength) return;
     activeRoute = attachLegDistances(activeRoute);
+    activeRouteGeometry = null;
+    activeRouteRoadDistance = null;
+    activeRouteRoadDuration = null;
+    activeRouteSource = "local";
 
     if(!activeRoute.length){
       clearRoute(false);
@@ -2244,7 +2667,36 @@ body.connected #sair{display:none!important}
     if(showMessage) setNotice(`ROTA ATUALIZADA • ${activeRoute.length} PONTOS RESTANTES`,"ok");
   }
 
-  function generateRoute(statuses,quantity){
+  async function finalizeRoute(baseRoute,statuses,mode="automatic"){
+    if(!baseRoute.length){
+      setNotice("NÃO FOI POSSÍVEL GERAR A ROTA","err");
+      return;
+    }
+
+    activeRouteStatuses = new Set(statuses);
+    activeRoute = await applyRouteOptimization(baseRoute);
+
+    hideActionPanel();
+    map.closePopup();
+    drawActiveRoute();
+    renderRoutePanel();
+    el.routePanel.classList.add("show");
+
+    const bounds = L.latLngBounds([
+      [currentPosition.lat,currentPosition.lng],
+      ...activeRoute.map(point => [point.lat,point.lng])
+    ]);
+    map.fitBounds(bounds,{padding:[35,35],maxZoom:17});
+
+    const totalDistance = Number.isFinite(activeRouteRoadDistance) && activeRouteRoadDistance > 0
+      ? activeRouteRoadDistance
+      : routePathDistance(activeRoute);
+    const sourceText = activeRouteSource === "ors" ? "OPENROUTESERVICE" : "OTIMIZAÇÃO LOCAL";
+    const modeText = mode === "manual" ? "SELEÇÃO MANUAL" : "ROTA";
+    setNotice(`${modeText} CRIADA • ${activeRoute.length} PONTOS • ${formatDistance(totalDistance)} • ${sourceText}`,"ok");
+  }
+
+  async function generateRoute(statuses,quantity){
     if(!currentPosition){
       setNotice("ATIVE O GPS PARA CRIAR A ROTA","err");
       return;
@@ -2261,26 +2713,8 @@ body.connected #sair{display:none!important}
       return;
     }
 
-    activeRouteStatuses = new Set(statuses);
-    activeRoute = optimizeSelectedRoute(candidates,Math.min(quantity,candidates.length));
-    if(!activeRoute.length){
-      setNotice("NÃO FOI POSSÍVEL GERAR A ROTA","err");
-      return;
-    }
-
-    hideActionPanel();
-    map.closePopup();
-    drawActiveRoute();
-    renderRoutePanel();
-    el.routePanel.classList.add("show");
-
-    const bounds = L.latLngBounds([
-      [currentPosition.lat,currentPosition.lng],
-      ...activeRoute.map(point => [point.lat,point.lng])
-    ]);
-    map.fitBounds(bounds,{padding:[35,35],maxZoom:17});
-
-    setNotice(`ROTA CRIADA • ${activeRoute.length} PONTOS • ${formatDistance(routePathDistance(activeRoute))} APROX.`,"ok");
+    const localBase = optimizeSelectedRoute(candidates,Math.min(quantity,candidates.length));
+    await finalizeRoute(localBase,statuses,"automatic");
   }
 
   function openRouteSegment(index){
@@ -2295,10 +2729,14 @@ body.connected #sair{display:none!important}
 
   function routeShareText(){
     const segments = buildRouteSegments();
+    const totalDistance = Number.isFinite(activeRouteRoadDistance) && activeRouteRoadDistance > 0
+      ? activeRouteRoadDistance
+      : routePathDistance(activeRoute);
     return [
-      "ROTA AGENTEMG",
+      "ROTA AGENTEMG V.2R",
       `Pontos: ${activeRoute.length}`,
-      `Distância aproximada: ${formatDistance(routePathDistance(activeRoute))}`,
+      `Distância: ${formatDistance(totalDistance)}${activeRouteRoadDistance ? "" : " aprox."}`,
+      `Otimização: ${activeRouteSource === "ors" ? "OpenRouteService" : "local"}`,
       `Tipos: ${[...activeRouteStatuses].map(statusLabel).join(", ")}`,
       "",
       ...segments.flatMap((segment,index) => [
@@ -2358,7 +2796,7 @@ body.connected #sair{display:none!important}
     const data = await response.json();
     const bounds = [];
 
-    pointClusterGroup.clearLayers();
+    pointLayerGroup.clearLayers();
     featuresByCnpj.clear();
     markersByCnpj.clear();
     searchIndexByCnpj.clear();
@@ -2716,6 +3154,12 @@ body.connected #sair{display:none!important}
   el.selectorClose.addEventListener("click",() => el.selectorModal.classList.remove("show"));
   el.selectorAll.addEventListener("click",() => renderSelectorStatusGrid(new Set(DISPLAY_STATUSES)));
   el.selectorClear.addEventListener("click",() => renderSelectorStatusGrid(new Set()));
+  el.orsKeySave.addEventListener("click",saveOrsKey);
+  el.orsKeyTest.addEventListener("click",testOrsKey);
+  el.orsKeyDelete.addEventListener("click",removeOrsKey);
+  el.manualRouteStart.addEventListener("click",startManualRouteSelection);
+  el.manualRouteGenerate.addEventListener("click",finishManualRouteSelection);
+  el.manualRouteCancel.addEventListener("click",() => cancelManualRouteSelection(true));
   for(const button of document.querySelectorAll("[data-route-qty]")){
     button.addEventListener("click",() => {
       routeQuantity = Number(button.dataset.routeQty) || 10;
@@ -2723,7 +3167,7 @@ body.connected #sair{display:none!important}
     });
   }
 
-  el.selectorRun.addEventListener("click",() => {
+  el.selectorRun.addEventListener("click",async () => {
     const statuses = readSelectorStatuses();
     if(!statuses.size){
       setNotice("SELECIONE AO MENOS UM TIPO DE PONTO","err");
@@ -2736,7 +3180,7 @@ body.connected #sair{display:none!important}
       showNextResult(findNearestByStatuses(statuses));
     }else{
       routeStatusSelection = new Set(statuses);
-      generateRoute(statuses,routeQuantity);
+      await generateRoute(statuses,routeQuantity);
     }
   });
 
@@ -2755,6 +3199,9 @@ body.connected #sair{display:none!important}
   el.routeOpen1.addEventListener("click",() => openRouteSegment(0));
   el.routeOpen2.addEventListener("click",() => openRouteSegment(1));
   el.routeShare.addEventListener("click",shareRoute);
+
+  updateOrsKeyStatus();
+  updateManualRouteBar();
 
   onValue(ref(db,"STATUS_PONTOS"),snapshot => {
     pointStatus.clear();
