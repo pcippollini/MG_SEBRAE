@@ -1,0 +1,47 @@
+ROTAS INDIVIDUAIS GERADAS PELO ROTEIRIZADOR V1.12
+
+COMO PUBLICAR
+1. Extraia o ZIP.
+2. Copie o conteúdo da pasta ROTAS para a pasta ROTAS do repositório MG_SEBRAE.
+3. No GitHub Desktop: Commit to main -> Push origin.
+4. Depois da publicação do GitHub Pages, compartilhe com cada agente somente o link da sua rota.
+
+URL BASE
+https://pcippollini.github.io/MG_SEBRAE/ROTAS/
+
+LINKS DAS ROTAS
+
+ROTA 1
+Agente: Ariane
+Arquivo: ROTA_01_Ariane_20260901.html
+Link: https://pcippollini.github.io/MG_SEBRAE/ROTAS/ROTA_01_Ariane_20260901.html
+
+ROTA 2
+Agente: Inês
+Arquivo: ROTA_02_Ines_20260901.html
+Link: https://pcippollini.github.io/MG_SEBRAE/ROTAS/ROTA_02_Ines_20260901.html
+
+ROTA 3
+Agente: Gabriel Narvaes
+Arquivo: ROTA_03_Gabriel_Narvaes_20260901.html
+Link: https://pcippollini.github.io/MG_SEBRAE/ROTAS/ROTA_03_Gabriel_Narvaes_20260901.html
+
+ROTA 4
+Agente: Viviane Martins
+Arquivo: ROTA_04_Viviane_Martins_20260901.html
+Link: https://pcippollini.github.io/MG_SEBRAE/ROTAS/ROTA_04_Viviane_Martins_20260901.html
+
+INFORMAÇÕES TÉCNICAS
+Cada HTML contém somente os pontos da rota atribuída.
+O agente não precisa estar online durante a geração. A identidade e a rota ficam embutidas no HTML; ao abrir depois, o agente entra na rota e passa a publicar GPS/online normalmente.
+
+Firebase mantido:
+- STATUS_PONTOS: leitura/gravação de status
+- AGENTES_ONLINE: GPS/online do agente para visualização do gestor
+- CONFIG: raio de liberação e parâmetros GPS
+
+Status finais removem o ponto da rota ativa:
+INICIADO, END_ERRADO, RECUSA, T2_APLICADO, T3_APLICADO, T4_APLICADO.
+
+Status que permanecem:
+CARTEIRA, RETORNAR, RETORNAR_COMERCIAL, RETORNAR_RESIDENCIAL, AGENDADO, APLICAR_T2, APLICAR_T3, APLICAR_T4.
