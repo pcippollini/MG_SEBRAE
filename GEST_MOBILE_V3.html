@@ -4,9 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <meta name="theme-color" content="#07111f">
-  <title>GEST_MOBILE V2 — Gestão operacional</title>
+  <title>GEST_MOBILE V3 — Gestão operacional</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 
   <style>
     :root{
@@ -1079,6 +1081,74 @@
       .topbar{padding-top:4px}
       .sheet{max-height:82vh}
     }
+
+
+    /* V3 • alternância entre o GEST geral e os HTMLs externos de rotas */
+    .view-tabs{
+      display:flex;
+      gap:3px;
+      flex:0 0 auto;
+      padding:2px;
+      border:1px solid var(--line);
+      border-radius:9px;
+      background:#0b1527;
+    }
+    .view-tab{
+      height:28px;
+      min-width:54px;
+      padding:0 8px;
+      border:0;
+      border-radius:7px;
+      background:transparent;
+      color:#b8c5d9;
+      font-size:10px;
+      font-weight:900;
+    }
+    .view-tab.active{background:#2563eb;color:#fff}
+    #routesExternalView{
+      position:absolute;
+      z-index:1490;
+      top:var(--top-h);
+      left:0;
+      right:0;
+      bottom:0;
+      display:none;
+      grid-template-rows:auto 1fr;
+      background:#07111f;
+    }
+    body.routes-view #routesExternalView{display:grid}
+    body.routes-view .tools,
+    body.routes-view #summary,
+    body.routes-view #followBanner,
+    body.routes-view #map,
+    body.routes-view #showUi,
+    body.routes-view #routeSelectBar,
+    body.routes-view .sheet{display:none!important}
+    .routes-external-toolbar{
+      display:grid;
+      grid-template-columns:minmax(150px,1fr) auto auto;
+      gap:6px;
+      padding:7px 8px;
+      border-bottom:1px solid var(--line);
+      background:#0b1527;
+      align-items:center;
+    }
+    .routes-external-toolbar select,
+    .routes-external-toolbar input{
+      width:100%;height:36px;padding:0 8px;border:1px solid #334766;border-radius:8px;background:#111f34;color:#fff;
+    }
+    .routes-external-toolbar button{height:36px;border:1px solid #334766;border-radius:8px;background:#17243a;color:#fff;font-weight:900;font-size:10px;padding:0 10px}
+    .routes-external-toolbar button.primary{background:#2563eb;border-color:#3b82f6}
+    #routeExternalFrame{width:100%;height:100%;border:0;background:#fff}
+    .route-external-empty{display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:#b8c5d9;font-size:12px;line-height:1.5}
+    @media(max-width:620px){
+      .connection{display:none}
+      .brand{font-size:13px}
+      .view-tabs{margin-left:auto}
+      .routes-external-toolbar{grid-template-columns:1fr auto}
+      #routePathInput{grid-column:1/-1}
+    }
+
   </style>
 
   <!-- Google Analytics GA4 -->
@@ -1094,10 +1164,14 @@
 <body>
 <div id="app">
   <header class="topbar">
-    <div class="brand" title="Versão 2">GEST_MOBILE V2</div>
+    <div class="brand" title="Versão 3">GEST V3</div>
     <div class="connection">
       <span id="connectionDot" class="connection-dot"></span>
       <span id="connectionText">Conectando...</span>
+    </div>
+    <div class="view-tabs" aria-label="Visualização do GEST">
+      <button id="viewGeneralBtn" class="view-tab active" type="button">GERAL</button>
+      <button id="viewRoutesBtn" class="view-tab" type="button">ROTAS</button>
     </div>
     <button id="btnHelp" class="icon-btn" title="Ajuda">?</button>
     <button id="btnMapOnly" class="icon-btn" title="Ocultar painéis">MAPA</button>
@@ -1373,6 +1447,19 @@
     <div id="agentsMenuList" class="agents-menu-list"></div>
   </section>
 
+
+  <section id="routesExternalView" aria-label="HTMLs externos de rotas">
+    <div class="routes-external-toolbar">
+      <select id="routeExternalSelect" title="Selecione um HTML da pasta ROTAS">
+        <option value="">Selecione uma rota/operação...</option>
+      </select>
+      <button id="refreshRoutesIndex" type="button">ATUALIZAR LISTA</button>
+      <button id="openExternalRoute" class="primary" type="button">ABRIR</button>
+      <input id="routePathInput" type="text" placeholder="Opcional: ./ROTAS/OPERACAO_....html ou URL completa" spellcheck="false">
+    </div>
+    <div id="routeExternalHost" class="route-external-empty">Selecione um HTML de rota. A lista é lida de <b style="margin-left:4px">./ROTAS/ROTAS_INDEX.json</b>.</div>
+  </section>
+
   <section id="detailSheet" class="sheet" aria-label="Detalhes">
     <div class="sheet-head">
       <div id="detailTitle" class="sheet-title">Detalhes</div>
@@ -1384,6 +1471,7 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
 <script type="module">
   import { initializeApp } from
@@ -1394,6 +1482,9 @@
     ref,
     get,
     onValue,
+    onChildAdded,
+    onChildChanged,
+    onChildRemoved,
     set,
     update,
     onDisconnect,
@@ -1418,8 +1509,9 @@
     window.location.href
   ).href;
 
-  // Cache local apenas para contingência offline. A leitura normal é sempre da rede.
-  const GEO_CACHE = "mg-sebrae-mobile-geo-v11";
+  // V3: cache local é priorizado na abertura para o mapa aparecer rápido.
+  // A rede atualiza o cache em segundo plano; ATUALIZAR BASE força a versão nova na tela.
+  const GEO_CACHE = "mg-sebrae-mobile-geo-v12";
 
   const ACTIVE_STATUSES = [
     "CARTEIRA",
@@ -1615,8 +1707,15 @@
     }
   ).addTo(map);
 
-  // Camada simples de pontos: sem clusterização.
-  const pointLayerGroup = L.layerGroup().addTo(map);
+  // V3: clusterização reduz o custo visual/DOM com bases grandes.
+  const pointLayerGroup = L.markerClusterGroup({
+    chunkedLoading:true,
+    chunkInterval:120,
+    chunkDelay:25,
+    removeOutsideVisibleBounds:true,
+    maxClusterRadius:zoom => zoom >= 17 ? 24 : zoom >= 15 ? 38 : 55,
+    disableClusteringAtZoom:18
+  }).addTo(map);
 
   const QuickMapControl = L.Control.extend({
     options:{position:"topleft"},
@@ -4979,35 +5078,43 @@
     return response.json();
   }
 
+  async function refreshGeoJsonCache(cache){
+    if(!cache) return;
+    const networkUrl = new URL(GEOJSON_URL);
+    networkUrl.searchParams.set("_atualizacao",String(Date.now()));
+    const response = await fetch(networkUrl.href,{cache:"no-store",headers:{"Cache-Control":"no-cache"}});
+    if(!response.ok) throw new Error(`GeoJSON HTTP ${response.status}`);
+    await cache.put(GEOJSON_URL,response.clone());
+  }
+
   async function getGeoJson(forceNetwork=false){
     let cache = null;
+    if("caches" in window) cache = await caches.open(GEO_CACHE);
 
-    if("caches" in window){
-      cache = await caches.open(GEO_CACHE);
+    // Abertura normal: usa imediatamente a última base válida em cache.
+    if(!forceNetwork && cache){
+      const cached = await cache.match(GEOJSON_URL);
+      if(cached){
+        setConnection("Firebase conectado • base local rápida","ok");
+        refreshGeoJsonCache(cache).catch(error => console.warn("Atualização silenciosa da base falhou",error));
+        return cached.json();
+      }
     }
 
-    // Rede primeiro: evita exibir uma base antiga, como a versão de 1.642 pontos.
+    // Primeira abertura ou atualização manual: rede obrigatória, com fallback local.
     try{
       const data = await fetchGeoJsonFromNetwork(cache);
-      setConnection(
-        forceNetwork
-          ? "Firebase conectado • base atualizada"
-          : "Firebase conectado • base atual carregada",
-        "ok"
-      );
+      setConnection(forceNetwork ? "Firebase conectado • base atualizada" : "Firebase conectado • base carregada","ok");
       return data;
     }catch(error){
-      console.warn("Falha ao baixar GeoJSON atual; tentando cache local",error);
-
+      console.warn("Falha ao baixar GeoJSON; tentando cache local",error);
       if(cache){
         const cached = await cache.match(GEOJSON_URL);
-
         if(cached){
-          setConnection("Sem rede • usando base local", "err");
+          setConnection("Sem rede • usando base local","err");
           return cached.json();
         }
       }
-
       throw error;
     }
   }
@@ -5274,34 +5381,35 @@
       }
     ));
 
-    realtimeUnsubs.push(onValue(
-      ref(db,"STATUS_PONTOS"),
-      snapshot => {
-        statuses.clear();
-        const raw = snapshot.val() || {};
-
-        for(const [cnpj,value] of Object.entries(raw)){
-          if(cnpj === "TEMP" || cnpj === "TESTE_MANUAL") continue;
-          if(!value) continue;
-          statuses.set(cnpj,value);
-          updatePointStyle(cnpj);
-        }
-
+    const statusRoot = ref(db,"STATUS_PONTOS");
+    let statusUiTimer = null;
+    const scheduleStatusUiRefresh = () => {
+      clearTimeout(statusUiTimer);
+      statusUiTimer = setTimeout(() => {
         applyPointFilters();
         updateSummary();
         refreshRouteCities();
         refreshFilterSelects();
-
-        if(el.agentsSheet?.classList.contains("show")){
-          renderAgentsMenu();
-        }
+        if(el.agentsSheet?.classList.contains("show")) renderAgentsMenu();
         setConnection("Firebase conectado","ok");
-      },
-      error => {
-        console.error(error);
-        setConnection("Erro ao ler status","err");
-      }
-    ));
+      },120);
+    };
+    const applyStatusChild = snapshot => {
+      const cnpj = String(snapshot.key || "");
+      if(!cnpj || cnpj === "TEMP" || cnpj === "TESTE_MANUAL") return;
+      const value = snapshot.val();
+      if(value) statuses.set(cnpj,value); else statuses.delete(cnpj);
+      updatePointStyle(cnpj);
+      scheduleStatusUiRefresh();
+    };
+    realtimeUnsubs.push(onChildAdded(statusRoot,applyStatusChild,error => {console.error(error);setConnection("Erro ao ler status","err")}));
+    realtimeUnsubs.push(onChildChanged(statusRoot,applyStatusChild,error => {console.error(error);setConnection("Erro ao atualizar status","err")}));
+    realtimeUnsubs.push(onChildRemoved(statusRoot,snapshot => {
+      const cnpj=String(snapshot.key||"");
+      statuses.delete(cnpj);
+      updatePointStyle(cnpj);
+      scheduleStatusUiRefresh();
+    },error => {console.error(error);setConnection("Erro ao remover status","err")}));
 
     realtimeUnsubs.push(onValue(
       ref(db,"AGENTES_ONLINE"),
@@ -5328,6 +5436,93 @@
       }
     ));
   }
+
+
+  // ===================== V3 • GERAL | ROTAS EXTERNAS =====================
+  const viewGeneralBtn = document.getElementById("viewGeneralBtn");
+  const viewRoutesBtn = document.getElementById("viewRoutesBtn");
+  const routeExternalSelect = document.getElementById("routeExternalSelect");
+  const routePathInput = document.getElementById("routePathInput");
+  const routeExternalHost = document.getElementById("routeExternalHost");
+  const refreshRoutesIndex = document.getElementById("refreshRoutesIndex");
+  const openExternalRoute = document.getElementById("openExternalRoute");
+  const ROUTES_INDEX_URL = new URL("./ROTAS/ROTAS_INDEX.json",window.location.href).href;
+  let routesIndexLoaded = false;
+
+  function switchGestView(mode){
+    const routesMode = mode === "routes";
+    document.body.classList.toggle("routes-view",routesMode);
+    viewGeneralBtn.classList.toggle("active",!routesMode);
+    viewRoutesBtn.classList.toggle("active",routesMode);
+    if(routesMode){
+      if(!routesIndexLoaded) loadRoutesIndex();
+    }else{
+      setTimeout(refreshMapSize,80);
+    }
+  }
+
+  function normalizeExternalRouteUrl(value){
+    const raw=String(value||"").trim();
+    if(!raw) return "";
+    try{return new URL(raw,window.location.href).href}catch{return ""}
+  }
+
+  function renderRoutesIndex(items){
+    const previous=routeExternalSelect.value;
+    routeExternalSelect.innerHTML='<option value="">Selecione uma rota/operação...</option>';
+    for(const item of items){
+      const file=String(item.arquivo||item.file||item.url||"").trim();
+      if(!file) continue;
+      const option=document.createElement("option");
+      option.value=normalizeExternalRouteUrl(file.startsWith("http")?file:`./ROTAS/${file.replace(/^\.\/?ROTAS\//i,"")}`);
+      option.textContent=String(item.nome||item.name||item.operacao||file);
+      routeExternalSelect.appendChild(option);
+    }
+    if(previous && [...routeExternalSelect.options].some(o=>o.value===previous)) routeExternalSelect.value=previous;
+  }
+
+  async function loadRoutesIndex(){
+    refreshRoutesIndex.disabled=true;
+    refreshRoutesIndex.textContent="CARREGANDO...";
+    try{
+      const response=await fetch(`${ROUTES_INDEX_URL}?t=${Date.now()}`,{cache:"no-store"});
+      if(!response.ok) throw new Error(`HTTP ${response.status}`);
+      const raw=await response.json();
+      const items=Array.isArray(raw)?raw:(Array.isArray(raw.rotas)?raw.rotas:[]);
+      renderRoutesIndex(items);
+      routesIndexLoaded=true;
+      if(!items.length) routeExternalHost.innerHTML='Nenhum HTML cadastrado em ROTAS_INDEX.json. Você também pode informar o caminho manualmente acima.';
+    }catch(error){
+      console.warn("ROTAS_INDEX.json não disponível",error);
+      routesIndexLoaded=false;
+      routeExternalHost.innerHTML='Não foi possível ler <b>./ROTAS/ROTAS_INDEX.json</b>. Informe manualmente o caminho de um HTML da pasta ROTAS e clique em ABRIR.';
+    }finally{
+      refreshRoutesIndex.disabled=false;
+      refreshRoutesIndex.textContent="ATUALIZAR LISTA";
+    }
+  }
+
+  function showExternalRoute(){
+    const url=normalizeExternalRouteUrl(routePathInput.value||routeExternalSelect.value);
+    if(!url){toast("Selecione ou informe um HTML de rota");return}
+    routePathInput.value=url;
+    routeExternalHost.className="";
+    routeExternalHost.innerHTML='';
+    const frame=document.createElement("iframe");
+    frame.id="routeExternalFrame";
+    frame.src=url;
+    frame.title="HTML externo de rotas";
+    frame.loading="eager";
+    frame.setAttribute("allow","geolocation; fullscreen");
+    routeExternalHost.appendChild(frame);
+  }
+
+  viewGeneralBtn.onclick=()=>switchGestView("general");
+  viewRoutesBtn.onclick=()=>switchGestView("routes");
+  refreshRoutesIndex.onclick=()=>{routesIndexLoaded=false;loadRoutesIndex()};
+  openExternalRoute.onclick=showExternalRoute;
+  routeExternalSelect.onchange=()=>{if(routeExternalSelect.value){routePathInput.value=routeExternalSelect.value;showExternalRoute()}};
+
 
   window.setInterval(() => {
     updateSummary();

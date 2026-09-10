@@ -1,0 +1,1602 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Roteirizador de Campo V1.18 • ORS</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
+<style>
+:root{
+ --bg:#0b1220;--panel:#111827;--card:#172033;--line:#2c3a50;--text:#e5e7eb;--muted:#94a3b8;
+ --ok:#22c55e;--blue:#38bdf8;--warn:#facc15;--bad:#ef4444;
+}
+*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+body{overflow:hidden}#app{display:grid;grid-template-columns:420px 1fr;height:100vh}#panel{overflow:auto;background:var(--panel);border-right:1px solid var(--line);padding:13px}#map{height:100vh}
+h1{font-size:20px;margin:0}.ver{font-size:12px;color:var(--ok);font-weight:800}.sub{font-size:12px;color:var(--muted);line-height:1.4;margin:4px 0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:9px}.card h2{font-size:14px;margin:0 0 8px;color:#fff}
+label{display:block;font-size:11px;color:#cbd5e1;margin:6px 0 3px}
+input,select,button{font:inherit}input[type=text],input[type=password],input[type=number],select{width:100%;background:#0a101c;color:#e5e7eb;border:1px solid #34445c;border-radius:7px;padding:7px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:6px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+button{border:0;border-radius:7px;padding:7px 8px;font-weight:700;cursor:pointer;background:#2c3a50;color:#fff}.primary{background:#22c55e;color:#052e16}.blue{background:#0369a1}.danger{background:#7f1d1d}
+.toolbar{display:flex;gap:5px;flex-wrap:wrap}.toolbar button{font-size:11px}
+.note{font-size:10px;color:var(--muted);line-height:1.4}.badge{display:inline-block;background:#26344a;border-radius:999px;padding:3px 7px;font-size:11px;margin-top:5px}
+#columns{display:grid;grid-template-columns:1fr 1fr;gap:3px;max-height:110px;overflow:auto;border:1px solid #334155;border-radius:7px;padding:5px}#columns label{margin:0;display:flex;gap:4px;align-items:center}
+#list{max-height:190px;overflow:auto;border:1px solid #334155;border-radius:7px;margin-top:7px}.item{display:grid;grid-template-columns:24px 1fr auto;gap:5px;align-items:center;padding:5px;border-bottom:1px solid #26344a;font-size:11px}.item:last-child{border:0}
+.num{width:21px;height:21px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#334155;font-weight:800}.mini{font-size:10px;padding:4px 5px}
+#routesBox .rline{display:grid;grid-template-columns:12px 1fr auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid #26344a;font-size:11px}.sw{width:10px;height:10px;border-radius:50%}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:7px}.metric{background:#0a101c;border:1px solid #2b394e;border-radius:7px;padding:6px;text-align:center}.metric b{display:block;font-size:14px}.metric span{font-size:9px;color:var(--muted)}
+#status{font-size:11px;color:#cbd5e1;white-space:pre-wrap;line-height:1.45;margin-top:7px}
+.routeNum{width:26px;height:26px;border-radius:50%;border:2px solid white;color:white;display:flex;align-items:center;justify-content:center;font-weight:900;box-shadow:0 1px 5px #0009;font-size:11px}
+.popup{min-width:210px;font-size:12px}.popup b.title{font-size:14px}.popup div{border-bottom:1px solid #eee;padding:2px 0}
+@media(max-width:850px){#app{grid-template-columns:1fr}#panel{position:absolute;z-index:1000;width:390px;max-width:94vw;height:100vh}}
+
+.agentAssign{margin-top:10px;padding:9px;border:1px solid #34445f;border-radius:9px;background:#101827}
+.agentAssign h3{margin:0 0 7px;font-size:13px}.assignRow{display:grid;grid-template-columns:12px 72px 1fr;gap:6px;align-items:center;margin:5px 0}
+.assignRow select{min-width:0}.assignMeta{font-size:10px;color:#aab6ca}.publishBtns{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.publishUrlBox{margin-top:8px;padding:7px;border:1px solid #34445f;border-radius:8px;background:#0b1527}
+.publishUrlBox label{margin-top:0}.publishUrlBox input{width:100%}
+.routeLinks{margin-top:8px;display:grid;gap:6px}
+.routeLinkRow{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;padding:7px;border:1px solid #34445f;border-radius:8px;background:#0b1527}
+.routeLinkText{min-width:0;font-size:10px;color:#cbd5e1;line-height:1.35;word-break:break-all}
+.routeLinkText b{display:block;color:#fff;font-size:11px;margin-bottom:2px}
+.routeLinkRow button{white-space:nowrap}
+
+
+.operationBox{margin-top:9px;padding:9px;border:1px solid #475569;border-radius:9px;background:#0d1728}.operationBox h3{margin:0 0 6px;font-size:13px}.operationGrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}.operationResult{margin-top:7px;padding:7px;border:1px solid #34445f;border-radius:8px;background:#07111f;font-size:10px;line-height:1.4;word-break:break-all}.operationResult button{margin-top:5px}
+
+
+.independentBox{margin-top:9px;padding:10px;border:1px solid #475569;border-radius:10px;background:#0d1728}
+.independentBox h3{margin:0 0 7px;font-size:13px}.independentGrid{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:end}
+.independentList{display:grid;gap:6px;margin-top:8px}.independentItem{display:grid;grid-template-columns:12px minmax(0,1fr) auto auto;gap:6px;align-items:center;padding:7px;border:1px solid #34445f;border-radius:8px;background:#0b1527;font-size:10px}.independentItem b{display:block;font-size:11px}.independentItem span.meta{display:block;color:#aab6ca;margin-top:2px}.independentDelete{background:#7f1d1d}.independentZoom{background:#0369a1}
+</style>
+</head>
+<body>
+<div id="app">
+<aside id="panel">
+  <h1>Roteirizador de Campo <span class="ver">V1.18</span></h1>
+  <div class="sub">GeoJSON → seleção → matriz viária → territórios OU rota total dividida → otimização → altitude → Google Maps.</div>
+
+  <div class="card">
+    <h2>1 • Base de trabalho</h2>
+    <div class="note" style="margin-bottom:6px">Use a BASE GERAL para o fluxo normal. Para uma operação/cidade específica, carregue o ARQUIVO DA OPERAÇÃO: todos os pontos dele permanecerão no HTML único, inclusive os que não entrarem nas rotas.</div>
+    <label>BASE GERAL / PADRÃO</label>
+    <input id="file" type="file" accept=".geojson,.json,application/geo+json,application/json">
+    <div class="row" style="margin-top:5px"><input id="url" type="text" placeholder="ou URL do GeoJSON geral"><button id="loadUrl">Carregar geral</button></div>
+    <label>ARQUIVO DA OPERAÇÃO</label>
+    <input id="operationFile" type="file" accept=".geojson,.json,application/geo+json,application/json">
+    <div class="row" style="margin-top:5px"><input id="operationUrl" type="text" placeholder="ou URL do GeoJSON da operação"><button id="loadOperationUrl">Carregar operação</button></div>
+    <span class="badge">Base ativa: <b id="baseMode">GERAL</b></span>
+    <label>Campo principal do ponto</label><select id="titleField"><option value="">Automático</option></select>
+    <label>Campos exibidos no popup / ordem</label><div id="columns"></div>
+  </div>
+
+  <div class="card">
+    <h2>2 • Seleção</h2>
+    <label>Filtro de STATUS para roteirizar</label>
+    <select id="routeStatusFilter"><option value="__ALL__">TODOS</option></select>
+    <div class="note" style="margin-top:4px;margin-bottom:6px">O filtro atua somente na seleção dos pontos que entrarão nas rotas. No HTML único da operação, todos os pontos do arquivo continuam presentes.</div>
+    <span class="badge">Elegíveis pelo filtro <b id="nFiltered">0</b></span>
+    <div class="toolbar" style="margin-top:6px">
+      <button id="all">Até 50 pontos</button>
+      <button id="visible">Visíveis</button>
+      <button id="areaSelect" class="blue">Selecionar por área</button>
+      <button id="areaRemove">Remover por área</button>
+      <button id="none">Limpar seleção</button>
+    </div>
+    <div class="note" style="margin-top:5px">
+      Em “Selecionar por área”, clique e arraste o mouse para desenhar um retângulo. 
+      Todos os pontos dentro dele serão selecionados. “Remover por área” faz o inverso.
+    </div>
+    <span class="badge">Selecionados <b id="nSel">0</b> / <span id="nAll">0</span></span>
+    <div id="list"></div>
+  </div>
+
+  <div class="card">
+    <h2>3 • APIs e modalidade</h2>
+    <label>Chave openrouteservice / HeiGIT</label><input id="key" type="password" placeholder="API Key">
+    <div class="toolbar" style="margin-top:5px">
+      <button id="saveApiKey">Salvar chave API</button>
+      <button id="deleteApiKey" class="danger">Apagar chave</button>
+    </div>
+    <div style="font-size:9px;margin-top:4px;color:#94a3b8">A chave fica salva somente neste navegador/PC via localStorage.</div>
+    <div class="row">
+      <div><label>Deslocamento</label><select id="profile">
+        <option value="driving-car">Carro</option><option value="foot-walking">A pé</option><option value="cycling-regular">Bicicleta</option><option value="driving-hgv">Veículo pesado</option>
+      </select></div>
+      <div><label>Objetivo</label><select id="objective">
+        <option value="fastest">Mais rápida</option><option value="shortest">Mais curta</option><option value="downhill">Priorizar descida</option><option value="uphill">Priorizar subida</option><option value="balanced">Tempo + relevo</option>
+      </select></div>
+    </div>
+    <div class="row">
+      <div><label>Altitude</label><select id="elevProvider"><option value="open-elevation">Open-Elevation</option><option value="geojson">Usar campo do GeoJSON</option><option value="none">Não usar</option></select></div>
+      <div><label>Peso da subida</label><input id="hillWeight" type="number" min="0" max="20" step="0.5" value="5"></div>
+    </div>
+    <div class="note">Altitude só influencia os modos Priorizar descida/subida/Tempo + relevo.</div>
+  </div>
+
+  <div class="card">
+    <h2>4 • Divisão em rotas</h2>
+    <label>Modo de geração</label>
+    <select id="workflowMode">
+      <option value="auto">Automático completo</option>
+      <option value="manual-start">Criar setores → escolher início → otimizar</option>
+      <option value="independent">NOVO • Rotas independentes, uma por vez</option>
+    </select>
+
+    <label>Método de divisão</label>
+    <select id="divisionMethod">
+      <option value="territory">Territórios contínuos</option>
+      <option value="master-split">Rota total → dividir</option>
+    </select>
+
+    <div class="row">
+      <div><label>Número de rotas</label><input id="routeCount" type="number" min="1" max="10" value="1"></div>
+      <div><label>Distribuição</label><select id="distribution"><option value="balanced">Automática</option><option value="manual">Manual</option></select></div>
+    </div>
+
+    <div id="splitBalanceRow">
+      <label>Equilibrar “Rota total → dividir” por</label>
+      <select id="splitBalance">
+        <option value="count">Quantidade de pontos</option>
+        <option value="time">Tempo estimado</option>
+        <option value="distance">Distância</option>
+      </select>
+    </div>
+    <label>Tamanhos manuais (ex.: 12,12,13,13)</label><input id="manualSizes" type="text" placeholder="12,12,13,13">
+    <div class="row">
+      <div><label>Início de cada rota</label><select id="startStrategy"><option value="auto">Automático — melhor início e fim</option><option value="highest">Maior altitude</option><option value="lowest">Menor altitude</option><option value="north">Mais ao norte</option><option value="south">Mais ao sul</option></select></div>
+      <div><label>Retorno</label><select id="returnStart"><option value="no">Não retornar</option><option value="yes">Voltar ao início</option></select></div>
+    </div>
+    <div class="note">Territórios contínuos formam setores compactos. “Rota total → dividir” calcula uma sequência global e a corta em trechos contínuos. Com distribuição manual, os tamanhos informados são respeitados.</div>
+  </div>
+
+  <div class="card">
+    <h2>5 • Gerar</h2>
+    <div class="toolbar" id="manualFlowButtons" style="margin-bottom:7px;display:none">
+      <button id="makeSectors" class="blue">1. CRIAR SETORES</button>
+      <button id="optimizeSectors">2. OTIMIZAR SETORES</button>
+    </div>
+    <button id="run" class="primary" style="width:100%;padding:10px">GERAR ROTAS OTIMIZADAS</button>
+    <div class="note" id="manualHint" style="margin-top:5px;display:none">
+      Crie os setores, clique em um ponto de cada cor para definir o início e depois clique em “OTIMIZAR SETORES”.
+    </div>
+
+    <div id="independentPanel" class="independentBox" style="display:none">
+      <h3>ROTAS INDEPENDENTES</h3>
+      <div class="note">Selecione os pontos de uma rota, escolha um agente já existente no Firebase e clique em ADICIONAR ROTA. Depois selecione outro grupo em qualquer outra área e repita.</div>
+      <div class="independentGrid" style="margin-top:8px">
+        <div>
+          <label>Responsável pela nova rota</label>
+          <select id="independentAgent"><option value="">Carregue os agentes do Firebase</option></select>
+        </div>
+        <button id="loadIndependentAgents" class="blue" type="button">CARREGAR AGENTES</button>
+      </div>
+      <button id="addIndependentRoute" class="primary" type="button" style="width:100%;margin-top:7px;padding:10px">ADICIONAR ROTA COM A SELEÇÃO</button>
+      <div id="independentRoutesList" class="independentList"></div>
+    </div>
+
+    <div class="metrics"><div class="metric"><b id="mP">—</b><span>PONTOS</span></div><div class="metric"><b id="mKm">—</b><span>KM TOTAL</span></div><div class="metric"><b id="mT">—</b><span>TEMPO TOTAL</span></div></div>
+    <div id="routesBox"></div>
+    <div id="agentPublish" class="agentAssign" style="display:none">
+      <h3>6 • PUBLICAR ROTAS PARA OS AGENTES</h3>
+      <div class="assignMeta">Associe cada rota a qualquer agente conhecido do Firebase, esteja ONLINE ou OFFLINE. O HTML gerado terá apenas os pontos daquela rota e continuará usando STATUS_PONTOS e AGENTES_ONLINE.</div>
+      <div class="publishUrlBox">
+        <label>URL BASE DAS ROTAS NO GITHUB PAGES</label>
+        <input id="routesBaseUrl" type="text" value="https://pcippollini.github.io/MG_SEBRAE/ROTAS/" spellcheck="false">
+        <div class="assignMeta" style="margin-top:4px">Os links abaixo serão montados com esta URL. Eles só abrirão pela internet depois que os HTMLs forem copiados para a pasta ROTAS do repositório e enviados ao GitHub.</div>
+      </div>
+      <div class="publishBtns">
+        <button id="loadAgents" class="mini" type="button">CARREGAR AGENTES (TODOS)</button>
+        <button id="downloadAgentHtmls" class="mini" type="button">GERAR HTMLS (.ZIP)</button>
+      </div>
+      <div id="agentAssignments"></div>
+      <div id="routeLinks" class="routeLinks"></div>
+      <div class="operationBox">
+        <h3>7 • HTML DE ROTAS — VÁRIOS AGENTES</h3>
+        <div class="assignMeta">Gera uma única página de rotas com vários agentes. Cada agente escolhe seu nome e vê somente sua própria rota/pontos. Não existe login de GESTÃO nesta página; o acompanhamento geral fica exclusivamente no GEST_MOBILE.</div>
+        <label>Nome da operação</label><input id="operationName" type="text" placeholder="Ex.: JACUTINGA 02-09-2026">
+        <div class="operationGrid" style="margin-top:6px">
+          <button id="downloadOperationHtml" class="mini blue" type="button">GERAR HTML ROTAS</button>
+          <button id="copyOperationLink" class="mini" type="button" disabled>COPIAR LINK</button>
+        </div>
+        <div id="operationResult" class="operationResult" style="display:none"></div>
+      </div>
+    </div>
+    <div class="toolbar" style="margin-top:7px"><button id="maps" class="blue">Google Maps</button><button id="copy">Copiar ordem</button><button id="export">Exportar GeoJSON</button><button id="clear" class="danger">Limpar rotas</button></div>
+    <div id="mapsBox"></div>
+    <div id="status">Carregue um GeoJSON.</div>
+  </div>
+</aside>
+<div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script>
+(()=>{
+'use strict';
+const MAX=50, ORS='https://api.heigit.org';
+const COLORS=['#E60000','#0057FF','#00A651','#FF8A00','#8A00D4','#00A7A7','#E0008A','#6B8E00','#FF4D00','#4B00D1'];
+const map=L.map('map',{preferCanvas:true}).setView([-18.5,-44.5],6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+const $=id=>document.getElementById(id);
+
+let pts=[],sel=new Set(),layers=new Map(),fields=[],routeLayers=[],routeMarkers=[],routes=[],matrix=null,workingBaseMode='geral',workingBaseName='',routeStatusFilter='__ALL__';
+const ROUTE_AGENT_TEMPLATE="<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover\">\n<title>ROTA __ROUTE_NO__ — __AGENT_NAME_HTML__</title>\n<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\">\n<style>\n:root{--bg:#07111f;--panel:#101a2d;--panel2:#0b1527;--line:#263653;--text:#f7f9fc;--muted:#b9c6dc;--blue:#2563eb;--green:#16a34a;--red:#991b1b}\n*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;height:100dvh;overflow:hidden;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}\n.app{height:100%;display:grid;grid-template-rows:auto auto 1fr}\nheader{padding:8px 10px;background:var(--panel);border-bottom:1px solid var(--line)}\nh1{font-size:17px;margin:0}.sub{font-size:11px;color:var(--muted);margin-top:3px}\n.route-stats{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}\n.route-stat{padding:4px 7px;border-radius:999px;background:#0b1527;border:1px solid var(--line);font-size:11px;font-weight:800;color:#e5edf8}\n.bar{display:grid;grid-template-columns:1fr repeat(3,auto);gap:5px;padding:5px;background:var(--panel2);border-bottom:1px solid var(--line)}\n.notice{display:flex;align-items:center;gap:6px;min-width:0;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);font-size:11px;font-weight:800}\n.dot{width:8px;height:8px;border-radius:50%;background:#f59e0b}.dot.ok{background:#20c86a}.dot.err{background:#ef4444}\nbutton,select,input{font:inherit}.btn{min-height:38px;border:0;border-radius:8px;padding:6px 9px;color:#fff;font-size:12px;font-weight:900;text-decoration:none;display:flex;align-items:center;justify-content:center}.next{background:#0f766e}.loc{background:#e11d48}.maps{background:#2563eb}\n#map{width:100%;height:100%;min-height:0}\n.route-pin{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:#7c3aed;color:#fff;border:3px solid #fff;box-shadow:0 3px 10px #0008;font-size:11px;font-weight:900}\n.route-pin.agendado{background:#FACC15;color:#111}.route-pin.retorno{background:#38BDF8}.route-pin.retorno-comercial{background:#38BDF8;border:5px solid #111;color:#111}.route-pin.retorno-residencial{background:#38BDF8;border:5px solid #fff;color:#111}.route-pin.t2{background:#FACC15;color:#111}.route-pin.t3{background:#14B8A6;color:#061817}.route-pin.t4{background:#F97316;color:#17100a}\n.gps-pin{width:22px;height:22px;border-radius:50%;background:#ff1744;border:4px solid #fff;box-shadow:0 0 0 6px rgba(255,23,68,.3)}\n.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#101a2d;color:#fff}.leaflet-popup-content{min-width:235px;max-height:360px;overflow:auto}\n.popup-title{font-size:16px;font-weight:900;margin-bottom:6px}.line{margin:5px 0;font-size:12px;line-height:1.35;color:#dbe5f4}.muted{color:#9fb0c8;font-size:11px}\n.popup-btn{display:block;width:100%;margin-top:7px;padding:9px;border:0;border-radius:8px;text-align:center;text-decoration:none;color:#fff;font-size:12px;font-weight:900;background:#2563eb}\n.extra-data{margin-top:8px;padding-top:7px;border-top:1px solid #334155}.extra-data summary{cursor:pointer;font-size:12px;font-weight:900;color:#dbe5f4}.extra-scroll{max-height:170px;overflow-y:auto;padding-right:4px;margin-top:5px}\n.done{position:fixed;z-index:12000;inset:0;background:rgba(2,8,23,.88);display:none;align-items:center;justify-content:center;padding:18px}\n.done.show{display:flex}.done-card{width:min(420px,100%);padding:20px;border:1px solid #334155;border-radius:14px;background:#101a2d;text-align:center;box-shadow:0 20px 60px #0009}\n.done-card h2{margin:0 0 8px;font-size:22px}.done-card p{font-size:12px;line-height:1.45;color:#cbd5e1}.done-card a{display:block;margin-top:12px;padding:13px;border-radius:10px;background:#2563eb;color:#fff;text-decoration:none;font-size:12px;font-weight:900}\n.panel{position:fixed;z-index:10000;left:8px;right:8px;bottom:8px;display:none;padding:10px;background:rgba(9,18,33,.98);border:1px solid #405578;border-radius:12px;box-shadow:0 8px 28px #0007}.panel.show{display:block}\n.panel-title{font-size:15px;font-weight:900;margin-bottom:4px}.panel-meta{font-size:11px;color:var(--muted);margin-bottom:8px}\n.panel select,.panel input{width:100%;min-height:40px;padding:8px;border:1px solid #3a4c6d;border-radius:8px;background:#17253d;color:#fff;margin-bottom:7px}\n.grid2{display:grid;grid-template-columns:1fr 1fr;gap:7px}.save{background:#16a34a}.close{background:#334155}.danger{background:#991b1b}\n.progress{position:absolute;z-index:900;top:8px;right:8px;background:rgba(9,18,33,.92);border:1px solid #405578;border-radius:9px;padding:7px 9px;font-size:11px;font-weight:800;pointer-events:none}\n@media(max-width:430px){.bar{grid-template-columns:1fr auto auto auto}.btn{padding:5px 7px;font-size:11px}header{padding:6px 8px}}\n</style>\n</head>\n<body>\n<div class=\"app\">\n<header>\n  <h1>ROTA __ROUTE_NO__ • __AGENT_NAME_HTML__</h1>\n  <div class=\"sub\">__POINT_COUNT__ pontos atribuídos • mesma base Firebase do AGENTEMG</div>\n  <div class=\"route-stats\">\n    <span class=\"route-stat\">DISTÂNCIA: <b id=\"routeDistance\">—</b></span>\n    <span class=\"route-stat\">TEMPO: <b id=\"routeDuration\">—</b></span>\n    <span class=\"route-stat\">RESTANTES: <b id=\"routeRemaining\">—</b></span>\n  </div>\n</header>\n<div class=\"bar\">\n  <div class=\"notice\"><span id=\"dot\" class=\"dot\"></span><span id=\"msg\">Conectando...</span></div>\n  <button id=\"next\" class=\"btn next\">PRÓXIMO</button>\n  <a id=\"fullMaps\" class=\"btn maps\" target=\"_blank\" rel=\"noopener\">ROTA MAPS</a>\n  <button id=\"locate\" class=\"btn loc\">GPS</button>\n</div>\n<div id=\"map\"></div>\n</div>\n<div id=\"progress\" class=\"progress\">Restantes: —</div>\n<div id=\"done\" class=\"done\">\n  <div class=\"done-card\">\n    <h2>ROTA CONCLUÍDA ✓</h2>\n    <p>Todos os pontos desta rota foram finalizados. Para continuar trabalhando nos pontos gerais que não faziam parte desta rota, entre no AGENTE V2.</p>\n    <a href=\"https://pcippollini.github.io/MG_SEBRAE/AGENTEMG_V.2.html\">IR PARA AGENTE V2</a>\n  </div>\n</div>\n\n<form id=\"panel\" class=\"panel\">\n<div id=\"panelTitle\" class=\"panel-title\">Ponto</div>\n<div id=\"panelMeta\" class=\"panel-meta\"></div>\n<select id=\"status\"><option value=\"\">Selecione o status</option></select>\n<div id=\"schedule\" style=\"display:none\"><div class=\"grid2\"><input id=\"date\" type=\"date\"><input id=\"time\" type=\"time\" step=\"60\"></div></div>\n<div class=\"grid2\"><button id=\"save\" class=\"btn save\" type=\"submit\">SALVAR</button><button id=\"close\" class=\"btn close\" type=\"button\">FECHAR</button></div>\n</form>\n\n<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"><\/script>\n<script type=\"module\">\nimport {initializeApp} from \"https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js\";\nimport {getDatabase,ref,get,set,update,onValue,onDisconnect,serverTimestamp} from \"https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js\";\n\nconst ROUTE=__ROUTE_DATA__;\nconst ASSIGNED_AGENT={id:__AGENT_ID_JSON__,name:__AGENT_NAME_JSON__};\nconst firebaseConfig={\n apiKey:\"AIzaSyCYfLl08iRHnvnbBcKTaJOsONjFHKd2mrA\",\n authDomain:\"pilotomg-efe79.firebaseapp.com\",\n databaseURL:\"https://pilotomg-efe79-default-rtdb.firebaseio.com\",\n projectId:\"pilotomg-efe79\",\n storageBucket:\"pilotomg-efe79.firebasestorage.app\",\n messagingSenderId:\"577008586078\",\n appId:\"1:577008586078:web:eb8bdd9891418e0777d3cf\"\n};\nconst db=getDatabase(initializeApp(firebaseConfig));\n\nconst DISPLAY=[\"CARTEIRA\",\"RETORNAR\",\"RETORNAR_COMERCIAL\",\"RETORNAR_RESIDENCIAL\",\"AGENDADO\",\"APLICAR_T2\",\"APLICAR_T3\",\"APLICAR_T4\"];\nconst DISPLAY_SET=new Set(DISPLAY);\nconst BASE_SAVE=[\"INICIADO\",\"RETORNAR_COMERCIAL\",\"RETORNAR_RESIDENCIAL\",\"END_ERRADO\",\"RECUSA\",\"AGENDADO\"];\nconst CONDITIONAL={APLICAR_T2:\"T2_APLICADO\",APLICAR_T3:\"T3_APLICADO\",APLICAR_T4:\"T4_APLICADO\"};\nconst APPLIED_SOURCE={T2_APLICADO:\"APLICAR_T2\",T3_APLICADO:\"APLICAR_T3\",T4_APLICADO:\"APLICAR_T4\"};\nconst FINAL=new Set([\"INICIADO\",\"END_ERRADO\",\"RECUSA\",\"T2_APLICADO\",\"T3_APLICADO\",\"T4_APLICADO\"]);\nconst LABELS={CARTEIRA:\"CARTEIRA\",RETORNAR:\"RETORNAR\",RETORNAR_COMERCIAL:\"RETORNAR COMERCIAL\",RETORNAR_RESIDENCIAL:\"RETORNAR RESIDENCIAL\",AGENDADO:\"AGENDADO\",APLICAR_T2:\"APLICAR T2\",APLICAR_T3:\"APLICAR T3\",APLICAR_T4:\"APLICAR T4\",T2_APLICADO:\"T2 APLICADO\",T3_APLICADO:\"T3 APLICADO\",T4_APLICADO:\"T4 APLICADO\",INICIADO:\"INICIADO\",END_ERRADO:\"END_ERRADO\",RECUSA:\"RECUSA\"};\n\nconst $=id=>document.getElementById(id);\nconst map=L.map(\"map\",{zoomControl:true}).setView([-19.9,-44],12);\nL.tileLayer(\"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png\",{maxZoom:20,attribution:\"&copy; OpenStreetMap\"}).addTo(map);\nmap.createPane(\"routePane\");map.getPane(\"routePane\").style.zIndex=410;\nmap.createPane(\"pointsPane\");map.getPane(\"pointsPane\").style.zIndex=650;\nmap.createPane(\"agentsPane\");map.getPane(\"agentsPane\").style.zIndex=700;\n\nconst pointStatus=new Map(),features=new Map(),markers=new Map();\nlet current=null,ownMarker=null,ownAccuracy=null,agentRef=null,disconnectHandler=null,watchId=null,timerId=null,lastSent=0,lastPos=null,selected=\"\",radiusRelease=100,gpsSeconds=60,gpsDistance=100;\n\nfunction normText(v){return String(v??\"\").normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g,\"\").trim().toUpperCase()}\nfunction normStatus(v){const x=normText(v||\"CARTEIRA\").replace(/\\s+/g,\"_\");if(!x||x===\"PENDENTE\")return\"CARTEIRA\";if(x===\"RECUSADO\")return\"RECUSA\";if(x===\"RETORNAR_RESIDENCIA\")return\"RETORNAR_RESIDENCIAL\";if(x===\"AGENDAMENTO\")return\"AGENDADO\";return x}\nfunction cnpjOf(p){return String(p?.NROCNPJ_PAD??p?.CNPJ??\"\").replace(/\\D/g,\"\")}\nfunction firebaseKeyFor(cnpj,p){const c=cnpjOf(p);return c||String(cnpj||\"\")}\nfunction label(s){s=normStatus(s);return LABELS[s]||s.replaceAll(\"_\",\" \")}\nfunction currentStatus(cnpj,p){return normStatus(pointStatus.get(cnpj)?.status||p?.STATUS_OPERACIONAL||p?.STATUS||\"CARTEIRA\")}\nfunction esc(v){return String(v??\"\").replaceAll(\"&\",\"&amp;\").replaceAll(\"<\",\"&lt;\").replaceAll(\">\",\"&gt;\").replaceAll('\"',\"&quot;\").replaceAll(\"'\",\"&#039;\")}\nfunction hav(a,b){if(!a||!b)return Infinity;const R=6371000,r=x=>x*Math.PI/180,dlat=r(b.lat-a.lat),dlng=r(b.lng-a.lng);const h=Math.sin(dlat/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dlng/2)**2;return 2*R*Math.asin(Math.sqrt(h))}\nfunction dist(v){return v>=1000?`${(v/1000).toFixed(1).replace(\".\",\",\")} km`:`${Math.round(v)} m`}\nfunction notice(t,type=\"wait\"){$(\"msg\").textContent=t;$(\"dot\").className=\"dot\"+(type===\"ok\"?\" ok\":type===\"err\"?\" err\":\"\")}\nfunction routeUrl(lat,lng){return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`}\nfunction streetUrl(lat,lng){return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`}\nfunction fmtDuration(sec){sec=Math.max(0,Number(sec)||0);const h=Math.floor(sec/3600),m=Math.round((sec%3600)/60);return h?`${h}h${String(m).padStart(2,\"0\")}`:`${m} min`}\nfunction remainingPoints(){\n const a=[];\n for(const [cnpj,f] of features){\n   const x=featurePoint(f),s=currentStatus(cnpj,x.p);\n   if(DISPLAY_SET.has(s))a.push({...x,cnpj});\n }\n return a.sort((a,b)=>a.order-b.order);\n}\nfunction fullRouteMapsUrl(){\n const a=remainingPoints();\n if(!a.length)return \"https://pcippollini.github.io/MG_SEBRAE/AGENTEMG_V.2.html\";\n const origin=current?`${current.lat},${current.lng}`:`${a[0].lat},${a[0].lng}`;\n const dest=a[a.length-1];\n const mid=a.slice(current?0:1,-1);\n const q=new URLSearchParams({api:\"1\",origin,destination:`${dest.lat},${dest.lng}`,travelmode:\"driving\"});\n if(mid.length)q.set(\"waypoints\",mid.map(x=>`${x.lat},${x.lng}`).join(\"|\"));\n return `https://www.google.com/maps/dir/?${q.toString()}`;\n}\nfunction updateMapsLink(){const a=$(\"fullMaps\");if(a)a.href=fullRouteMapsUrl()}\n\nfunction pin(order,status){\n let cls=\"\";\n const s=normStatus(status);\n if(s===\"AGENDADO\")cls=\" agendado\";\n else if(s===\"RETORNAR_COMERCIAL\")cls=\" retorno-comercial\";\n else if(s===\"RETORNAR_RESIDENCIAL\")cls=\" retorno-residencial\";\n else if(s===\"RETORNAR\")cls=\" retorno\";\n else if(s===\"APLICAR_T2\")cls=\" t2\";\n else if(s===\"APLICAR_T3\")cls=\" t3\";\n else if(s===\"APLICAR_T4\")cls=\" t4\";\n return L.divIcon({className:\"\",html:`<div class=\"route-pin${cls}\">${order}</div>`,iconSize:[34,34],iconAnchor:[17,17],popupAnchor:[0,-17]})\n}\nfunction featurePoint(f){const p=f.properties||{},[lng,lat]=f.geometry.coordinates;return{f,p,cnpj:cnpjOf(p),lat:Number(lat),lng:Number(lng),order:Number(p.ORDEM_ROTA||0)}}\nfunction popup(cnpj){\n const f=features.get(cnpj);if(!f)return\"Ponto indisponível\";\n const x=featurePoint(f),s=currentStatus(cnpj,x.p),st=pointStatus.get(cnpj),d=current?hav(current,{lat:x.lat,lng:x.lng}):Infinity;\n const known=new Set([\"NROCNPJ_PAD\",\"CNPJ\",\"NOMEFANTASIA\",\"NOME_FANTASIA\",\"RAZAOSOCIAL\",\"RAZAO_SOCIAL\",\"ENDEE\",\"MUNICIPIO\",\"BANCO\",\"AGENCIA_NOME\",\"LINHA_AVAL_NOME\",\"DESCRICAOSITUACAO\",\"STATUS\",\"STATUS_OPERACIONAL\",\"ORDEM_ROTA\",\"ROTA\",\"LATITUDE\",\"LONGITUDE\"]);\n const extra=Object.entries(x.p).filter(([k,v])=>!known.has(k)&&v!==null&&v!==undefined&&String(v).trim()!==\"\").slice(0,30);\n const secondary=[[\"NOME FANTASIA\",x.p.NOMEFANTASIA||x.p.NOME_FANTASIA],[\"RAZÃO SOCIAL\",x.p.RAZAOSOCIAL||x.p.RAZAO_SOCIAL],[\"MUNICÍPIO\",x.p.MUNICIPIO],[\"BANCO\",x.p.BANCO],[\"AGÊNCIA\",x.p.AGENCIA_NOME],[\"LINHA AVAL\",x.p.LINHA_AVAL_NOME],[\"SITUAÇÃO\",x.p.DESCRICAOSITUACAO]].filter(([,v])=>v!==null&&v!==undefined&&String(v).trim()!==\"\");\n const other=[...secondary,...extra];\n return `<div class=\"popup-title\">${x.order}. ${esc(x.p.NOMEFANTASIA||x.p.NOME_FANTASIA||x.p.RAZAOSOCIAL||x.p.RAZAO_SOCIAL||\"Empresa\")}</div>\n <div class=\"line\"><b>CNPJ:</b> ${esc(cnpj)}</div>\n <div class=\"line\"><b>ENDEREÇO:</b> ${esc(x.p.ENDEE||\"—\")}</div>\n <div class=\"line\"><b>STATUS:</b> ${esc(label(s))}</div>\n ${s===\"AGENDADO\"?`<div class=\"line\"><b>AGENDAMENTO:</b> ${esc(st?.dataAgendamento||x.p.DATA||\"—\")} • ${esc(st?.horaAgendamento||x.p.HORA||\"—\")}</div>`:\"\"}\n ${st?`<div class=\"muted\">Atualizado por ${esc(st.agente||\"—\")}</div>`:\"\"}\n <div class=\"line\"><b>Distância:</b> ${Number.isFinite(d)?dist(d):\"GPS não ativo\"}</div>\n ${other.length?`<details class=\"extra-data\"><summary>OUTRAS INFORMAÇÕES (${other.length})</summary><div class=\"extra-scroll\">${other.map(([k,v])=>`<div class=\"line\"><b>${esc(k)}:</b> ${esc(v)}</div>`).join(\"\")}</div></details>`:\"\"}\n <a class=\"popup-btn\" target=\"_blank\" rel=\"noopener\" href=\"${routeUrl(x.lat,x.lng)}\">IR PARA ESTE PONTO NO GOOGLE MAPS</a>\n <a class=\"popup-btn\" target=\"_blank\" rel=\"noopener\" href=\"${streetUrl(x.lat,x.lng)}\" style=\"background:#111827;color:#fff;font-weight:900\">STREET VIEW</a>`;\n}\nfunction createMarker(cnpj){\n const f=features.get(cnpj);if(!f)return;\n const x=featurePoint(f),s=currentStatus(cnpj,x.p);\n if(!DISPLAY_SET.has(s))return;\n const m=L.marker([x.lat,x.lng],{icon:pin(x.order,s),pane:\"pointsPane\"}).addTo(map);\n m.bindPopup(popup(cnpj),{maxWidth:330});\n m.on(\"click\",()=>{m.setPopupContent(popup(cnpj));selected=cnpj;configure(s);$(\"panelTitle\").textContent=`${x.order}. ${x.p.NOMEFANTASIA||x.p.NOME_FANTASIA||x.p.RAZAOSOCIAL||x.p.RAZAO_SOCIAL||\"Ponto\"}`;$(\"panelMeta\").textContent=`${cnpj} • ${label(s)}`;$(\"panel\").classList.add(\"show\")});\n markers.set(cnpj,m);\n}\nfunction sync(cnpj){\n const f=features.get(cnpj);if(!f)return;\n const x=featurePoint(f),s=currentStatus(cnpj,x.p),m=markers.get(cnpj);\n if(!DISPLAY_SET.has(s)){if(m){map.removeLayer(m);markers.delete(cnpj)}updateProgress();return}\n if(!m){createMarker(cnpj)}else{m.setIcon(pin(x.order,s));m.setPopupContent(popup(cnpj))}\n updateProgress();\n}\nfunction configure(cur){\n const allowed=[...BASE_SAVE];if(CONDITIONAL[cur])allowed.push(CONDITIONAL[cur]);\n $(\"status\").innerHTML='<option value=\"\">Selecione o status</option>'+allowed.map(s=>`<option value=\"${s}\">${label(s)}</option>`).join(\"\");\n $(\"status\").value=\"\";$(\"schedule\").style.display=\"none\";$(\"date\").value=\"\";$(\"time\").value=\"\";\n}\n$(\"status\").onchange=()=>{$(\"schedule\").style.display=$(\"status\").value===\"AGENDADO\"?\"block\":\"none\"};\n$(\"close\").onclick=()=>{$(\"panel\").classList.remove(\"show\");selected=\"\"};\n\nfunction updateProgress(){\n let rest=0,total=features.size;\n for(const [cnpj,f] of features){if(DISPLAY_SET.has(currentStatus(cnpj,f.properties||{})))rest++}\n $(\"progress\").textContent=`Restantes: ${rest}/${total}`;\n $(\"routeRemaining\").textContent=`${rest}/${total}`;\n $(\"done\").classList.toggle(\"show\",total>0&&rest===0);\n updateMapsLink();\n}\nfunction scheduleData(){const d=$(\"date\").value,t=$(\"time\").value;if(!d||!t)return null;return{dataAgendamento:d.split(\"-\").reverse().join(\"/\"),horaAgendamento:t}}\nasync function saveStatus(cnpj,status){\n if(!current){notice(\"Ative o GPS antes de salvar.\",\"err\");return false}\n if(!BASE_SAVE.includes(status)&&!Object.values(CONDITIONAL).includes(status)){notice(\"Status inválido.\",\"err\");return false}\n const f=features.get(cnpj);if(!f)return false;\n const x=featurePoint(f),cur=currentStatus(cnpj,x.p),required=APPLIED_SOURCE[status];\n if(required&&cur!==required){notice(`${label(status)} só pode ser usado em ${label(required)}.`,\"err\");return false}\n const d=hav(current,{lat:x.lat,lng:x.lng});if(d>radiusRelease){notice(`Você está a ${dist(d)} • limite ${Math.round(radiusRelease)} m.`,\"err\");return false}\n let extra={};\n if(status===\"AGENDADO\"){const s=scheduleData();if(!s){notice(\"Informe data e hora.\",\"err\");return false}extra=s}\n if(status===\"END_ERRADO\"&&!confirm(\"Confirmar END_ERRADO? Você conferiu se o endereço do mapa é o mesmo da empresa?\"))return false;\n status=normStatus(status);\n const fbKey=firebaseKeyFor(cnpj,x.p);if(!fbKey)throw Error(\"CHAVE_FIREBASE_INVALIDA\");\n const statusRef=ref(db,`STATUS_PONTOS/${fbKey}`);\n const payload={status,agente:ASSIGNED_AGENT.name,agenteId:ASSIGNED_AGENT.id,hora:serverTimestamp(),...extra};\n await set(statusRef,payload);\n const check=await get(statusRef),saved=check.val();\n if(!saved||normStatus(saved.status)!==status)throw Error(\"CONFIRMACAO_FIREBASE_FALHOU\");\n pointStatus.set(cnpj,saved);pointStatus.set(fbKey,saved);\n sync(cnpj);$(\"panel\").classList.remove(\"show\");selected=\"\";\n notice(FINAL.has(status)?\"PONTO SALVO E REMOVIDO\":\"STATUS SALVO • PONTO MANTIDO\",\"ok\");return true;\n}\n$(\"panel\").onsubmit=async e=>{e.preventDefault();const s=$(\"status\").value;if(!selected||!s)return;const b=$(\"save\");b.disabled=true;b.textContent=\"SALVANDO...\";try{await saveStatus(selected,s)}catch(err){console.error(\"Falha ao salvar status\",s,err);notice(`Falha ao salvar ${label(s)} no Firebase.`,\"err\")}finally{b.disabled=false;b.textContent=\"SALVAR\"}};\n\nfunction nextPoint(){\n if(!current){notice(\"Aguardando GPS.\",\"err\");return}\n const ar=[];\n for(const [cnpj,f] of features){const x=featurePoint(f),s=currentStatus(cnpj,x.p);if(!DISPLAY_SET.has(s))continue;ar.push({...x,cnpj,d:hav(current,{lat:x.lat,lng:x.lng})})}\n if(!ar.length){notice(\"ROTA CONCLUÍDA\",\"ok\");return}\n ar.sort((a,b)=>a.order-b.order);\n const next=ar[0],m=markers.get(next.cnpj);map.setView([next.lat,next.lng],18);if(m){m.setPopupContent(popup(next.cnpj));m.openPopup()}\n notice(`PRÓXIMO: ${next.order} • ${next.p.NOMEFANTASIA||next.p.NOME_FANTASIA||next.p.RAZAOSOCIAL||next.p.RAZAO_SOCIAL||next.cnpj}`,\"ok\");\n}\n$(\"next\").onclick=nextPoint;\n$(\"locate\").onclick=()=>{if(current)map.setView([current.lat,current.lng],18);else notice(\"Aguardando GPS.\",\"err\")};\n\nasync function loadConfig(){try{const s=await get(ref(db,\"CONFIG\"));const c=s.val()||{};radiusRelease=Number(c.raioLiberacao)||100;gpsSeconds=Number(c.gpsAtualizacaoSegundos)||60;gpsDistance=Number(c.gpsDistanciaMinima)||100}catch{}}\nfunction updateOwn(){if(!current)return;const ll=[current.lat,current.lng];if(!ownMarker){ownMarker=L.marker(ll,{icon:L.divIcon({className:\"\",html:'<div class=\"gps-pin\"></div>',iconSize:[30,30],iconAnchor:[15,15]}),pane:\"agentsPane\"}).addTo(map);ownAccuracy=L.circle(ll,{radius:current.accuracy||0,color:\"#ff1744\",weight:2,fillOpacity:.08}).addTo(map)}else{ownMarker.setLatLng(ll);ownAccuracy.setLatLng(ll).setRadius(current.accuracy||0)}}\nasync function sendPos(force=false){if(!agentRef||!current)return;const now=Date.now(),moved=lastPos?hav(lastPos,current):Infinity;if(!force&&now-lastSent<gpsSeconds*1000&&moved<gpsDistance)return;await update(agentRef,{fase:\"V0.4\",id:ASSIGNED_AGENT.id,nome:ASSIGNED_AGENT.name,online:true,lat:Number(current.lat.toFixed(7)),lng:Number(current.lng.toFixed(7)),precisao:Math.round(current.accuracy||0),ultimaAtualizacao:serverTimestamp()});lastSent=now;lastPos={...current};notice(\"CONECTADO\",\"ok\")}\nasync function start(){\n await loadConfig();\n agentRef=ref(db,`AGENTES_ONLINE/${ASSIGNED_AGENT.id}`);\n disconnectHandler=onDisconnect(agentRef);await disconnectHandler.update({online:false,ultimaAtualizacao:serverTimestamp()});\n await set(agentRef,{fase:\"V0.4\",id:ASSIGNED_AGENT.id,nome:ASSIGNED_AGENT.name,online:true,entrada:serverTimestamp(),ultimaAtualizacao:serverTimestamp(),paginaRota:true,rota:ROUTE.routeNo});\n if(!navigator.geolocation){notice(\"GPS indisponível.\",\"err\");return}\n watchId=navigator.geolocation.watchPosition(async g=>{current={lat:g.coords.latitude,lng:g.coords.longitude,accuracy:g.coords.accuracy};updateOwn();updateMapsLink();await sendPos(lastPos===null)},e=>notice(e.code===1?\"Permissão de GPS negada.\":\"Erro no GPS.\",\"err\"),{enableHighAccuracy:true,maximumAge:10000,timeout:25000});\n timerId=setInterval(()=>sendPos(false).catch(console.error),5000);\n}\n\nfor(const f of ROUTE.points.features||[]){const c=cnpjOf(f.properties||{});if(c)features.set(c,f)}\nif(ROUTE.geometry?.features?.length)L.geoJSON(ROUTE.geometry,{style:{color:\"#7c3aed\",weight:5,opacity:.72},pane:\"routePane\"}).addTo(map);\nconst bounds=[];for(const [cnpj,f] of features){const x=featurePoint(f);bounds.push([x.lat,x.lng])}\nif(bounds.length)map.fitBounds(bounds,{padding:[22,22],maxZoom:16});\n$(\"routeDistance\").textContent=dist(Number(ROUTE.distance||0));\n$(\"routeDuration\").textContent=fmtDuration(Number(ROUTE.duration||0));\nupdateMapsLink();\n\nonValue(ref(db,\"STATUS_PONTOS\"),snap=>{pointStatus.clear();for(const [k,v] of Object.entries(snap.val()||{})){if(k!==\"TEMP\"&&k!==\"TESTE_MANUAL\"&&v)pointStatus.set(k,v)}for(const c of features.keys())sync(c);updateProgress()});\nwindow.addEventListener(\"beforeunload\",()=>{if(watchId!==null)navigator.geolocation.clearWatch(watchId)});\nstart().catch(e=>{console.error(e);notice(\"Falha ao conectar.\",\"err\")});\n<\/script>\n</body>\n</html>";
+const TEAM_OPERATION_TEMPLATE="<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover\">\n<title>__OP_NAME_HTML__ • Operação de Campo</title>\n<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\">\n<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css\">\n<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css\">\n<style>\n:root{\n  --bg:#eef4fb;--nav:#0b3b8f;--nav2:#0f4bb8;--card:#ffffff;--line:#d6e1f0;\n  --text:#10213a;--muted:#63748b;--blue:#0b57d0;--blue2:#2563eb;--green:#16a34a;\n  --red:#dc2626;--amber:#f59e0b;--free:#64748b;--shadow:0 8px 24px rgba(15,55,110,.14)\n}\n*{box-sizing:border-box}\nhtml,body{margin:0;width:100%;height:100%;height:100dvh;overflow:hidden;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}\n.app{height:100%;display:grid;grid-template-rows:auto auto auto 1fr;background:#fff}\nheader{padding:7px 10px 6px;background:linear-gradient(135deg,var(--nav),var(--nav2));color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.14);z-index:1100}\n.head-row{display:flex;align-items:center;gap:8px}.head-main{min-width:0;flex:1}\nh1{font-size:18px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sub{font-size:11px;color:#dbeafe;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n.conn-dot{width:9px;height:9px;border-radius:50%;background:#f59e0b;box-shadow:0 0 0 3px rgba(255,255,255,.16);flex:none}.conn-dot.ok{background:#22c55e}.conn-dot.err{background:#ef4444}\n.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}\n.metric{min-width:0;padding:6px 5px 5px;border:1px solid rgba(255,255,255,.20);border-radius:11px;background:rgba(255,255,255,.12);text-align:center;backdrop-filter:blur(3px)}\n.metric-label{display:block;font-size:10px;font-weight:800;letter-spacing:.35px;color:#dbeafe}.metric b{display:block;margin-top:1px;font-size:24px;line-height:1;color:#fff}.metric.other b{color:#fde68a}\n.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:5px 9px;background:#fff;border-bottom:1px solid var(--line);z-index:1050}\nbutton,select,input{font:inherit}.btn{min-height:38px;border:0;border-radius:10px;padding:7px 10px;color:#fff;font-size:12px;font-weight:900;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 3px 9px rgba(15,55,110,.14)}\n.next{background:#0f766e}.maps{background:#004EDB;color:#fff;text-shadow:0 1px 1px #002B78}.btn:disabled{opacity:.48;box-shadow:none}\n.status-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:0;padding:0 8px;background:#f8fbff;border-bottom:1px solid var(--line);min-height:36px;z-index:1040}\n.status-item{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;padding:4px 5px;border-right:1px solid #e3ebf5;font-size:10px;color:#4b5e78}.status-item:last-child{border-right:0}.status-item strong{display:block;color:#17365f;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.status-icon{width:18px;height:18px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#e8f0fb;color:var(--blue);font-size:10px;font-weight:900;flex:none}.status-icon.ok{background:#dcfce7;color:#15803d}.status-icon.warn{background:#fef3c7;color:#92400e}.status-icon.err{background:#fee2e2;color:#b91c1c}\n#map{width:100%;height:100%;min-height:0;background:#e8eef6}\n.route-pin{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;color:#fff;border:3px solid #fff;box-shadow:0 2px 8px #0007;font-size:11px;font-weight:900}.free-pin{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#64748b;color:#fff;border:2px solid #fff;box-shadow:0 2px 7px #0006;font-size:10px;font-weight:900}.agent-pin{min-width:34px;height:34px;border-radius:18px;border:3px solid #fff;box-shadow:0 2px 9px #0008;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#fff;padding:0 8px;white-space:nowrap}.own-pin{box-shadow:0 0 0 5px rgba(37,99,235,.20),0 2px 9px #0008}.manager-local-pin{width:34px;height:34px;border-radius:50%;border:4px solid #fff;background:#0b57d0;color:#fff;box-shadow:0 0 0 5px rgba(11,87,208,.20),0 2px 9px #0008;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900}\n.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#fff;color:#12243d}.leaflet-popup-content{min-width:245px;max-height:360px;overflow:auto}.ptitle{font-size:16px;font-weight:900;margin-bottom:6px;color:#0f2d55}.line{margin:5px 0;font-size:12px;line-height:1.35;color:#334b68}.muted{font-size:11px;color:#71839a}.pbtn{display:block;width:100%;margin-top:7px;padding:9px;border-radius:8px;text-align:center;text-decoration:none;color:#fff!important;background:#004EDB;font-size:13px;font-weight:900;text-shadow:none;letter-spacing:.15px}.pbtn:link,.pbtn:visited,.pbtn:hover,.pbtn:active{color:#fff!important}.pbtn.secondary{background:#111827;color:#fff!important;text-shadow:none}\n.popup-extra{margin-top:8px;padding-top:7px;border-top:1px solid #dbe5f0}.popup-extra summary{cursor:pointer;font-size:12px;font-weight:900;color:#1f4f8f}.popup-extra-scroll{max-height:170px;overflow-y:auto;padding-right:4px;margin-top:5px}\n.quick-tools{position:absolute;z-index:950;left:10px;top:10px;display:grid;gap:7px}.quick-btn{width:47px;height:47px;border:1px solid #c9d7e8;border-radius:13px;background:rgba(255,255,255,.96);color:#15365f;box-shadow:var(--shadow);font-size:18px;font-weight:900;display:flex;align-items:center;justify-content:center}.quick-btn small{display:none}.quick-btn.active{background:#e8f1ff;border-color:#8bb8ff;color:#0b57d0}\n.legend{position:absolute;z-index:900;right:8px;bottom:8px;max-width:210px;background:rgba(255,255,255,.95);border:1px solid #cdd9e8;border-radius:10px;padding:8px;font-size:10px;line-height:1.55;color:#203a5d;box-shadow:var(--shadow)}.legend-title{font-size:9px;font-weight:900;color:#64748b;letter-spacing:.4px;margin-bottom:3px}.legend-row{display:flex;gap:6px;align-items:center}.sw{width:9px;height:9px;border-radius:50%;flex:none}\n.login{position:fixed;z-index:15000;inset:0;background:rgba(4,20,48,.92);display:flex;align-items:center;justify-content:center;padding:18px}.login.hide{display:none}.login-card{width:min(430px,100%);background:#fff;color:#10213a;border:1px solid #c7d7ec;border-radius:16px;padding:18px;box-shadow:0 24px 80px #0008}.login-card h2{font-size:20px;margin:0 0 6px;color:#0b3b8f}.login-card p{font-size:12px;color:#63748b;line-height:1.45}.login-card select,.login-card input{width:100%;min-height:44px;padding:8px;background:#f8fbff;color:#12243d;border:1px solid #b9cbe2;border-radius:9px;margin:7px 0}.login-card button{width:100%;min-height:46px;border:0;border-radius:9px;background:#0b57d0;color:#fff;font-weight:900}.login-note{font-size:10px;color:#64748b;margin-top:5px;line-height:1.4}.gps-request{margin:8px 0;padding:9px;border:1px solid #bfdbfe;border-radius:9px;background:#eff6ff;color:#1e3a5f;font-size:11px;line-height:1.4}\n.panel{position:fixed;z-index:12000;left:8px;right:8px;bottom:8px;display:none;padding:10px;background:#fff;color:#132b49;border:1px solid #c5d5e8;border-radius:12px;box-shadow:0 10px 34px #0005}.panel.show{display:block}.panel-title{font-size:15px;font-weight:900}.panel-meta{font-size:11px;color:#63748b;margin:3px 0 7px}.panel select,.panel input{width:100%;min-height:39px;padding:7px;border:1px solid #b9cbe2;border-radius:8px;background:#f8fbff;color:#132b49;margin-bottom:6px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}.save{background:#16a34a}.close{background:#475569}\n.search-panel{position:fixed;z-index:12500;left:8px;right:8px;top:calc(50% - 190px);display:none;max-height:380px;padding:11px;background:#fff;color:#132b49;border:1px solid #c5d5e8;border-radius:13px;box-shadow:0 16px 44px #0005}.search-panel.show{display:block}.search-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}.search-head b{flex:1;font-size:13px}.search-close{width:34px;height:34px;border:0;border-radius:8px;background:#e2e8f0;color:#334155;font-weight:900}.search-panel input{width:100%;min-height:42px;padding:8px 10px;border:1px solid #b9cbe2;border-radius:9px;background:#f8fbff;color:#132b49}.search-results{display:grid;gap:6px;margin-top:8px;max-height:280px;overflow:auto}.search-result{width:100%;padding:8px;border:1px solid #d6e1f0;border-radius:9px;background:#f8fbff;color:#17365f;text-align:left}.search-result b{display:block;font-size:10px}.search-result span{display:block;margin-top:2px;font-size:8px;color:#71839a}\n.notice-toast{position:fixed;z-index:14000;left:50%;bottom:18px;transform:translate(-50%,20px);max-width:calc(100% - 30px);padding:9px 12px;border-radius:10px;background:#0f2d55;color:#fff;font-size:10px;font-weight:800;opacity:0;pointer-events:none;transition:.2s}.notice-toast.show{opacity:1;transform:translate(-50%,0)}\n@media(min-width:700px){header{display:grid;grid-template-columns:minmax(260px,1fr) minmax(430px,1.45fr);align-items:center;gap:12px}.stats{margin-top:0}.sub{margin-top:2px}.metric{padding:5px}.metric b{font-size:22px}.actions{padding-top:4px;padding-bottom:4px}.status-strip{min-height:34px}.status-item{padding:3px 5px}}\\n@media(max-width:520px){header{padding:7px 8px}.metric{padding:7px 4px}.metric b{font-size:21px}.actions{padding:6px 8px}.btn{min-height:40px}.status-strip{padding:0 4px}.status-item{font-size:8px}.status-item strong{font-size:8px}.legend{max-width:165px;font-size:8px}.quick-tools{left:8px;top:8px}.quick-btn{width:43px;height:43px}}\n@media(max-width:370px){.metric b{font-size:19px}.sub{display:none}.status-item:nth-child(3){display:none}.status-strip{grid-template-columns:1fr 1fr}.quick-btn{width:40px;height:40px}}\n</style>\n</head>\n<body>\n<div class=\"app\">\n<header>\n  <div class=\"head-row\"><div class=\"head-main\"><h1>__OP_NAME_HTML__</h1><div class=\"sub\">Gestão operacional • rotas e agentes em tempo real</div></div><span id=\"headerDot\" class=\"conn-dot\"></span></div>\n  <div class=\"stats\">\n    <div class=\"metric\"><span class=\"metric-label\">TOTAL</span><b id=\"stTotal\">—</b></div>\n    <div class=\"metric\"><span class=\"metric-label\">INICIADOS</span><b id=\"stStarted\">0</b></div>\n    <div class=\"metric other\"><span class=\"metric-label\">OUTROS STATUS</span><b id=\"stOther\">0</b></div>\n  </div>\n</header>\n<div class=\"actions\"><button id=\"next\" class=\"btn next\">➜ PRÓXIMO</button><a id=\"maps\" class=\"btn maps\" target=\"_blank\" rel=\"noopener\">▣ ROTA MAPS</a></div>\n<div class=\"status-strip\">\n  <div class=\"status-item\"><span id=\"gpsIcon\" class=\"status-icon warn\">⌖</span><div><span>GPS</span><strong id=\"gpsState\">Aguardando</strong></div></div>\n  <div class=\"status-item\"><span class=\"status-icon\">●</span><div><span>VOCÊ</span><strong id=\"userState\">Não identificado</strong></div></div>\n  <div class=\"status-item\"><span class=\"status-icon ok\">●</span><div><span>AGENTES</span><strong id=\"agentsState\">0 online</strong></div></div>\n</div>\n<div id=\"map\"></div></div>\n<div class=\"quick-tools\">\n  <button id=\"locate\" class=\"quick-btn\" title=\"Minha localização\" aria-label=\"Minha localização\">➤</button>\n  <button id=\"searchBtn\" class=\"quick-btn\" title=\"Buscar pontos\" aria-label=\"Buscar pontos\">⌕</button>\n  <button id=\"filter\" class=\"quick-btn\" title=\"Alternar visualização\" aria-label=\"Alternar visualização\">☷</button>\n</div>\n<div id=\"legend\" class=\"legend\"></div>\n<div id=\"toast\" class=\"notice-toast\"></div>\n<div id=\"login\" class=\"login\"><div class=\"login-card\"><h2>Entrar na operação</h2><p>Escolha seu nome para entrar como agente ou selecione GESTÃO para acessar a visão geral.</p><select id=\"agentSelect\"><option value=\"\">Selecione seu nome</option></select><div id=\"gpsRequest\" class=\"gps-request\">📍 Ao entrar como agente, o navegador solicitará permissão de localização. O GPS é necessário para Minha Localização, Próximo e para salvar status dentro do raio permitido.</div><div id=\"managerPasswordBox\" style=\"display:none\"><input id=\"managerPassword\" type=\"password\" autocomplete=\"current-password\" placeholder=\"Acesso da gestão\"><div class=\"login-note\">Use o mesmo acesso do GEST_MOBILE. O GPS da gestão é opcional. Se ativado, sua posição aparece somente neste aparelho; não grava em AGENTES_ONLINE e não é exibida para os agentes.</div></div><button id=\"enter\">ENTRAR E ATIVAR GPS</button></div></div>\n<div id=\"searchPanel\" class=\"search-panel\"><div class=\"search-head\"><b>Buscar ponto</b><button id=\"searchClose\" class=\"search-close\" type=\"button\">×</button></div><input id=\"searchInput\" type=\"search\" placeholder=\"CNPJ, empresa, endereço ou município\"><div id=\"searchResults\" class=\"search-results\"></div></div>\n<form id=\"panel\" class=\"panel\"><div id=\"panelTitle\" class=\"panel-title\">Ponto</div><div id=\"panelMeta\" class=\"panel-meta\"></div><select id=\"status\"><option value=\"\">Selecione o status</option></select><div id=\"schedule\" style=\"display:none\"><div class=\"grid2\"><input id=\"date\" type=\"date\"><input id=\"time\" type=\"time\" step=\"60\"></div></div><div class=\"grid2\"><button id=\"save\" class=\"btn save\" type=\"submit\">SALVAR</button><button id=\"close\" class=\"btn close\" type=\"button\">FECHAR</button></div></form>\n<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"><\/script>\n<script src=\"https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js\"><\/script>\n<script type=\"module\">\nimport {initializeApp} from \"https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js\";\nimport {getDatabase,ref,get,set,update,onValue,onDisconnect,serverTimestamp} from \"https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js\";\nconst OP=__OP_DATA__;\nconst firebaseConfig={apiKey:\"AIzaSyCYfLl08iRHnvnbBcKTaJOsONjFHKd2mrA\",authDomain:\"pilotomg-efe79.firebaseapp.com\",databaseURL:\"https://pilotomg-efe79-default-rtdb.firebaseio.com\",projectId:\"pilotomg-efe79\",storageBucket:\"pilotomg-efe79.firebasestorage.app\",messagingSenderId:\"577008586078\",appId:\"1:577008586078:web:eb8bdd9891418e0777d3cf\"};\nconst db=getDatabase(initializeApp(firebaseConfig));\nconst DISPLAY=[\"CARTEIRA\",\"RETORNAR\",\"RETORNAR_COMERCIAL\",\"RETORNAR_RESIDENCIAL\",\"AGENDADO\",\"APLICAR_T2\",\"APLICAR_T3\",\"APLICAR_T4\"],DISPLAY_SET=new Set(DISPLAY),BASE_SAVE=[\"INICIADO\",\"RETORNAR_COMERCIAL\",\"RETORNAR_RESIDENCIAL\",\"END_ERRADO\",\"RECUSA\",\"AGENDADO\"],CONDITIONAL={APLICAR_T2:\"T2_APLICADO\",APLICAR_T3:\"T3_APLICADO\",APLICAR_T4:\"T4_APLICADO\"},APPLIED_SOURCE={T2_APLICADO:\"APLICAR_T2\",T3_APLICADO:\"APLICAR_T3\",T4_APLICADO:\"APLICAR_T4\"},FINAL=new Set([\"INICIADO\",\"END_ERRADO\",\"RECUSA\",\"T2_APLICADO\",\"T3_APLICADO\",\"T4_APLICADO\"]);\nconst LABELS={CARTEIRA:\"CARTEIRA\",RETORNAR:\"RETORNAR\",RETORNAR_COMERCIAL:\"RETORNAR COMERCIAL\",RETORNAR_RESIDENCIAL:\"RETORNAR RESIDENCIAL\",AGENDADO:\"AGENDADO\",APLICAR_T2:\"APLICAR T2\",APLICAR_T3:\"APLICAR T3\",APLICAR_T4:\"APLICAR T4\",T2_APLICADO:\"T2 APLICADO\",T3_APLICADO:\"T3 APLICADO\",T4_APLICADO:\"T4 APLICADO\",INICIADO:\"INICIADO\",END_ERRADO:\"END_ERRADO\",RECUSA:\"RECUSA\"};\nconst $=id=>document.getElementById(id),map=L.map(\"map\",{zoomControl:true}).setView([-19,-44],12);L.tileLayer(\"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png\",{maxZoom:20,attribution:\"&copy; OpenStreetMap\"}).addTo(map);map.createPane(\"routePane\");map.getPane(\"routePane\").style.zIndex=410;map.createPane(\"agentsPane\");map.getPane(\"agentsPane\").style.zIndex=720;\nconst cluster=L.markerClusterGroup({showCoverageOnHover:false,spiderfyOnMaxZoom:true,removeOutsideVisibleBounds:true,maxClusterRadius:40});map.addLayer(cluster);\nconst features=new Map(),markers=new Map(),pointStatus=new Map(),agentMarkers=new Map(),routeLines=[];let me=null,isManager=false,appConfig={},current=null,ownAccuracy=null,managerMarker=null,managerAccuracy=null,agentRef=null,disconnectHandler=null,watchId=null,timerId=null,lastSent=0,lastPos=null,selected=\"\",radiusRelease=100,gpsSeconds=60,gpsDistance=100,filterMode=0,onlineAgentCount=0;\nfunction normText(v){return String(v??\"\").normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g,\"\").trim().toUpperCase()}function normStatus(v){const x=normText(v||\"CARTEIRA\").replace(/\\s+/g,\"_\");if(!x||x===\"PENDENTE\")return\"CARTEIRA\";if(x===\"RECUSADO\")return\"RECUSA\";if(x===\"RETORNAR_RESIDENCIA\")return\"RETORNAR_RESIDENCIAL\";if(x===\"AGENDAMENTO\")return\"AGENDADO\";return x}function label(s){s=normStatus(s);return LABELS[s]||s.replaceAll(\"_\",\" \")}function esc(v){return String(v??\"\").replaceAll(\"&\",\"&amp;\").replaceAll(\"<\",\"&lt;\").replaceAll(\">\",\"&gt;\").replaceAll('\"',\"&quot;\").replaceAll(\"'\",\"&#039;\")}function hav(a,b){if(!a||!b)return Infinity;const R=6371000,r=x=>x*Math.PI/180,dlat=r(b.lat-a.lat),dlng=r(b.lng-a.lng),h=Math.sin(dlat/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dlng/2)**2;return 2*R*Math.asin(Math.sqrt(h))}function dist(v){return v>=1000?`${(v/1000).toFixed(1).replace(\".\",\",\")} km`:`${Math.round(v)} m`}function notice(t,c=\"\"){const msg=$(\"msg\");if(msg)msg.textContent=t;const dot=$(\"dot\");if(dot)dot.className=`dot ${c}`;const h=$(\"headerDot\");if(h)h.className=`conn-dot ${c}`;const toast=$(\"toast\");if(toast){toast.textContent=t;toast.classList.add(\"show\");clearTimeout(notice._tm);notice._tm=setTimeout(()=>toast.classList.remove(\"show\"),1800)}}\nfunction pkey(p){return String(p?._OP_KEY||p?.NROCNPJ_PAD||p?.CNPJ||\"\")}function firebaseKeyFor(k,p){const c=String(p?.NROCNPJ_PAD??p?.CNPJ??\"\").replace(/\\D/g,\"\");return c||String(k||\"\")}function currentStatus(k,p){const fk=firebaseKeyFor(k,p);return normStatus(pointStatus.get(k)?.status||pointStatus.get(fk)?.status||p?.STATUS_OPERACIONAL||p?.STATUS||\"CARTEIRA\")}function pointData(f){const p=f.properties||{},[lng,lat]=f.geometry.coordinates;return{f,p,key:pkey(p),lat:Number(lat),lng:Number(lng),routeNo:Number(p._ROTA||0),order:Number(p._ORDEM||0),color:String(p._COR||\"#64748b\")}}\nfunction markerIcon(x,status){const s=normStatus(status);let style=``;if(s===\"RETORNAR_COMERCIAL\")style=`background:#38BDF8;border:5px solid #111;color:#111`;else if(s===\"RETORNAR_RESIDENCIAL\")style=`background:#38BDF8;border:5px solid #fff;color:#111`;else if(s===\"RETORNAR\")style=`background:#38BDF8`;else if(s===\"AGENDADO\")style=`background:#FACC15;color:#111`;else if(s===\"APLICAR_T2\")style=`background:#FACC15;color:#111`;else if(s===\"APLICAR_T3\")style=`background:#14B8A6;color:#061817`;else if(s===\"APLICAR_T4\")style=`background:#F97316;color:#17100a`;else style=`background:${x.color}`;if(x.routeNo>0)return L.divIcon({className:\"\",html:`<div class=\"route-pin\" style=\"${style}\">${x.order}</div>`,iconSize:[34,34],iconAnchor:[17,17],popupAnchor:[0,-17]});return L.divIcon({className:\"\",html:`<div class=\"free-pin\" style=\"${style}\">•</div>`,iconSize:[28,28],iconAnchor:[14,14],popupAnchor:[0,-14]})}\nfunction isVisibleForFilter(x){if(filterMode===0)return true;if(filterMode===1)return me&&x.routeNo===me.routeNo;if(filterMode===2)return x.routeNo===0;return true}\nfunction routeUrl(lat,lng){return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`}function streetUrl(lat,lng){return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`}\nfunction pointName(p){return p.NOMEFANTASIA||p.NOME_FANTASIA||p.RAZAOSOCIAL||p.RAZAO_SOCIAL||p.NOME||p._OP_KEY||\"Ponto\"}\nfunction popup(k){\n const f=features.get(k);if(!f)return\"Ponto indisponível\";\n const x=pointData(f),s=currentStatus(k,x.p),st=pointStatus.get(k),d=current?hav(current,{lat:x.lat,lng:x.lng}):Infinity;\n const known=new Set([\"_OP_KEY\",\"_OP_ID\",\"_ROTA\",\"_ORDEM\",\"_COR\",\"NROCNPJ_PAD\",\"CNPJ\",\"NOMEFANTASIA\",\"NOME_FANTASIA\",\"RAZAOSOCIAL\",\"RAZAO_SOCIAL\",\"ENDEE\",\"MUNICIPIO\",\"STATUS\",\"STATUS_OPERACIONAL\"]);\n const extra=Object.entries(x.p).filter(([a,v])=>!known.has(a)&&v!==null&&v!==undefined&&String(v).trim()!==\"\").slice(0,28);\n const secondary=[[\"RAZÃO SOCIAL\",x.p.RAZAOSOCIAL||x.p.RAZAO_SOCIAL],[\"MUNICÍPIO\",x.p.MUNICIPIO],[\"ATRIBUIÇÃO\",x.routeNo?`Rota ${x.routeNo} • ${OP.agents.find(a=>a.routeNo===x.routeNo)?.name||\"—\"}`:\"PONTO LIVRE\"]].filter(([,v])=>v!==null&&v!==undefined&&String(v).trim()!==\"\");\n const other=[...secondary,...extra];\n return `<div class=\"ptitle\">${x.routeNo?`R${x.routeNo} • ${x.order}. `:\"LIVRE • \"}${esc(pointName(x.p))}</div>\n <div class=\"line\"><b>CNPJ:</b> ${esc(x.p.NROCNPJ_PAD||x.p.CNPJ||\"—\")}</div>\n <div class=\"line\"><b>ENDEREÇO:</b> ${esc(x.p.ENDEE||x.p.ENDERECO||\"—\")}</div>\n <div class=\"line\"><b>STATUS:</b> ${esc(label(s))}</div>\n ${st?`<div class=\"muted\">Atualizado por ${esc(st.agente||\"—\")}</div>`:\"\"}\n <div class=\"line\"><b>Distância:</b> ${Number.isFinite(d)?dist(d):\"GPS não ativo\"}</div>\n ${other.length?`<details class=\"popup-extra\"><summary>OUTRAS INFORMAÇÕES (${other.length})</summary><div class=\"popup-extra-scroll\">${other.map(([a,v])=>`<div class=\"line\"><b>${esc(a)}:</b> ${esc(v)}</div>`).join(\"\")}</div></details>`:\"\"}\n <a class=\"pbtn\" target=\"_blank\" rel=\"noopener\" href=\"${routeUrl(x.lat,x.lng)}\">IR NO GOOGLE MAPS</a>\n <a class=\"pbtn secondary\" target=\"_blank\" rel=\"noopener\" href=\"${streetUrl(x.lat,x.lng)}\">STREET VIEW</a>`;\n}\nfunction canWork(x){if(isManager)return true;if(!me)return false;return x.routeNo===0||x.routeNo===me.routeNo}\nfunction createMarker(k){const f=features.get(k);if(!f)return;const x=pointData(f),s=currentStatus(k,x.p);if(!DISPLAY_SET.has(s)||!isVisibleForFilter(x))return;const m=L.marker([x.lat,x.lng],{icon:markerIcon(x,s)});m.bindPopup(popup(k),{maxWidth:340});m.on(\"click\",()=>{m.setPopupContent(popup(k));selected=k;if(canWork(x)){configure(s);$(\"panelTitle\").textContent=`${x.routeNo?`R${x.routeNo} • ${x.order}. `:\"LIVRE • \"}${pointName(x.p)}`;$(\"panelMeta\").textContent=`${x.p.NROCNPJ_PAD||x.p.CNPJ||k} • ${label(s)}`;$(\"panel\").classList.add(\"show\")}else if(me){notice(`Ponto atribuído à Rota ${x.routeNo}. Somente visualização.`,\"wait\")}});cluster.addLayer(m);markers.set(k,m)}\nfunction sync(k){const f=features.get(k);if(!f)return;const x=pointData(f),s=currentStatus(k,x.p),m=markers.get(k),show=DISPLAY_SET.has(s)&&isVisibleForFilter(x);if(!show){if(m){cluster.removeLayer(m);markers.delete(k)}}else if(!m)createMarker(k);else{m.setIcon(markerIcon(x,s));m.setPopupContent(popup(k))}updateStats()}\nfunction configure(cur){const allowed=[...BASE_SAVE];if(CONDITIONAL[cur])allowed.push(CONDITIONAL[cur]);$(\"status\").innerHTML='<option value=\"\">Selecione o status</option>'+allowed.map(s=>`<option value=\"${s}\">${label(s)}</option>`).join(\"\");$(\"status\").value=\"\";$(\"schedule\").style.display=\"none\";$(\"date\").value=\"\";$(\"time\").value=\"\"}$(\"status\").onchange=()=>{$(\"schedule\").style.display=$(\"status\").value===\"AGENDADO\"?\"block\":\"none\"};$(\"close\").onclick=()=>{$(\"panel\").classList.remove(\"show\");selected=\"\"};\nfunction activePoints(filter){const a=[];for(const [k,f] of features){const x=pointData(f),s=currentStatus(k,x.p);if(DISPLAY_SET.has(s)&&(!filter||filter(x)))a.push({...x,key:k})}return a}\nfunction mineActive(){return me?activePoints(x=>x.routeNo===me.routeNo).sort((a,b)=>a.order-b.order):[]}function freeActive(){return activePoints(x=>x.routeNo===0)}\nfunction updateStats(){let started=0,other=0;for(const k of features.keys()){const rec=pointStatus.get(k);if(!rec||rec.status===undefined||rec.status===null||String(rec.status).trim()===\"\")continue;const s=normStatus(rec.status);if(s===\"INICIADO\")started++;else other++}$(\"stTotal\").textContent=OP.points?.features?.length||features.size;$(\"stStarted\").textContent=started;$(\"stOther\").textContent=other;updateMaps()}\nfunction nextPoint(){if(isManager){notice(\"GESTÃO • visão geral da operação.\",\"ok\");return}if(!me){notice(\"Escolha seu agente.\",\"err\");return}if(!current){notice(\"Aguardando GPS.\",\"err\");return}let a=mineActive(),x;if(a.length)x=a[0];else{a=freeActive();if(!a.length){notice(\"Sem pontos livres ativos na operação.\",\"ok\");return}a.forEach(p=>p._d=hav(current,{lat:p.lat,lng:p.lng}));a.sort((u,v)=>u._d-v._d);x=a[0]}map.setView([x.lat,x.lng],18);const m=markers.get(x.key);if(m){m.setPopupContent(popup(x.key));m.openPopup()}notice(`${x.routeNo?\"PRÓXIMO DA ROTA\":\"PONTO LIVRE MAIS PRÓXIMO\"}: ${pointName(x.p)}`,\"ok\")}\nfunction fullMapsUrl(){if(isManager||!me)return\"#\";const a=mineActive();if(!a.length){const f=freeActive();if(!f.length)return\"#\";if(!current)return routeUrl(f[0].lat,f[0].lng);f.forEach(x=>x._d=hav(current,{lat:x.lat,lng:x.lng}));f.sort((u,v)=>u._d-v._d);return routeUrl(f[0].lat,f[0].lng)}const origin=current?`${current.lat},${current.lng}`:`${a[0].lat},${a[0].lng}`,dest=a[a.length-1],mid=a.slice(current?0:1,-1),q=new URLSearchParams({api:\"1\",origin,destination:`${dest.lat},${dest.lng}`,travelmode:\"driving\"});if(mid.length)q.set(\"waypoints\",mid.map(x=>`${x.lat},${x.lng}`).join(\"|\"));return `https://www.google.com/maps/dir/?${q.toString()}`}\nfunction updateMaps(){const a=$(\"maps\");a.href=fullMapsUrl();a.style.opacity=a.href.endsWith(\"#\")?.45:1}\n$(\"next\").onclick=nextPoint;\nfunction updateManagerLocalMarker(){\n if(!isManager||!current)return;\n const ll=[current.lat,current.lng];\n if(!managerMarker){\n   managerMarker=L.marker(ll,{icon:L.divIcon({className:\"\",html:'<div class=\"manager-local-pin\">G</div>',iconSize:[42,42],iconAnchor:[21,21]}),pane:\"agentsPane\"}).addTo(map);\n   managerMarker.bindPopup(\"<b>GESTÃO</b><br>Minha localização neste aparelho\");\n   managerAccuracy=L.circle(ll,{radius:current.accuracy||0,color:\"#0b57d0\",weight:2,fillOpacity:.05}).addTo(map);\n }else{\n   managerMarker.setLatLng(ll);\n   if(managerAccuracy)managerAccuracy.setLatLng(ll).setRadius(current.accuracy||0);\n }\n}\nfunction startManagerGps(){\n if(!isManager)return;\n if(current){updateManagerLocalMarker();map.setView([current.lat,current.lng],18);notice(`Minha localização • precisão ${Math.round(current.accuracy||0)} m`,\"ok\");return}\n if(!navigator.geolocation){$(\"gpsState\").textContent=\"Indisponível\";$(\"gpsIcon\").className=\"status-icon err\";notice(\"GPS indisponível neste aparelho.\",\"err\");return}\n $(\"gpsState\").textContent=\"Solicitando permissão\";$(\"gpsIcon\").className=\"status-icon warn\";notice(\"Solicitando GPS opcional da Gestão...\",\"\");\n if(watchId!==null){try{navigator.geolocation.clearWatch(watchId)}catch{}}\n watchId=navigator.geolocation.watchPosition(g=>{\n   if(!isManager)return;\n   current={lat:g.coords.latitude,lng:g.coords.longitude,accuracy:g.coords.accuracy};\n   $(\"gpsState\").textContent=`Ativo • ${Math.round(current.accuracy||0)} m`;\n   $(\"gpsIcon\").className=\"status-icon ok\";\n   updateManagerLocalMarker();\n   map.setView([current.lat,current.lng],18);\n   notice(\"GPS da Gestão ativo somente neste aparelho.\",\"ok\");\n },e=>{\n   $(\"gpsState\").textContent=e.code===1?\"Permissão negada\":\"Indisponível\";\n   $(\"gpsIcon\").className=\"status-icon err\";\n   notice(e.code===1?\"GPS da Gestão não autorizado. O acesso administrativo continua normal.\":\"Erro ao obter GPS da Gestão.\",\"err\");\n },{enableHighAccuracy:true,maximumAge:10000,timeout:25000});\n}\n$(\"locate\").onclick=()=>{\n if(isManager){startManagerGps();return}\n if(current){map.setView([current.lat,current.lng],18);notice(`Minha localização • precisão ${Math.round(current.accuracy||0)} m`,\"ok\")}\n else notice(\"GPS ainda não disponível. Autorize a localização do navegador.\",\"err\")\n};\n$(\"filter\").onclick=()=>{filterMode=(filterMode+1)%3;$(\"filter\").classList.toggle(\"active\",filterMode!==0);$(\"filter\").title=filterMode===0?\"Exibindo todos\":filterMode===1?\"Exibindo minha rota\":\"Exibindo pontos livres\";for(const k of features.keys())sync(k);notice(filterMode===0?\"Exibindo todos os pontos\":filterMode===1?\"Exibindo minha rota\":\"Exibindo pontos livres\",\"ok\")};\n\nfunction searchTextOf(f){const p=f?.properties||{};return Object.values(p).filter(v=>v!==null&&v!==undefined&&typeof v!==\"object\").join(\" \").toUpperCase()}\nfunction openSearch(){$(\"searchPanel\").classList.add(\"show\");$(\"searchInput\").value=\"\";$(\"searchResults\").innerHTML='<div class=\"muted\">Digite ao menos 2 caracteres.</div>';setTimeout(()=>$(\"searchInput\").focus(),80)}\nfunction closeSearch(){$(\"searchPanel\").classList.remove(\"show\")}\nfunction renderSearch(){const q=String($(\"searchInput\").value||\"\").trim().toUpperCase(),host=$(\"searchResults\");if(q.length<2){host.innerHTML='<div class=\"muted\">Digite ao menos 2 caracteres.</div>';return}const arr=[];for(const [k,f] of features){if(!searchTextOf(f).includes(q))continue;const x=pointData(f),p=x.p||{};arr.push({k,f,x,name:p.NOMEFANTASIA||p.RAZAOSOCIAL||p.NOME_FANTASIA||p.RAZAO_SOCIAL||k,address:p.ENDEE||p.ENDERECO||p.LOGRADOURO||p.MUNICIPIO||\"\"});if(arr.length>=30)break}if(!arr.length){host.innerHTML='<div class=\"muted\">Nenhum ponto encontrado.</div>';return}host.innerHTML=arr.map((r,i)=>`<button class=\"search-result\" type=\"button\" data-search-index=\"${i}\"><b>${esc(r.name)}</b><span>${esc(r.k)} • ${esc(r.address)}</span></button>`).join(\"\");[...host.querySelectorAll(\"[data-search-index]\")].forEach(b=>b.onclick=()=>{const r=arr[Number(b.dataset.searchIndex)],m=markers.get(r.k);closeSearch();if(m){cluster.zoomToShowLayer(m,()=>{map.setView(m.getLatLng(),18);m.openPopup()})}else map.setView([r.x.lat,r.x.lng],18)})}\n$(\"searchBtn\").onclick=openSearch;$(\"searchClose\").onclick=closeSearch;$(\"searchInput\").addEventListener(\"input\",renderSearch);\n\nfunction scheduleData(){const d=$(\"date\").value,t=$(\"time\").value;if(!d||!t)return null;return{dataAgendamento:d.split(\"-\").reverse().join(\"/\"),horaAgendamento:t}}async function saveStatus(k,status){\n if(!isManager&&!me){notice(\"Escolha seu agente.\",\"err\");return false}\n if(!isManager&&!current){notice(\"Ative o GPS antes de salvar.\",\"err\");return false}\n const f=features.get(k);if(!f)return false;\n const x=pointData(f);\n if(!isManager&&!canWork(x)){notice(\"Este ponto pertence a outro agente.\",\"err\");return false}\n status=normStatus(status);\n if(!BASE_SAVE.includes(status)&&!Object.values(CONDITIONAL).includes(status)){notice(\"Status inválido.\",\"err\");return false}\n const cur=currentStatus(k,x.p),required=APPLIED_SOURCE[status];\n if(required&&cur!==required){notice(`${label(status)} só pode ser usado em ${label(required)}.`,\"err\");return false}\n if(!isManager){\n   const d=hav(current,{lat:x.lat,lng:x.lng});\n   if(d>radiusRelease){notice(`Você está a ${dist(d)} • limite ${Math.round(radiusRelease)} m.`,\"err\");return false}\n }\n let extra={};\n if(status===\"AGENDADO\"){const sch=scheduleData();if(!sch){notice(\"Informe data e hora.\",\"err\");return false}extra=sch}\n if(status===\"END_ERRADO\"&&!confirm(\"Confirmar END_ERRADO? Você conferiu se o endereço do mapa é o mesmo da empresa?\"))return false;\n const fbKey=firebaseKeyFor(k,x.p);if(!fbKey)throw Error(\"CHAVE_FIREBASE_INVALIDA\");\n const statusRef=ref(db,`STATUS_PONTOS/${fbKey}`);\n const payload={status,agente:isManager?\"GESTÃO\":me.name,agenteId:isManager?\"PRAXIAN\":me.id,hora:serverTimestamp(),...extra};\n await set(statusRef,payload);\n const check=await get(statusRef),saved=check.val();\n if(!saved||normStatus(saved.status)!==status)throw Error(\"CONFIRMACAO_FIREBASE_FALHOU\");\n pointStatus.set(fbKey,saved);pointStatus.set(k,saved);sync(k);\n $(\"panel\").classList.remove(\"show\");selected=\"\";\n notice(FINAL.has(status)?\"PONTO SALVO E REMOVIDO\":isManager?\"STATUS SALVO PELA GESTÃO\":\"STATUS SALVO • PONTO MANTIDO\",\"ok\");\n return true\n}\n$(\"panel\").onsubmit=async e=>{e.preventDefault();const s=$(\"status\").value;if(!selected||!s)return;const b=$(\"save\");b.disabled=true;b.textContent=\"SALVANDO...\";try{await saveStatus(selected,s)}catch(err){console.error(\"Falha ao salvar status\",s,err);notice(`Falha ao salvar ${label(s)} no Firebase.`,\"err\")}finally{b.disabled=false;b.textContent=\"SALVAR\"}};\nasync function loadConfig(){try{const s=await get(ref(db,\"CONFIG\")),c=s.val()||{};appConfig=c;radiusRelease=Number(c.raioLiberacao)||100;gpsSeconds=Number(c.gpsAtualizacaoSegundos)||60;gpsDistance=Number(c.gpsDistanciaMinima)||100;return c}catch{appConfig={};return appConfig}}\nconst MANAGER_NAME=\"PRAXIAN\";\nfunction managerPasswordValid(value){return String(value??\"\").trim().toUpperCase()===MANAGER_NAME}\nfunction managerSessionHours(){const c=appConfig||{};return Math.max(1,Number(c.sessaoGestorHoras??8)||8)}\nfunction agentIcon(a,own=false){return L.divIcon({className:\"\",html:`<div class=\"agent-pin${own?\" own-pin\":\"\"}\" style=\"background:${a.color||\"#e11d48\"}\">${esc(a.name.split(\" \")[0])}</div>`,iconSize:[70,38],iconAnchor:[35,19]})}\nfunction renderAgents(raw){const allowed=new Set(OP.agents.map(a=>String(a.id)));onlineAgentCount=Object.entries(raw||{}).filter(([id,v])=>v&&v.online&&allowed.has(String(id))).length;$(\"agentsState\").textContent=`${onlineAgentCount} online`;for(const [id,m] of agentMarkers){if(!raw[id]||!raw[id].online||!allowed.has(String(id))){map.removeLayer(m);agentMarkers.delete(id)}}for(const [id,v] of Object.entries(raw||{})){if(!v||!v.online||!allowed.has(String(id))||!Number.isFinite(Number(v.lat))||!Number.isFinite(Number(v.lng)))continue;const a=OP.agents.find(x=>String(x.id)===String(id))||{name:v.nome||\"Agente\",color:\"#e11d48\"},ll=[Number(v.lat),Number(v.lng)],own=me&&String(me.id)===String(id);let m=agentMarkers.get(id);if(!m){m=L.marker(ll,{icon:agentIcon(a,own),pane:\"agentsPane\"}).addTo(map);agentMarkers.set(id,m)}else{m.setLatLng(ll);m.setIcon(agentIcon(a,own))}m.setPopupContent(`<b>${esc(a.name)}</b><br>Rota ${a.routeNo||\"—\"}<br><a class=\"pbtn\" target=\"_blank\" rel=\"noopener\" href=\"${routeUrl(Number(v.lat),Number(v.lng))}\">IR ATÉ O AGENTE NO GOOGLE MAPS</a>`)}}\nasync function sendPos(force=false){if(!agentRef||!current||!me)return;const now=Date.now(),moved=lastPos?hav(lastPos,current):Infinity;if(!force&&now-lastSent<gpsSeconds*1000&&moved<gpsDistance)return;await update(agentRef,{fase:\"V0.4\",id:me.id,nome:me.name,online:true,lat:Number(current.lat.toFixed(7)),lng:Number(current.lng.toFixed(7)),precisao:Math.round(current.accuracy||0),ultimaAtualizacao:serverTimestamp(),paginaOperacao:true,operacao:OP.name,rota:me.routeNo});lastSent=now;lastPos={...current};notice(\"CONECTADO\",\"ok\")}\nasync function startMe(){if(!me)return;await loadConfig();$(\"userState\").textContent=`R${me.routeNo} • ${me.name.split(\" \")[0]}`;$(\"gpsState\").textContent=\"Solicitando permissão\";$(\"gpsIcon\").className=\"status-icon warn\";notice(\"Solicitando permissão de localização...\",\"\");agentRef=ref(db,`AGENTES_ONLINE/${me.id}`);await onDisconnect(agentRef).update({online:false,ultimaAtualizacao:serverTimestamp()});await set(agentRef,{fase:\"V0.4\",id:me.id,nome:me.name,online:true,entrada:serverTimestamp(),ultimaAtualizacao:serverTimestamp(),paginaOperacao:true,operacao:OP.name,rota:me.routeNo});if(!navigator.geolocation){notice(\"GPS indisponível.\",\"err\");return}watchId=navigator.geolocation.watchPosition(async g=>{current={lat:g.coords.latitude,lng:g.coords.longitude,accuracy:g.coords.accuracy};$(\"gpsState\").textContent=`Ativo • ${Math.round(current.accuracy||0)} m`;$(\"gpsIcon\").className=\"status-icon ok\";if(!ownAccuracy)ownAccuracy=L.circle([current.lat,current.lng],{radius:current.accuracy||0,color:me.color,weight:2,fillOpacity:.05}).addTo(map);else ownAccuracy.setLatLng([current.lat,current.lng]).setRadius(current.accuracy||0);await sendPos(lastPos===null);updateStats()},e=>{$(\"gpsState\").textContent=e.code===1?\"Permissão negada\":\"Indisponível\";$(\"gpsIcon\").className=\"status-icon err\";notice(e.code===1?\"Permissão de GPS negada. Ative a localização no navegador.\":\"Erro no GPS.\",\"err\")},{enableHighAccuracy:true,maximumAge:10000,timeout:25000});timerId=setInterval(()=>sendPos(false).catch(console.error),5000);notice(`Rota ${me.routeNo} • ${me.name}`,\"ok\");updateStats()}\nconst saved=localStorage.getItem(`operacao_agent_${OP.id}`);for(const a of OP.agents){const o=document.createElement(\"option\");o.value=a.id;o.textContent=`Rota ${a.routeNo} • ${a.name}`;if(saved===String(a.id))o.selected=true;$(\"agentSelect\").appendChild(o)}const mg=document.createElement(\"option\");mg.value=\"__GESTAO__\";mg.textContent=\"GESTÃO\";$(\"agentSelect\").appendChild(mg);$(\"agentSelect\").onchange=()=>{const mg=$(\"agentSelect\").value===\"__GESTAO__\";$(\"managerPasswordBox\").style.display=mg?\"block\":\"none\";$(\"gpsRequest\").style.display=mg?\"none\":\"block\";$(\"enter\").textContent=mg?\"ENTRAR COMO GESTÃO\":\"ENTRAR E ATIVAR GPS\"};async function enterManager(skipPassword=false){await loadConfig();if(!skipPassword){const pw=$(\"managerPassword\").value;if(!managerPasswordValid(pw)){alert(\"Acesso da gestão inválido. Informe PRAXIAN, igual ao GEST_MOBILE.\");return}}isManager=true;me=null;filterMode=0;localStorage.removeItem(`operacao_agent_${OP.id}`);localStorage.setItem(`operacao_gestao_ate_${OP.id}`,String(Date.now()+managerSessionHours()*3600000));$(\"login\").classList.add(\"hide\");$(\"userState\").textContent=\"GESTÃO\";$(\"gpsState\").textContent=\"Opcional • toque em localização\";$(\"gpsIcon\").className=\"status-icon\";$(\"headerDot\").className=\"conn-dot ok\";$(\"next\").disabled=true;$(\"maps\").style.opacity=.45;for(const k of features.keys())sync(k);renderLegend();updateStats()}$(\"enter\").onclick=async()=>{const id=$(\"agentSelect\").value;if(id===\"__GESTAO__\"){await enterManager(false);return}const found=OP.agents.find(a=>String(a.id)===String(id));if(!found){alert(\"Selecione seu nome ou GESTÃO.\");return}isManager=false;me=found;localStorage.setItem(`operacao_agent_${OP.id}`,String(me.id));localStorage.removeItem(`operacao_gestao_ate_${OP.id}`);$(\"login\").classList.add(\"hide\");for(const k of features.keys())sync(k);renderLegend();await startMe()};\nfor(const f of OP.points.features||[]){const k=pkey(f.properties||{});if(k)features.set(k,f)}for(const r of OP.routes||[]){if(r.geometry?.features?.length){const l=L.geoJSON(r.geometry,{style:{color:r.color,weight:5,opacity:.68},pane:\"routePane\"}).addTo(map);routeLines.push(l)}}const bounds=[];for(const f of features.values()){const x=pointData(f);bounds.push([x.lat,x.lng])}if(bounds.length)map.fitBounds(bounds,{padding:[20,20],maxZoom:16});loadConfig().then(()=>{const until=Number(localStorage.getItem(`operacao_gestao_ate_${OP.id}`)||0);if(until>Date.now())enterManager(true).catch(console.error)});\nfunction renderLegend(){const h=`<div class=\"legend-title\">AGENTES / ROTAS</div>`+OP.agents.map(a=>`<div class=\"legend-row\"><span class=\"sw\" style=\"background:${a.color}\"></span><b>R${a.routeNo}</b> ${esc(a.name)}</div>`).join(\"\");$(\"legend\").innerHTML=h}renderLegend();\nonValue(ref(db,\"STATUS_PONTOS\"),snap=>{pointStatus.clear();for(const [k,v] of Object.entries(snap.val()||{})){if(k!==\"TEMP\"&&k!==\"TESTE_MANUAL\"&&v)pointStatus.set(k,v)}for(const k of features.keys())sync(k);updateStats()});onValue(ref(db,\"AGENTES_ONLINE\"),snap=>renderAgents(snap.val()||{}));window.addEventListener(\"beforeunload\",()=>{if(watchId!==null)navigator.geolocation.clearWatch(watchId)});updateStats();\n<\/script></body></html>";
+const MULTI_AGENT_ROUTE_TEMPLATE="<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover\">\n<title>__OP_NAME_HTML__ • Rotas de Campo</title>\n<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\">\n<style>\n:root{--bg:#07111f;--panel:#101a2d;--panel2:#0b1527;--line:#263653;--text:#f7f9fc;--muted:#b9c6dc;--blue:#2563eb;--green:#16a34a;--red:#991b1b}\n*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;height:100dvh;overflow:hidden;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}\n.app{height:100%;display:grid;grid-template-rows:auto auto 1fr}header{padding:7px 9px;background:var(--panel);border-bottom:1px solid var(--line)}h1{font-size:16px;margin:0}.sub{font-size:10px;color:var(--muted);margin-top:3px}.stats{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}.stat{padding:3px 6px;border:1px solid var(--line);border-radius:999px;background:#0b1527;font-size:10px;font-weight:800}\n.bar{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:5px;padding:5px;background:var(--panel2);border-bottom:1px solid var(--line)}.notice{min-width:0;padding:7px;border:1px solid var(--line);border-radius:8px;background:var(--panel);font-size:10px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.btn{min-height:37px;border:0;border-radius:8px;padding:6px 8px;color:#fff;font-size:11px;font-weight:900}.next{background:#0f766e}.maps{background:#2563eb;text-decoration:none;display:flex;align-items:center}.loc{background:#e11d48}#map{width:100%;height:100%;min-height:0}\n.route-pin{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;color:#fff;border:3px solid #fff;box-shadow:0 3px 10px #0008;font-size:11px;font-weight:900}.gps-pin{width:22px;height:22px;border-radius:50%;background:#ff1744;border:4px solid #fff;box-shadow:0 0 0 5px rgba(255,23,68,.28)}\n.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#101a2d;color:#fff}.leaflet-popup-content{min-width:230px;max-height:350px;overflow:auto}.pt{font-size:15px;font-weight:900;margin-bottom:6px}.line{margin:5px 0;font-size:11px;line-height:1.35;color:#dbe5f4}.muted{font-size:10px;color:#9fb0c8}.pbtn{display:block;width:100%;margin-top:7px;padding:9px;border-radius:8px;background:#2563eb;color:#fff;text-align:center;text-decoration:none;font-size:11px;font-weight:900}.pbtn.street{background:#111827}\n.panel{position:fixed;z-index:10000;left:8px;right:8px;bottom:8px;display:none;padding:10px;background:rgba(9,18,33,.98);border:1px solid #405578;border-radius:12px}.panel.show{display:block}.panel-title{font-size:14px;font-weight:900}.panel-meta{font-size:10px;color:var(--muted);margin:3px 0 7px}.panel select,.panel input{width:100%;min-height:40px;padding:8px;border:1px solid #3a4c6d;border-radius:8px;background:#17253d;color:#fff;margin-bottom:7px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:7px}.save{background:#16a34a}.close{background:#334155}\n.login{position:fixed;z-index:15000;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(3,8,18,.88)}.login.hide{display:none}.login-card{width:min(430px,100%);padding:17px;border:1px solid #405578;border-radius:15px;background:#0b1527}.login-card h2{margin:0 0 5px;font-size:19px}.login-card p{margin:0 0 10px;color:var(--muted);font-size:11px;line-height:1.4}.login-card select,.login-card button{width:100%;min-height:44px;margin-top:7px;padding:8px;border-radius:9px}.login-card select{border:1px solid #405578;background:#17253d;color:#fff}.login-card button{border:0;background:#2563eb;color:#fff;font-weight:900}\n.done{position:fixed;z-index:12000;inset:0;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(2,8,23,.88)}.done.show{display:flex}.done-card{width:min(410px,100%);padding:19px;border:1px solid #334155;border-radius:14px;background:#101a2d;text-align:center}.done-card h2{margin:0 0 7px}.done-card p{font-size:11px;color:#cbd5e1}.done-card a{display:block;margin-top:10px;padding:11px;border-radius:9px;background:#2563eb;color:#fff;text-decoration:none;font-weight:900;font-size:11px}\n@media(max-width:430px){.bar{grid-template-columns:minmax(0,1fr) auto auto auto}.btn{font-size:9px;padding:5px 6px}header{padding:6px 8px}}\n</style>\n</head>\n<body>\n<div class=\"app\"><header><h1 id=\"title\">__OP_NAME_HTML__</h1><div id=\"subtitle\" class=\"sub\">Selecione seu nome para carregar sua rota.</div><div class=\"stats\"><span class=\"stat\">DISTÂNCIA <b id=\"distance\">—</b></span><span class=\"stat\">TEMPO <b id=\"duration\">—</b></span><span class=\"stat\">RESTANTES <b id=\"remaining\">—</b></span></div></header><div class=\"bar\"><div id=\"notice\" class=\"notice\">Aguardando entrada...</div><button id=\"next\" class=\"btn next\">PRÓXIMO</button><a id=\"maps\" class=\"btn maps\" target=\"_blank\" rel=\"noopener\">ROTA MAPS</a><button id=\"locate\" class=\"btn loc\">GPS</button></div><div id=\"map\"></div></div>\n<div id=\"login\" class=\"login\"><div class=\"login-card\"><h2>Entrar na rota</h2><p>Este HTML contém várias rotas. Escolha seu nome; você verá somente os pontos atribuídos à sua rota.</p><select id=\"agent\"><option value=\"\">Selecione seu nome</option></select><button id=\"enter\">ENTRAR E ATIVAR GPS</button></div></div>\n<form id=\"panel\" class=\"panel\"><div id=\"panelTitle\" class=\"panel-title\">Ponto</div><div id=\"panelMeta\" class=\"panel-meta\"></div><select id=\"status\"><option value=\"\">Selecione o status</option></select><div id=\"schedule\" style=\"display:none\"><div class=\"grid2\"><input id=\"date\" type=\"date\"><input id=\"time\" type=\"time\" step=\"60\"></div></div><div class=\"grid2\"><button id=\"save\" class=\"btn save\" type=\"submit\">SALVAR</button><button id=\"close\" class=\"btn close\" type=\"button\">FECHAR</button></div></form>\n<div id=\"done\" class=\"done\"><div class=\"done-card\"><h2>ROTA CONCLUÍDA ✓</h2><p>Todos os pontos desta rota foram finalizados.</p><a href=\"https://pcippollini.github.io/MG_SEBRAE/AGENTEMG_V.2.html\">IR PARA AGENTE V2</a></div></div>\n<script id=\"gest-route-data\" type=\"application/json\">__OP_DATA__<\/script>\n<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"><\/script>\n<script type=\"module\">\nimport {initializeApp} from \"https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js\";\nimport {getDatabase,ref,get,set,update,onValue,onDisconnect,serverTimestamp} from \"https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js\";\nconst OP=JSON.parse(document.getElementById(\"gest-route-data\").textContent);\nconst firebaseConfig={apiKey:\"AIzaSyCYfLl08iRHnvnbBcKTaJOsONjFHKd2mrA\",authDomain:\"pilotomg-efe79.firebaseapp.com\",databaseURL:\"https://pilotomg-efe79-default-rtdb.firebaseio.com\",projectId:\"pilotomg-efe79\",storageBucket:\"pilotomg-efe79.firebasestorage.app\",messagingSenderId:\"577008586078\",appId:\"1:577008586078:web:eb8bdd9891418e0777d3cf\"};\nconst db=getDatabase(initializeApp(firebaseConfig));\nconst DISPLAY=[\"CARTEIRA\",\"RETORNAR\",\"RETORNAR_COMERCIAL\",\"RETORNAR_RESIDENCIAL\",\"AGENDADO\",\"APLICAR_T2\",\"APLICAR_T3\",\"APLICAR_T4\"],DISPLAY_SET=new Set(DISPLAY),BASE_SAVE=[\"INICIADO\",\"RETORNAR_COMERCIAL\",\"RETORNAR_RESIDENCIAL\",\"END_ERRADO\",\"RECUSA\",\"AGENDADO\"],CONDITIONAL={APLICAR_T2:\"T2_APLICADO\",APLICAR_T3:\"T3_APLICADO\",APLICAR_T4:\"T4_APLICADO\"},APPLIED_SOURCE={T2_APLICADO:\"APLICAR_T2\",T3_APLICADO:\"APLICAR_T3\",T4_APLICADO:\"APLICAR_T4\"},FINAL=new Set([\"INICIADO\",\"END_ERRADO\",\"RECUSA\",\"T2_APLICADO\",\"T3_APLICADO\",\"T4_APLICADO\"]);\nconst LABELS={CARTEIRA:\"CARTEIRA\",RETORNAR:\"RETORNAR\",RETORNAR_COMERCIAL:\"RETORNAR COMERCIAL\",RETORNAR_RESIDENCIAL:\"RETORNAR RESIDENCIAL\",AGENDADO:\"AGENDADO\",APLICAR_T2:\"APLICAR T2\",APLICAR_T3:\"APLICAR T3\",APLICAR_T4:\"APLICAR T4\",T2_APLICADO:\"T2 APLICADO\",T3_APLICADO:\"T3 APLICADO\",T4_APLICADO:\"T4 APLICADO\",INICIADO:\"INICIADO\",END_ERRADO:\"END_ERRADO\",RECUSA:\"RECUSA\"};\nconst $=id=>document.getElementById(id),map=L.map(\"map\",{zoomControl:true}).setView([-19,-44],12);L.tileLayer(\"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png\",{maxZoom:20,attribution:\"&copy; OpenStreetMap\"}).addTo(map);map.createPane(\"routePane\");map.getPane(\"routePane\").style.zIndex=410;map.createPane(\"pointsPane\");map.getPane(\"pointsPane\").style.zIndex=650;map.createPane(\"gpsPane\");map.getPane(\"gpsPane\").style.zIndex=700;\nconst pointStatus=new Map(),features=new Map(),markers=new Map();let me=null,route=null,current=null,ownMarker=null,ownAccuracy=null,agentRef=null,watchId=null,timerId=null,lastSent=0,lastPos=null,selected=\"\",radiusRelease=100,gpsSeconds=60,gpsDistance=100,routeLayer=null;\nfunction normText(v){return String(v??\"\").normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g,\"\").trim().toUpperCase()}function normStatus(v){const x=normText(v||\"CARTEIRA\").replace(/\\s+/g,\"_\");if(!x||x===\"PENDENTE\")return\"CARTEIRA\";if(x===\"RECUSADO\")return\"RECUSA\";if(x===\"RETORNAR_RESIDENCIA\")return\"RETORNAR_RESIDENCIAL\";if(x===\"AGENDAMENTO\")return\"AGENDADO\";return x}function label(s){s=normStatus(s);return LABELS[s]||s.replaceAll(\"_\",\" \")}function esc(v){return String(v??\"\").replaceAll(\"&\",\"&amp;\").replaceAll(\"<\",\"&lt;\").replaceAll(\">\",\"&gt;\").replaceAll('\"',\"&quot;\").replaceAll(\"'\",\"&#039;\")}function cnpjOf(p){return String(p?.NROCNPJ_PAD??p?.CNPJ??\"\").replace(/\\D/g,\"\")}function currentStatus(c,p){return normStatus(pointStatus.get(c)?.status||p?.STATUS_OPERACIONAL||p?.STATUS||\"CARTEIRA\")}function hav(a,b){if(!a||!b)return Infinity;const R=6371000,r=x=>x*Math.PI/180,dlat=r(b.lat-a.lat),dlng=r(b.lng-a.lng),h=Math.sin(dlat/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dlng/2)**2;return 2*R*Math.asin(Math.sqrt(h))}function dist(v){return v>=1000?`${(v/1000).toFixed(1).replace(\".\",\",\")} km`:`${Math.round(v)} m`}function fmt(sec){sec=Math.max(0,Number(sec)||0);const h=Math.floor(sec/3600),m=Math.round((sec%3600)/60);return h?`${h}h ${m}min`:`${m}min`}function notice(t){$(\"notice\").textContent=t}function routeUrl(lat,lng){return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`}function streetUrl(lat,lng){return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`}\nfunction pointData(f){const p=f.properties||{},[lng,lat]=f.geometry.coordinates;return{f,p,cnpj:cnpjOf(p),lat:Number(lat),lng:Number(lng),order:Number(p._ORDEM??p.ORDEM_ROTA??p.ORDEM??0)}}function routePoints(){return [...features].map(([cnpj,f])=>({...pointData(f),cnpj})).filter(x=>DISPLAY_SET.has(currentStatus(x.cnpj,x.p))).sort((a,b)=>a.order-b.order)}\nfunction pin(x,s){let bg=route?.color||\"#7c3aed\";s=normStatus(s);if(s===\"RETORNAR\"||s.startsWith(\"RETORNAR_\"))bg=\"#38BDF8\";else if(s===\"AGENDADO\"||s===\"APLICAR_T2\")bg=\"#FACC15\";else if(s===\"APLICAR_T3\")bg=\"#14B8A6\";else if(s===\"APLICAR_T4\")bg=\"#F97316\";return L.divIcon({className:\"\",html:`<div class=\"route-pin\" style=\"background:${bg}\">${x.order}</div>`,iconSize:[34,34],iconAnchor:[17,17]})}\nfunction popup(c){const f=features.get(c);if(!f)return\"\";const x=pointData(f),s=currentStatus(c,x.p),st=pointStatus.get(c),d=current?hav(current,{lat:x.lat,lng:x.lng}):Infinity;return `<div class=\"pt\">${x.order}. ${esc(x.p.NOMEFANTASIA||x.p.NOME_FANTASIA||x.p.RAZAOSOCIAL||x.p.RAZAO_SOCIAL||\"Empresa\")}</div><div class=\"line\"><b>CNPJ:</b> ${esc(c)}</div><div class=\"line\"><b>ENDEREÇO:</b> ${esc(x.p.ENDEE||\"—\")}</div><div class=\"line\"><b>STATUS:</b> ${esc(label(s))}</div>${st?`<div class=\"muted\">Atualizado por ${esc(st.agente||\"—\")}</div>`:\"\"}<div class=\"line\"><b>Distância:</b> ${Number.isFinite(d)?dist(d):\"GPS não ativo\"}</div><a class=\"pbtn\" target=\"_blank\" rel=\"noopener\" href=\"${routeUrl(x.lat,x.lng)}\">IR PARA ESTE PONTO NO GOOGLE MAPS</a><a class=\"pbtn street\" target=\"_blank\" rel=\"noopener\" href=\"${streetUrl(x.lat,x.lng)}\">STREET VIEW</a>`}\nfunction configure(cur){const allowed=[...BASE_SAVE];if(CONDITIONAL[cur])allowed.push(CONDITIONAL[cur]);$(\"status\").innerHTML='<option value=\"\">Selecione o status</option>'+allowed.map(s=>`<option value=\"${s}\">${label(s)}</option>`).join(\"\");$(\"status\").value=\"\";$(\"schedule\").style.display=\"none\";$(\"date\").value=\"\";$(\"time\").value=\"\"}$(\"status\").onchange=()=>$(\"schedule\").style.display=$(\"status\").value===\"AGENDADO\"?\"block\":\"none\";$(\"close\").onclick=()=>{$(\"panel\").classList.remove(\"show\");selected=\"\"};\nfunction createMarker(c){const f=features.get(c);if(!f)return;const x=pointData(f),s=currentStatus(c,x.p);if(!DISPLAY_SET.has(s))return;const m=L.marker([x.lat,x.lng],{icon:pin(x,s),pane:\"pointsPane\"}).addTo(map);m.bindPopup(popup(c),{maxWidth:330});m.on(\"click\",()=>{m.setPopupContent(popup(c));selected=c;configure(s);$(\"panelTitle\").textContent=`${x.order}. ${x.p.NOMEFANTASIA||x.p.NOME_FANTASIA||x.p.RAZAOSOCIAL||x.p.RAZAO_SOCIAL||\"Ponto\"}`;$(\"panelMeta\").textContent=`${c} • ${label(s)}`;$(\"panel\").classList.add(\"show\")});markers.set(c,m)}\nfunction sync(c){const f=features.get(c);if(!f)return;const x=pointData(f),s=currentStatus(c,x.p),m=markers.get(c);if(!DISPLAY_SET.has(s)){if(m){map.removeLayer(m);markers.delete(c)}updateProgress();return}if(!m)createMarker(c);else{m.setIcon(pin(x,s));m.setPopupContent(popup(c))}updateProgress()}\nfunction fullMapsUrl(){const a=routePoints();if(!a.length)return\"#\";const origin=current?`${current.lat},${current.lng}`:`${a[0].lat},${a[0].lng}`,dest=a[a.length-1],mid=a.slice(current?0:1,-1),q=new URLSearchParams({api:\"1\",origin,destination:`${dest.lat},${dest.lng}`,travelmode:\"driving\"});if(mid.length)q.set(\"waypoints\",mid.map(x=>`${x.lat},${x.lng}`).join(\"|\"));return `https://www.google.com/maps/dir/?${q.toString()}`}\nfunction updateProgress(){const rest=routePoints().length,total=features.size;$(\"remaining\").textContent=`${rest}/${total}`;$(\"done\").classList.toggle(\"show\",total>0&&rest===0);$(\"maps\").href=fullMapsUrl();$(\"maps\").style.opacity=rest?.999:.45}\nfunction scheduleData(){const d=$(\"date\").value,t=$(\"time\").value;if(!d||!t)return null;return{dataAgendamento:d.split(\"-\").reverse().join(\"/\"),horaAgendamento:t}}\nasync function saveStatus(c,status){if(!current){notice(\"Ative o GPS antes de salvar.\");return false}const f=features.get(c);if(!f)return false;const x=pointData(f),cur=currentStatus(c,x.p),required=APPLIED_SOURCE[status];if(required&&cur!==required){notice(`${label(status)} só pode ser usado em ${label(required)}.`);return false}const d=hav(current,{lat:x.lat,lng:x.lng});if(d>radiusRelease){notice(`Você está a ${dist(d)} • limite ${Math.round(radiusRelease)} m.`);return false}let extra={};if(status===\"AGENDADO\"){const z=scheduleData();if(!z){notice(\"Informe data e hora.\");return false}extra=z}if(status===\"END_ERRADO\"&&!confirm(\"Confirmar END_ERRADO?\"))return false;status=normStatus(status);const rr=ref(db,`STATUS_PONTOS/${c}`),payload={status,agente:me.name,agenteId:me.id,hora:serverTimestamp(),...extra};await set(rr,payload);pointStatus.set(c,{...payload,hora:Date.now()});sync(c);$(\"panel\").classList.remove(\"show\");selected=\"\";notice(FINAL.has(status)?\"PONTO SALVO E REMOVIDO\":\"STATUS SALVO\");return true}\n$(\"panel\").onsubmit=async e=>{e.preventDefault();const st=$(\"status\").value;if(!selected||!st)return;const b=$(\"save\");b.disabled=true;try{await saveStatus(selected,st)}catch(err){console.error(err);notice(\"Falha ao salvar status\") }finally{b.disabled=false}};\nfunction nextPoint(){if(!current){notice(\"Aguardando GPS.\");return}const a=routePoints();if(!a.length){notice(\"ROTA CONCLUÍDA\");return}const x=a[0],m=markers.get(x.cnpj);map.setView([x.lat,x.lng],18);if(m){m.setPopupContent(popup(x.cnpj));m.openPopup()}notice(`PRÓXIMO: ${x.order}`)}$(\"next\").onclick=nextPoint;$(\"locate\").onclick=()=>current?map.setView([current.lat,current.lng],18):notice(\"Aguardando GPS.\");\nasync function loadConfig(){try{const s=await get(ref(db,\"CONFIG\")),c=s.val()||{};radiusRelease=Number(c.raioLiberacao)||100;gpsSeconds=Number(c.gpsAtualizacaoSegundos)||60;gpsDistance=Number(c.gpsDistanciaMinima)||100}catch{}}\nfunction updateOwn(){if(!current)return;const ll=[current.lat,current.lng];if(!ownMarker){ownMarker=L.marker(ll,{icon:L.divIcon({className:\"\",html:'<div class=\"gps-pin\"></div>',iconSize:[30,30],iconAnchor:[15,15]}),pane:\"gpsPane\"}).addTo(map);ownAccuracy=L.circle(ll,{radius:current.accuracy||0,color:\"#ff1744\",weight:2,fillOpacity:.06}).addTo(map)}else{ownMarker.setLatLng(ll);ownAccuracy.setLatLng(ll).setRadius(current.accuracy||0)}}\nasync function sendPos(force=false){if(!agentRef||!current||!me)return;const now=Date.now(),moved=lastPos?hav(lastPos,current):Infinity;if(!force&&now-lastSent<gpsSeconds*1000&&moved<gpsDistance)return;await update(agentRef,{fase:\"V0.4\",id:me.id,nome:me.name,online:true,lat:Number(current.lat.toFixed(7)),lng:Number(current.lng.toFixed(7)),precisao:Math.round(current.accuracy||0),ultimaAtualizacao:serverTimestamp(),paginaRota:true,rota:route.routeNo,operacao:OP.name});lastSent=now;lastPos={...current};notice(\"CONECTADO\")}\nasync function startGps(){await loadConfig();agentRef=ref(db,`AGENTES_ONLINE/${me.id}`);await onDisconnect(agentRef).update({online:false,ultimaAtualizacao:serverTimestamp()});await set(agentRef,{fase:\"V0.4\",id:me.id,nome:me.name,online:true,entrada:serverTimestamp(),ultimaAtualizacao:serverTimestamp(),paginaRota:true,rota:route.routeNo,operacao:OP.name});if(!navigator.geolocation){notice(\"GPS indisponível\");return}watchId=navigator.geolocation.watchPosition(async g=>{current={lat:g.coords.latitude,lng:g.coords.longitude,accuracy:g.coords.accuracy};updateOwn();updateProgress();await sendPos(lastPos===null)},e=>notice(e.code===1?\"Permissão de GPS negada\":\"Erro no GPS\"),{enableHighAccuracy:true,maximumAge:10000,timeout:25000});timerId=setInterval(()=>sendPos(false).catch(console.error),5000)}\nfunction loadMyRoute(){route=(OP.routes||[]).find(r=>Number(r.routeNo)===Number(me.routeNo));if(!route)throw Error(\"Rota não encontrada\");features.clear();for(const f of OP.points?.features||[]){const p=f.properties||{},rn=Number(p._ROTA??p.ROTA??0);if(rn!==Number(route.routeNo))continue;const c=cnpjOf(p);if(c)features.set(c,f)}if(route.geometry?.features?.length)routeLayer=L.geoJSON(route.geometry,{style:{color:route.color||me.color||\"#7c3aed\",weight:5,opacity:.78},pane:\"routePane\"}).addTo(map);const bounds=[];for(const [c,f] of features){const x=pointData(f);bounds.push([x.lat,x.lng]);createMarker(c)}if(bounds.length)map.fitBounds(bounds,{padding:[22,22],maxZoom:16});$(\"title\").textContent=`${OP.name} • R${route.routeNo} • ${me.name}`;$(\"subtitle\").textContent=`${features.size} pontos atribuídos`;$(\"distance\").textContent=dist(Number(route.distance||0));$(\"duration\").textContent=fmt(Number(route.duration||0));updateProgress()}\nfor(const a of OP.agents||[]){const o=document.createElement(\"option\");o.value=String(a.id);o.textContent=`R${a.routeNo} • ${a.name}`;$(\"agent\").appendChild(o)}\n$(\"enter\").onclick=async()=>{const a=(OP.agents||[]).find(x=>String(x.id)===String($(\"agent\").value));if(!a){alert(\"Selecione seu nome.\");return}me=a;$(\"login\").classList.add(\"hide\");loadMyRoute();await startGps()};\nonValue(ref(db,\"STATUS_PONTOS\"),snap=>{pointStatus.clear();for(const [k,v] of Object.entries(snap.val()||{})){if(k!==\"TEMP\"&&k!==\"TESTE_MANUAL\"&&v)pointStatus.set(k,v)}if(me)for(const c of features.keys())sync(c)});window.addEventListener(\"beforeunload\",()=>{if(watchId!==null)navigator.geolocation.clearWatch(watchId)});\n<\/script>\n</body></html>";
+
+const FIREBASE_BASE="https://pilotomg-efe79-default-rtdb.firebaseio.com";
+let availableAgents=[];
+function refreshIndependentAgentSelect(){
+ const box=document.getElementById('independentAgent');if(!box)return;
+ const current=box.value;
+ box.innerHTML='<option value="">Selecione o responsável</option>'+availableAgents.map(a=>`<option value="${esc(a.id)}">${a.online?'● ONLINE':'○ OFFLINE'} • ${esc(a.nome)}</option>`).join('');
+ if(availableAgents.some(a=>a.id===current))box.value=current;
+}
+
+function sanitizeFileName(v){return String(v||"AGENTE").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9_-]+/g,"_").replace(/^_+|_+$/g,"").slice(0,60)||"AGENTE"}
+function normalizeBaseUrl(v){
+ let s=String(v||'').trim();
+ if(!s)return '';
+ return s.endsWith('/')?s:s+'/';
+}
+function makeRouteFileName(routeNo,agent,stamp){
+ return `ROTA_${String(routeNo).padStart(2,'0')}_${sanitizeFileName(agent.nome)}_${stamp}.html`;
+}
+function routePublicUrl(base,fileName){
+ return normalizeBaseUrl(base)+encodeURIComponent(fileName).replace(/%2F/gi,'/');
+}
+function renderGeneratedLinks(items){
+ const host=$('routeLinks');
+ host.innerHTML='';
+ if(!items?.length)return;
+ const title=document.createElement('div');
+ title.className='assignMeta';
+ title.innerHTML='<b style="color:#fff">LINKS PARA COPIAR E COMPARTILHAR</b>';
+ host.appendChild(title);
+ items.forEach(x=>{
+   const row=document.createElement('div');
+   row.className='routeLinkRow';
+   const txt=document.createElement('div');
+   txt.className='routeLinkText';
+   txt.innerHTML=`<b>Rota ${x.no} • ${esc(x.agent)}</b>${esc(x.url)}`;
+   const btn=document.createElement('button');
+   btn.className='mini';
+   btn.type='button';
+   btn.textContent='COPIAR';
+   btn.onclick=async()=>{
+     try{await navigator.clipboard.writeText(x.url);stat(`Link da Rota ${x.no} copiado.`)}
+     catch(e){stat('Não foi possível copiar automaticamente. Selecione o link manualmente.',true)}
+   };
+   row.append(txt,btn);
+   host.appendChild(row);
+ });
+}
+
+function uniqueRoutePoints(order){
+ const seen=new Set(),out=[];
+ for(const p of order){
+   const c=String(p.props?.NROCNPJ_PAD??p.props?.CNPJ??"").replace(/\D/g,"");
+   const key=c||`${p.lat.toFixed(7)},${p.lon.toFixed(7)}`;
+   if(seen.has(key))continue;seen.add(key);out.push(p);
+ }
+ return out;
+}
+function refreshAgentAssignments(){
+ const host=$('agentAssignments');host.innerHTML='';
+ if($('routeLinks'))$('routeLinks').innerHTML='';if($('operationResult')){$('operationResult').innerHTML='';$('operationResult').style.display='none'}if($('copyOperationLink')){$('copyOperationLink').disabled=true;$('copyOperationLink').dataset.url=''};
+ if(!routes.length){$('agentPublish').style.display='none';return}
+ $('agentPublish').style.display='block';
+ routes.forEach((r,i)=>{
+   const row=document.createElement('div');row.className='assignRow';
+   const opts=['<option value="">Selecione o agente</option>'].concat(availableAgents.map(a=>`<option value="${a.id}">${a.online?'● ONLINE':'○ OFFLINE'} • ${a.nome}</option>`)).join('');
+    const color=r.color||COLORS[i%COLORS.length];
+    row.innerHTML=`<span class="sw" style="background:${color}"></span><b>Rota ${i+1}</b><select class="routeAgentSelect" data-route="${i}">${opts}</select>`;
+    const select=row.querySelector('select');
+    if(r.assignedAgentId&&availableAgents.some(a=>a.id===r.assignedAgentId))select.value=r.assignedAgentId;
+    select.onchange=()=>{const ag=availableAgents.find(a=>a.id===select.value);r.assignedAgentId=ag?.id||'';r.assignedAgentName=ag?.nome||'';renderIndependentRoutesList()};
+    host.appendChild(row);
+ });
+}
+async function loadAgentsFromFirebase(){
+ try{
+   stat('Carregando agentes ONLINE e OFFLINE do Firebase...');
+
+   const stamp=Date.now();
+   const [resOnline,resStatus]=await Promise.all([
+     fetch(`${FIREBASE_BASE}/AGENTES_ONLINE.json?t=${stamp}`,{cache:'no-store'}),
+     fetch(`${FIREBASE_BASE}/STATUS_PONTOS.json?t=${stamp}`,{cache:'no-store'})
+   ]);
+
+   if(!resOnline.ok)throw Error(`AGENTES_ONLINE HTTP ${resOnline.status}`);
+   const rawOnline=await resOnline.json()||{};
+   const rawStatus=resStatus.ok ? (await resStatus.json()||{}) : {};
+
+   const byId=new Map();
+
+   // Fonte principal: AGENTES_ONLINE. Mantém agentes offline porque o nó persiste
+   // com online:false após o encerramento/desconexão.
+   for(const [id,v] of Object.entries(rawOnline)){
+     if(!v||!v.nome)continue;
+     const aid=String(v.id||id);
+     const last=Number(v.ultimaAtualizacao||v.entrada||0);
+     byId.set(aid,{
+       id:aid,
+       nome:String(v.nome),
+       online:!!v.online,
+       stamp:last,
+       source:'AGENTES_ONLINE'
+     });
+   }
+
+   // Fonte complementar: histórico de STATUS_PONTOS.
+   // Se por algum motivo o cadastro online não existir mais, o agente ainda
+   // pode aparecer para seleção desde que já tenha gravado algum status.
+   for(const v of Object.values(rawStatus)){
+     if(!v||!v.agenteId||!v.agente)continue;
+     const aid=String(v.agenteId);
+     const last=Number(v.hora||0);
+     const prev=byId.get(aid);
+     if(!prev){
+       byId.set(aid,{
+         id:aid,
+         nome:String(v.agente),
+         online:false,
+         stamp:last,
+         source:'STATUS_PONTOS'
+       });
+     }else if(!prev.nome && v.agente){
+       prev.nome=String(v.agente);
+     }
+   }
+
+   availableAgents=[...byId.values()].sort((a,b)=>
+     Number(b.online)-Number(a.online) ||
+     a.nome.localeCompare(b.nome,'pt-BR')
+   );
+
+   refreshAgentAssignments();
+   refreshIndependentAgentSelect();
+
+   const on=availableAgents.filter(a=>a.online).length;
+   const off=availableAgents.length-on;
+   stat(`${availableAgents.length} agente(s) carregado(s): ${on} online • ${off} offline.`);
+ }catch(e){
+   console.error(e);
+   stat('Não foi possível carregar a lista completa de agentes do Firebase.',true);
+ }
+}
+function routePayloadForAgent(r,routeNo){
+ const arr=uniqueRoutePoints(r.order);
+ const feats=arr.map((p,idx)=>({
+   type:'Feature',
+   geometry:{type:'Point',coordinates:[p.lon,p.lat]},
+   properties:{...(p.props||{}),ORDEM_ROTA:idx+1,ROTA:routeNo}
+ }));
+ return {routeNo,points:{type:'FeatureCollection',features:feats},geometry:r.geo||null,distance:Number(r.distance||0),duration:Number(r.duration||0)};
+}
+function buildAgentRouteHtml(r,routeNo,agent){
+ const payload=routePayloadForAgent(r,routeNo);
+ return ROUTE_AGENT_TEMPLATE
+   .replaceAll('__ROUTE_NO__',String(routeNo))
+   .replaceAll('__AGENT_NAME_HTML__',String(agent.nome).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'))
+   .replace('__POINT_COUNT__',String(payload.points.features.length))
+   .replace('__ROUTE_DATA__',JSON.stringify(payload).replace(/<\/script/gi,'<\\/script'))
+   .replace('__AGENT_ID_JSON__',JSON.stringify(agent.id))
+   .replace('__AGENT_NAME_JSON__',JSON.stringify(agent.nome));
+}
+
+function collectRouteAssignments(){
+ if(!routes.length)throw Error('Gere as rotas primeiro.');
+ const sels=[...document.querySelectorAll('.routeAgentSelect')];
+ if(sels.length!==routes.length)throw Error('Carregue os agentes e faça as associações.');
+ const used=new Set(),assign=[];
+ for(const s of sels){
+   if(!s.value)throw Error(`Selecione o agente da Rota ${Number(s.dataset.route)+1}.`);
+   if(used.has(s.value))throw Error('O mesmo agente foi selecionado para mais de uma rota.');
+   used.add(s.value);
+   const ag=availableAgents.find(a=>a.id===s.value);if(!ag)throw Error('Agente não encontrado. Recarregue a lista.');
+   assign.push({routeIndex:Number(s.dataset.route),agent:ag});
+ }
+ return assign;
+}
+function pointCnpjOrId(p){const c=String(p.props?.NROCNPJ_PAD??p.props?.CNPJ??'').replace(/\D/g,'');return c||`OP_${String(p.i+1).padStart(6,'0')}`}
+function operationPayload(assign,name){
+ const byPointId=new Map();
+ assign.forEach(x=>{const r=routes[x.routeIndex],color=r.color||COLORS[x.routeIndex%COLORS.length];uniqueRoutePoints(r.order).forEach((p,i)=>byPointId.set(p.id,{routeNo:x.routeIndex+1,order:i+1,color,agentId:x.agent.id,agentName:x.agent.nome}))});
+ const seenKeys=new Map();
+ const feats=pts.map(p=>{
+   let key=pointCnpjOrId(p);const n=seenKeys.get(key)||0;seenKeys.set(key,n+1);if(n>0)key=`${key}__${n+1}`;
+   const a=byPointId.get(p.id)||null;
+   return {type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:{...(p.props||{}),_OP_KEY:key,_OP_ID:p.id,_ROTA:a?.routeNo||0,_ORDEM:a?.order||0,_COR:a?.color||'#64748b'}};
+ });
+ const routeData=assign.map(x=>({routeNo:x.routeIndex+1,color:routes[x.routeIndex].color||COLORS[x.routeIndex%COLORS.length],distance:Number(routes[x.routeIndex].distance||0),duration:Number(routes[x.routeIndex].duration||0),geometry:routes[x.routeIndex].geo||null}));
+ const agents=assign.map(x=>({id:String(x.agent.id),name:String(x.agent.nome),routeNo:x.routeIndex+1,color:routes[x.routeIndex].color||COLORS[x.routeIndex%COLORS.length]}));
+ const id=`${sanitizeFileName(name)}_${new Date().toISOString().slice(0,10)}`;
+ return {id,name,createdAt:new Date().toISOString(),points:{type:'FeatureCollection',features:feats},routes:routeData,agents};
+}
+function makeOperationFileName(name,stamp){return `ROTAS_${sanitizeFileName(name)}_${stamp}.html`}
+function routesOnlyPayload(assign,name){
+ const byPointId=new Map();
+ assign.forEach(x=>{
+   const r=routes[x.routeIndex],color=r.color||COLORS[x.routeIndex%COLORS.length];
+   uniqueRoutePoints(r.order).forEach((p,i)=>byPointId.set(p.id,{p,routeNo:x.routeIndex+1,order:i+1,color,agentId:x.agent.id,agentName:x.agent.nome}));
+ });
+ const feats=[...byPointId.values()].map(a=>({
+   type:'Feature',geometry:{type:'Point',coordinates:[a.p.lon,a.p.lat]},
+   properties:{...(a.p.props||{}),_OP_KEY:a.p.id,_OP_ID:a.p.id,_ROTA:a.routeNo,_ORDEM:a.order,_COR:a.color}
+ }));
+ const routeData=assign.map(x=>{const r=routes[x.routeIndex];return {routeNo:x.routeIndex+1,color:r.color||COLORS[x.routeIndex%COLORS.length],distance:Number(r.distance||0),duration:Number(r.duration||0),geometry:r.geo||null}});
+ const agents=assign.map(x=>({id:String(x.agent.id),name:String(x.agent.nome),routeNo:x.routeIndex+1,color:routes[x.routeIndex].color||COLORS[x.routeIndex%COLORS.length]}));
+ return {id:`rotas-${Date.now()}`,name,createdAt:new Date().toISOString(),points:{type:'FeatureCollection',features:feats},routes:routeData,agents};
+}
+
+function buildTeamOperationHtml(payload){
+ const safeName=String(payload.name).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+ return MULTI_AGENT_ROUTE_TEMPLATE
+   .replaceAll('__OP_NAME_HTML__',safeName)
+   .replace('__OP_DATA__',JSON.stringify(payload).replace(/<\/script/gi,'<\/script'));
+}
+function renderOperationResult(url,fileName,payload){const host=$('operationResult');host.style.display='block';host.innerHTML=`<b style="color:#fff">HTML DE ROTAS GERADO</b><br>${payload.points.features.length} pontos totais • ${payload.points.features.filter(f=>Number(f.properties._ROTA)>0).length} roteirizados • ${payload.points.features.filter(f=>Number(f.properties._ROTA)===0).length} livres<br><b>Arquivo:</b> ${esc(fileName)}<br><b>Link esperado:</b> ${esc(url)}`;$('copyOperationLink').disabled=false;$('copyOperationLink').dataset.url=url}
+async function downloadTeamOperationHtml(){
+ try{
+   const assign=collectRouteAssignments(),name=$('operationName').value.trim()||workingBaseName.replace(/\.(geojson|json)$/i,'')||'ROTAS';
+   const payload=routesOnlyPayload(assign,name),html=buildTeamOperationHtml(payload),stamp=new Date().toISOString().slice(0,10).replaceAll('-',''),fileName=makeOperationFileName(name,stamp),blob=new Blob([html],{type:'text/html;charset=utf-8'}),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=fileName;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);
+   const base=normalizeBaseUrl($('routesBaseUrl').value),url=routePublicUrl(base,fileName);renderOperationResult(url,fileName,payload);stat(`HTML DE ROTAS gerado: ${payload.routes.length} rota(s), ${payload.agents.length} agente(s), ${payload.points.features.length} pontos roteirizados. Sem login de Gestão.`);
+ }catch(e){console.error(e);stat('Erro: '+(e?.message||e),true)}
+}
+async function downloadAgentHtmlZip(){
+ if(!routes.length){stat('Gere as rotas primeiro.',true);return}
+ const sels=[...document.querySelectorAll('.routeAgentSelect')];
+ if(sels.length!==routes.length){stat('Carregue os agentes e faça as associações.',true);return}
+ const used=new Set(),assign=[];
+ for(const s of sels){
+   if(!s.value){stat(`Selecione o agente da Rota ${Number(s.dataset.route)+1}.`,true);return}
+   if(used.has(s.value)){stat('O mesmo agente foi selecionado para mais de uma rota.',true);return}
+   used.add(s.value);
+   const ag=availableAgents.find(a=>a.id===s.value);
+   if(!ag){stat('Agente não encontrado. Recarregue a lista.',true);return}
+   assign.push({routeIndex:Number(s.dataset.route),agent:ag});
+ }
+ if(typeof JSZip==='undefined'){stat('Biblioteca ZIP não carregou.',true);return}
+
+ const base=normalizeBaseUrl($('routesBaseUrl').value);
+ if(!base){stat('Informe a URL base das rotas.',true);return}
+ localStorage.setItem('roteirizador_routes_base_url',base);
+ $('routesBaseUrl').value=base;
+
+ const zip=new JSZip(),folder=zip.folder('ROTAS');
+ const stamp=new Date().toISOString().slice(0,10).replaceAll('-','');
+ const generated=[];
+
+ for(const x of assign){
+   const no=x.routeIndex+1,r=routes[x.routeIndex];
+   const fileName=makeRouteFileName(no,x.agent,stamp);
+   const html=buildAgentRouteHtml(r,no,x.agent);
+   folder.file(fileName,html);
+   generated.push({
+     no,
+     agent:x.agent.nome,
+     fileName,
+     url:routePublicUrl(base,fileName)
+   });
+ }
+
+ let readme=`ROTAS INDIVIDUAIS GERADAS PELO ROTEIRIZADOR V1.18
+
+COMO PUBLICAR
+1. Extraia o ZIP.
+2. Copie o conteúdo da pasta ROTAS para a pasta ROTAS do repositório MG_SEBRAE.
+3. No GitHub Desktop: Commit to main -> Push origin.
+4. Depois da publicação do GitHub Pages, compartilhe com cada agente somente o link da sua rota.
+
+URL BASE
+${base}
+
+LINKS DAS ROTAS
+`;
+ for(const x of generated){
+   readme+=`
+ROTA ${x.no}
+Agente: ${x.agent}
+Arquivo: ${x.fileName}
+Link: ${x.url}
+`;
+ }
+ readme+=`
+INFORMAÇÕES TÉCNICAS
+Cada HTML contém somente os pontos da rota atribuída.
+A página individual mostra distância/tempo da rota, acesso ao Google Maps, Street View e informações do ponto.
+Ao concluir todos os pontos, aparece o botão IR PARA AGENTE V2 para continuar na base geral.
+O agente não precisa estar online durante a geração. A identidade e a rota ficam embutidas no HTML; ao abrir depois, o agente entra na rota e passa a publicar GPS/online normalmente.
+
+Firebase mantido:
+- STATUS_PONTOS: leitura/gravação de status
+- AGENTES_ONLINE: GPS/online do agente para visualização do gestor
+- CONFIG: raio de liberação e parâmetros GPS
+
+Status finais removem o ponto da rota ativa:
+INICIADO, END_ERRADO, RECUSA, T2_APLICADO, T3_APLICADO, T4_APLICADO.
+
+Status que permanecem:
+CARTEIRA, RETORNAR, RETORNAR_COMERCIAL, RETORNAR_RESIDENCIAL, AGENDADO, APLICAR_T2, APLICAR_T3, APLICAR_T4.
+`;
+ folder.file('LEIA-ME.txt',readme);
+
+ const blob=await zip.generateAsync({type:'blob'});
+ const u=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=u;a.download=`ROTAS_AGENTES_${stamp}.zip`;a.click();
+ setTimeout(()=>URL.revokeObjectURL(u),1500);
+
+ renderGeneratedLinks(generated);
+ stat(`${assign.length} HTML(s) gerado(s). Links prontos abaixo; publique a pasta ROTAS no GitHub antes de compartilhar.`);
+}
+
+let areaMode=null, activeDrawer=null, areaPreview=null;
+let sectorGroups=null, sectorSelectedPoints=null, manualStarts=new Map();
+
+function startAreaSelection(mode){
+  if(typeof L.Draw==='undefined'){
+    stat('O módulo de seleção por área não foi carregado. Verifique sua conexão com a internet e recarregue a página.',true);
+    return;
+  }
+  if(activeDrawer){
+    try{activeDrawer.disable()}catch(e){}
+    activeDrawer=null;
+  }
+  areaMode=mode;
+  activeDrawer=new L.Draw.Rectangle(map,{
+    shapeOptions:{
+      color:mode==='add'?'#22c55e':'#ef4444',
+      weight:2,
+      fillOpacity:0.12
+    },
+    showArea:true,
+    metric:true
+  });
+  activeDrawer.enable();
+  stat(mode==='add'
+    ?'Seleção por área ativa: clique e arraste sobre os pontos que deseja selecionar.'
+    :'Remoção por área ativa: clique e arraste sobre os pontos que deseja retirar da seleção.');
+}
+
+const API_KEY_STORAGE='roteirizador_v1_ors';
+const sk=localStorage.getItem(API_KEY_STORAGE);
+if(sk)$('key').value=sk;
+const savedRoutesBase=localStorage.getItem('roteirizador_routes_base_url');
+if(savedRoutesBase)$('routesBaseUrl').value=savedRoutesBase;
+$('saveApiKey').onclick=()=>{
+  const v=$('key').value.trim();
+  if(!v){stat('Digite a chave ORS antes de salvar.',true);return}
+  localStorage.setItem(API_KEY_STORAGE,v);
+  stat('Chave API salva neste navegador/PC.');
+};
+$('deleteApiKey').onclick=()=>{
+  localStorage.removeItem(API_KEY_STORAGE);
+  $('key').value='';
+  stat('Chave API apagada deste navegador/PC.');
+};
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function stat(s,e=false){$('status').textContent=s;$('status').style.color=e?'#fca5a5':'#cbd5e1'}
+function flattenGeom(g){if(!g)return null;let a=[];const w=x=>{if(Array.isArray(x)&&x.length>=2&&typeof x[0]==='number'&&typeof x[1]==='number')a.push(x);else if(Array.isArray(x))x.forEach(w)};w(g.coordinates);if(!a.length)return null;return {lon:a.reduce((s,x)=>s+x[0],0)/a.length,lat:a.reduce((s,x)=>s+x[1],0)/a.length}}
+function name(p){const f=$('titleField').value;if(f&&p.props[f]!=null&&String(p.props[f]).trim())return String(p.props[f]);for(const k of ['NOMEFANTASIA','NOME_FANTASIA','NOME','RAZAOSOCIAL','RAZAO_SOCIAL','CNPJ','ID'])if(p.props[k]!=null&&String(p.props[k]).trim())return String(p.props[k]);return 'Ponto '+(p.i+1)}
+function chosen(){return [...document.querySelectorAll('#columns input:checked')].map(x=>x.value)}
+function popup(p,ord='',r=''){let h=`<div class="popup"><b class="title">${r?`R${r} • `:''}${ord?ord+'. ':''}${esc(name(p))}</b>`;for(const f of chosen())h+=`<div><b>${esc(f)}:</b> ${esc(p.props[f]??'')}</div>`;if(Number.isFinite(p.elev))h+=`<div><b>Altitude:</b> ${Math.round(p.elev)} m</div>`;h+=`<div>${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}</div></div>`;return h}
+function routingStatusRaw(p){const a=p?.props?.STATUS,b=p?.props?.STATUS_OPERACIONAL;return a!==undefined&&a!==null&&String(a).trim()!==''?String(a).trim():(b!==undefined&&b!==null?String(b).trim():'')}
+function routingStatusValue(p){const v=routingStatusRaw(p);return v?String(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase().replace(/\s+/g,'_'):'__EMPTY__'}
+function matchesRouteStatusFilter(p){return routeStatusFilter==='__ALL__'||routingStatusValue(p)===routeStatusFilter}
+function eligibleRoutePoints(){return pts.filter(matchesRouteStatusFilter)}
+function populateRouteStatusFilter(){const box=$('routeStatusFilter');if(!box)return;const vals=new Map();for(const p of pts){const value=routingStatusValue(p),raw=routingStatusRaw(p);if(value==='__EMPTY__')vals.set(value,'SEM STATUS');else if(!vals.has(value))vals.set(value,raw.toUpperCase())}box.innerHTML='<option value="__ALL__">TODOS</option>'+[...vals.entries()].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR')).map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join('');routeStatusFilter='__ALL__';box.value='__ALL__';box.onchange=()=>{routeStatusFilter=box.value||'__ALL__';for(const id of [...sel]){const p=pts.find(x=>x.id===id);if(p&&!matchesRouteStatusFilter(p))sel.delete(id)}pts.forEach(style);refresh();stat(`Filtro para roteirização: ${box.options[box.selectedIndex]?.text||'TODOS'} • ${eligibleRoutePoints().length} ponto(s) elegível(is). Todos continuam na base da operação.`)}}
+function independentPointKey(p){
+ const c=String(p?.props?.NROCNPJ_PAD??p?.props?.CNPJ??'').replace(/\D/g,'');
+ return c||`${Number(p?.lat).toFixed(7)},${Number(p?.lon).toFixed(7)}`;
+}
+function independentRouteIndexForPoint(p){
+ const key=independentPointKey(p);
+ for(let i=0;i<routes.length;i++){
+   const r=routes[i];if(!r?.independent)continue;
+   if(uniqueRoutePoints(r.order).some(x=>independentPointKey(x)===key))return i;
+ }
+ return -1;
+}
+function pointAlreadyInIndependentRoute(p){return independentRouteIndexForPoint(p)>=0}
+
+function style(p){
+ const l=layers.get(p.id);if(!l)return;
+ const eligible=matchesRouteStatusFilter(p);
+ let radius=eligible?5:4,color='#101827',weight=1,fillColor=eligible?'#38bdf8':'#64748b';
+ const independentIndex=independentRouteIndexForPoint(p);
+ if(independentIndex>=0){
+   const r=routes[independentIndex];radius=7;color='#fff';weight=2;fillColor=r.color||COLORS[independentIndex%COLORS.length];
+ }
+ if(sel.has(p.id)){radius=7;color='#fff';weight=2;fillColor='#22c55e'}
+ if(sectorGroups&&sectorSelectedPoints){
+   const idx=sectorSelectedPoints.findIndex(x=>x.id===p.id);
+   if(idx>=0){
+     const gi=sectorGroups.findIndex(g=>g.includes(idx));
+     if(gi>=0){
+       fillColor=COLORS[gi%COLORS.length];
+       radius=manualStarts.get(gi)===p.id?10:7;
+       weight=manualStarts.get(gi)===p.id?4:2;
+       color=manualStarts.get(gi)===p.id?'#fff':'#111827';
+     }
+   }
+ }
+ l.setStyle({radius,color,weight,fillColor,fillOpacity:eligible?.9:.28});
+ l.bindPopup(popup(p))
+}
+function refresh(){ $('nSel').textContent=sel.size;$('nAll').textContent=pts.length;if($('nFiltered'))$('nFiltered').textContent=eligibleRoutePoints().length;const b=$('list');b.innerHTML='';pts.filter(p=>sel.has(p.id)).forEach((p,j)=>{const d=document.createElement('div');d.className='item';d.innerHTML=`<div class="num">${j+1}</div><div>${esc(name(p))}<br><span style="color:#94a3b8">${Number.isFinite(p.elev)?Math.round(p.elev)+' m • ':''}${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</span></div><button class="mini">×</button>`;d.querySelector('button').onclick=()=>{sel.delete(p.id);style(p);refresh()};d.onclick=e=>{if(e.target.tagName!=='BUTTON')map.setView([p.lat,p.lon],16)};b.appendChild(d)})}
+function toggle(p){
+ if($('workflowMode').value==='independent'&&pointAlreadyInIndependentRoute(p)){const ri=independentRouteIndexForPoint(p);stat(`Este ponto já pertence à Rota ${ri+1} (${routes[ri]?.assignedAgentName||'agente atribuído'}).`,true);return}
+ if(!matchesRouteStatusFilter(p)&&!(sectorGroups&&sectorSelectedPoints&&$('workflowMode').value==='manual-start')){stat('Este ponto está fora do filtro de STATUS usado para roteirizar.',true);return}
+ if(sectorGroups&&sectorSelectedPoints&&$('workflowMode').value==='manual-start'){
+   const idx=sectorSelectedPoints.findIndex(x=>x.id===p.id);
+   if(idx>=0){
+     const gi=sectorGroups.findIndex(g=>g.includes(idx));
+     if(gi>=0){
+       manualStarts.set(gi,p.id);
+       sectorSelectedPoints.forEach(style);
+       stat(`Início da rota ${gi+1} definido: ${name(p)}. ${manualStarts.size}/${sectorGroups.length} início(s) escolhidos.`);
+       return;
+     }
+   }
+ }
+ if(sel.has(p.id))sel.delete(p.id);
+ else{
+   if(sel.size>=MAX){stat('Máximo de 50 pontos por processamento nesta V1.',true);return}
+   sel.add(p.id)
+ }
+ style(p);refresh()
+}
+function setup(gj,mode="geral",sourceName=""){
+ workingBaseMode=mode;workingBaseName=sourceName||"";$("baseMode").textContent=mode==="operacao"?"OPERAÇÃO":"GERAL";$("baseMode").style.color=mode==="operacao"?"#facc15":"#22c55e";if(mode==="operacao"&&!$("operationName").value.trim())$("operationName").value=(sourceName||"OPERAÇÃO").replace(/\.(geojson|json)$/i,"");
+ clearRoutes();clearSectors();
+ if(areaPreview){map.removeLayer(areaPreview);areaPreview=null}
+ if(activeDrawer){try{activeDrawer.disable()}catch(e){} activeDrawer=null}
+ areaMode=null;
+ layers.forEach(l=>map.removeLayer(l));layers.clear();pts=[];sel.clear();fields=[];const fs=new Set();
+ (gj.features||[]).forEach((f,i)=>{const c=flattenGeom(f.geometry);if(!c||!Number.isFinite(c.lat)||!Number.isFinite(c.lon))return;const props=f.properties||{};Object.keys(props).forEach(k=>fs.add(k));const p={id:'p'+i,i,lat:c.lat,lon:c.lon,props,elev:null};pts.push(p);const l=L.circleMarker([p.lat,p.lon]).addTo(map);l.on('click',()=>toggle(p));layers.set(p.id,l);style(p)});
+ fields=[...fs];populateRouteStatusFilter();const tf=$('titleField');tf.innerHTML='<option value="">Automático</option>'+fields.map(f=>`<option value="${esc(f)}">${esc(f)}</option>`).join('');tf.onchange=()=>{pts.forEach(style);refresh()};
+ const pre=['CNPJ','NOME','NOMEFANTASIA','NOME_FANTASIA','RAZAOSOCIAL','RAZAO_SOCIAL','ENDEE','ENDERECO','STATUS','MUNICIPIO'];$('columns').innerHTML='';
+ fields.forEach(f=>{const l=document.createElement('label');l.innerHTML=`<input type="checkbox" value="${esc(f)}" ${pre.includes(f.toUpperCase())?'checked':''}> <span>${esc(f)}</span>`;$('columns').appendChild(l)});$('columns').querySelectorAll('input').forEach(x=>x.onchange=()=>pts.forEach(style));
+ if(pts.length)map.fitBounds(L.latLngBounds(pts.map(p=>[p.lat,p.lon])).pad(.06));refresh();stat(`${pts.length} pontos carregados na ${mode==="operacao"?"OPERAÇÃO":"BASE GERAL"}. Selecione de 2 a 50 para roteirizar.`);
+}
+
+map.on(L.Draw.Event.CREATED,e=>{
+  if(e.layerType!=='rectangle')return;
+  if(areaPreview){map.removeLayer(areaPreview);areaPreview=null}
+  areaPreview=e.layer;
+  areaPreview.setStyle({
+    color:areaMode==='add'?'#22c55e':'#ef4444',
+    weight:2,
+    fillOpacity:0.08
+  });
+  areaPreview.addTo(map);
+
+  const bounds=e.layer.getBounds();
+  const inside=pts.filter(p=>bounds.contains([p.lat,p.lon]));
+  let changed=0, skipped=0;
+
+  if(areaMode==='add'){
+    for(const p of inside){
+      if(!matchesRouteStatusFilter(p))continue;
+      if($('workflowMode').value==='independent'&&pointAlreadyInIndependentRoute(p))continue;
+      if(sel.has(p.id))continue;
+      if(sel.size>=MAX){skipped++;continue}
+      sel.add(p.id);
+      style(p);
+      changed++;
+    }
+  }else if(areaMode==='remove'){
+    for(const p of inside){
+      if(sel.delete(p.id)){
+        style(p);
+        changed++;
+      }
+    }
+  }
+  refresh();
+
+  if(areaMode==='add'){
+    let msg=`Área concluída: ${inside.length} ponto(s) encontrado(s), ${changed} adicionado(s).`;
+    if(skipped>0)msg+=` ${skipped} não foram incluídos porque o limite da V1 é ${MAX} pontos.`;
+    stat(msg);
+  }else{
+    stat(`Área concluída: ${inside.length} ponto(s) encontrado(s), ${changed} removido(s) da seleção.`);
+  }
+
+  areaMode=null;
+  activeDrawer=null;
+});
+
+map.on('draw:drawstop',()=>{
+  activeDrawer=null;
+});
+
+$('areaSelect').onclick=()=>startAreaSelection('add');
+$('areaRemove').onclick=()=>startAreaSelection('remove');
+
+$('file').onchange=async e=>{try{const f=e.target.files[0];setup(JSON.parse(await f.text()),'geral',f.name)}catch(x){stat('Erro no GeoJSON: '+x.message,true)}};
+$('loadUrl').onclick=async()=>{try{const r=await fetch($('url').value);if(!r.ok)throw Error('HTTP '+r.status);setup(await r.json(),'geral',$('url').value.split('/').pop()||'BASE_GERAL')}catch(x){stat('Erro ao carregar URL: '+x.message,true)}};
+$('operationFile').onchange=async e=>{try{const f=e.target.files[0];setup(JSON.parse(await f.text()),'operacao',f.name)}catch(x){stat('Erro no arquivo da operação: '+x.message,true)}};
+$('loadOperationUrl').onclick=async()=>{try{const r=await fetch($('operationUrl').value);if(!r.ok)throw Error('HTTP '+r.status);setup(await r.json(),'operacao',$('operationUrl').value.split('/').pop()||'OPERACAO')}catch(x){stat('Erro ao carregar URL da operação: '+x.message,true)}};
+$('all').onclick=()=>{sel.clear();eligibleRoutePoints().slice(0,MAX).forEach(p=>{sel.add(p.id);style(p)});pts.forEach(style);refresh()};
+$('visible').onclick=()=>{const b=map.getBounds();pts.forEach(p=>{if(matchesRouteStatusFilter(p)&&sel.size<MAX&&b.contains([p.lat,p.lon])){sel.add(p.id);style(p)}});refresh()};
+$('none').onclick=()=>{
+  sel.clear();
+  pts.forEach(style);
+  refresh();
+  if(areaPreview){map.removeLayer(areaPreview);areaPreview=null}
+  if(activeDrawer){try{activeDrawer.disable()}catch(e){} activeDrawer=null}
+  areaMode=null;
+  stat('Seleção limpa.');
+};
+
+async function ors(path,body){
+ const key=$('key').value.trim();
+ if(!key)throw Error('Informe a chave do openrouteservice.');
+
+ // ORS exige Accept compatível com o endpoint solicitado.
+ const accept = path.endsWith('/geojson') ? 'application/geo+json' : 'application/json';
+
+ const r=await fetch(ORS+path,{
+   method:'POST',
+   headers:{
+     'Authorization':key,
+     'Content-Type':'application/json',
+     'Accept':accept
+   },
+   body:JSON.stringify(body)
+ });
+
+ const t=await r.text();
+ let d;
+ try{ d=JSON.parse(t); }catch{ d={raw:t}; }
+
+ if(!r.ok){
+   throw Error(`ORS ${r.status}: ${d.error?.message||d.error||d.message||t.slice(0,220)}`);
+ }
+ return d;
+}
+function elevField(p){for(const k of Object.keys(p.props)){if(['ALTITUDE','ELEVATION','ELEVACAO','ELEV'].includes(k.toUpperCase())){const v=parseFloat(String(p.props[k]).replace(',','.'));if(Number.isFinite(v))return v}}return null}
+async function getElevations(a){
+ const prov=$('elevProvider').value;if(prov==='none')return;
+ if(prov==='geojson'){a.forEach(p=>p.elev=elevField(p));return}
+ stat('Etapa 1/4 • Obtendo altitude dos pontos...');
+ try{
+  const r=await fetch('https://api.open-elevation.com/api/v1/lookup',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({locations:a.map(p=>({latitude:p.lat,longitude:p.lon}))})});
+  if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();if(!Array.isArray(d.results)||d.results.length!==a.length)throw Error('resposta incompleta');
+  a.forEach((p,i)=>p.elev=Number(d.results[i].elevation));
+ }catch(e){stat('Open-Elevation indisponível; continuando sem relevo. '+e.message);a.forEach(p=>p.elev=elevField(p))}
+ pts.forEach(style);refresh()
+}
+async function getMatrix(a){
+ stat('Etapa 2/4 • Calculando matriz viária ORS...');
+ const d=await ors(`/openrouteservice/v2/matrix/${$('profile').value}`,{locations:a.map(p=>[p.lon,p.lat]),metrics:['duration','distance']});
+ if(!d.durations||!d.distances)throw Error('Matriz ORS incompleta.');
+ return {dur:d.durations,dist:d.distances}
+}
+function sizes(n,k){
+ if($('distribution').value==='manual'){
+  const a=$('manualSizes').value.split(',').map(x=>parseInt(x.trim(),10)).filter(Number.isFinite);
+  if(a.length!==k||a.reduce((x,y)=>x+y,0)!==n||a.some(x=>x<1))throw Error(`Distribuição manual deve ter ${k} valores somando ${n}.`);
+  return a
+ }
+ const base=Math.floor(n/k),rem=n%k,a=Array(k).fill(base);for(let i=k-rem;i<k;i++)if(i>=0)a[i]++;return a
+}
+function hav(a,b){const R=6371,p=Math.PI/180,x=(b.lat-a.lat)*p,y=(b.lon-a.lon)*p,A=Math.sin(x/2)**2+Math.cos(a.lat*p)*Math.cos(b.lat*p)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(A))}
+function balancedGroups(a,ss){
+  if(ss.length===1)return [a.map((_,i)=>i)];
+
+  const n=a.length,k=ss.length;
+
+  // Distância geográfica em km.
+  const geo=(i,j)=>hav(a[i],a[j]);
+
+  // Distância viária simétrica em segundos.
+  const road=(i,j)=>{
+    const d1=matrix?.dur?.[i]?.[j],d2=matrix?.dur?.[j]?.[i];
+    if(Number.isFinite(d1)&&Number.isFinite(d2))return (d1+d2)/2;
+    if(Number.isFinite(d1))return d1;
+    if(Number.isFinite(d2))return d2;
+    return geo(i,j)*720;
+  };
+
+  // Grafo espacial k-NN. É ele que impede "ilhas" de outra cor.
+  const kn=Math.min(6,Math.max(3,n-1));
+  const neigh=Array.from({length:n},()=>[]);
+  for(let i=0;i<n;i++){
+    const ord=[];
+    for(let j=0;j<n;j++)if(i!==j)ord.push({j,d:geo(i,j)});
+    ord.sort((x,y)=>x.d-y.d);
+    neigh[i]=ord.slice(0,kn).map(x=>x.j);
+  }
+  // Simetriza o grafo.
+  for(let i=0;i<n;i++)for(const j of neigh[i])if(!neigh[j].includes(i))neigh[j].push(i);
+
+  // Sementes geograficamente afastadas para formar territórios.
+  const center={
+    lat:a.reduce((s,p)=>s+p.lat,0)/n,
+    lon:a.reduce((s,p)=>s+p.lon,0)/n
+  };
+  let seeds=[];
+  let first=0,best=-1;
+  for(let i=0;i<n;i++){
+    const d=hav(a[i],center);
+    if(d>best){best=d;first=i}
+  }
+  seeds.push(first);
+
+  while(seeds.length<k){
+    let bi=-1,bd=-1;
+    for(let i=0;i<n;i++){
+      if(seeds.includes(i))continue;
+      const d=Math.min(...seeds.map(s=>geo(i,s)));
+      if(d>bd){bd=d;bi=i}
+    }
+    seeds.push(bi);
+  }
+
+  const groups=Array.from({length:k},()=>[]);
+  const remaining=ss.slice();
+  const owner=Array(n).fill(-1);
+
+  seeds.forEach((s,g)=>{
+    groups[g].push(s);
+    owner[s]=g;
+    remaining[g]--;
+  });
+
+  const centroid=(g)=>{
+    const ar=groups[g];
+    return {
+      lat:ar.reduce((s,i)=>s+a[i].lat,0)/ar.length,
+      lon:ar.reduce((s,i)=>s+a[i].lon,0)/ar.length
+    };
+  };
+
+  const medoid=(g)=>{
+    const ar=groups[g];
+    let bm=ar[0],bc=Infinity;
+    for(const i of ar){
+      let c=0;
+      for(const j of ar)if(i!==j)c+=geo(i,j);
+      if(c<bc){bc=c;bm=i}
+    }
+    return bm;
+  };
+
+  // Crescimento territorial: só pega ponto da fronteira do grupo enquanto possível.
+  let left=n-k;
+  while(left>0){
+    let bestChoice=null;
+
+    for(let g=0;g<k;g++){
+      if(remaining[g]<=0)continue;
+
+      const frontier=new Set();
+      for(const member of groups[g]){
+        for(const j of neigh[member]){
+          if(owner[j]===-1)frontier.add(j);
+        }
+      }
+
+      // Se o grafo local não oferecer fronteira, permite o ponto livre mais próximo.
+      const candidates=frontier.size ? [...frontier] : a.map((_,i)=>i).filter(i=>owner[i]===-1);
+
+      const c=centroid(g);
+      const m=medoid(g);
+
+      for(const i of candidates){
+        const geoCent=hav(a[i],c);
+        const geoMed=geo(i,m);
+        const roadMed=road(i,m)/3600; // horas
+        // Território primeiro; viário como refinamento.
+        const score=(geoCent*4.0)+(geoMed*2.0)+(roadMed*0.8);
+
+        if(!bestChoice||score<bestChoice.score){
+          bestChoice={g,i,score};
+        }
+      }
+    }
+
+    if(!bestChoice)break;
+    groups[bestChoice.g].push(bestChoice.i);
+    owner[bestChoice.i]=bestChoice.g;
+    remaining[bestChoice.g]--;
+    left--;
+  }
+
+  // Segurança: completa qualquer ponto eventualmente sem dono.
+  for(let i=0;i<n;i++){
+    if(owner[i]!==-1)continue;
+    let bg=-1,bc=Infinity;
+    for(let g=0;g<k;g++){
+      if(remaining[g]<=0)continue;
+      const m=medoid(g);
+      const c=geo(i,m);
+      if(c<bc){bc=c;bg=g}
+    }
+    if(bg>=0){
+      groups[bg].push(i);
+      owner[i]=bg;
+      remaining[bg]--;
+    }
+  }
+
+  // Verifica conectividade espacial de um grupo.
+  function connected(group){
+    if(group.length<=1)return true;
+    const allowed=new Set(group),seen=new Set([group[0]]),stack=[group[0]];
+    while(stack.length){
+      const x=stack.pop();
+      for(const y of neigh[x]){
+        if(allowed.has(y)&&!seen.has(y)){seen.add(y);stack.push(y)}
+      }
+    }
+    return seen.size===group.length;
+  }
+
+  // Custo territorial: grande peso para compactação; viário só desempata.
+  function territorialCost(group){
+    let bestM=group[0],bestC=Infinity;
+    for(const cand of group){
+      let c=0;
+      for(const j of group){
+        if(cand===j)continue;
+        c+=geo(cand,j)*5 + road(cand,j)/7200;
+      }
+      if(c<bestC){bestC=c;bestM=cand}
+    }
+    return group.reduce((s,i)=>s+geo(i,bestM)*5+road(i,bestM)/7200,0);
+  }
+
+  // Trocas de fronteira somente se ambos os territórios continuarem conectados.
+  let improved=true,passes=0;
+  while(improved&&passes<4){
+    improved=false;passes++;
+
+    swapSearch:
+    for(let g1=0;g1<k;g1++){
+      for(let g2=g1+1;g2<k;g2++){
+        const base=territorialCost(groups[g1])+territorialCost(groups[g2]);
+
+        for(let p1=0;p1<groups[g1].length;p1++){
+          for(let p2=0;p2<groups[g2].length;p2++){
+            const x=groups[g1][p1],y=groups[g2][p2];
+
+            // Só tenta troca se os pontos estão perto da fronteira entre os grupos.
+            const boundary=neigh[x].some(v=>owner[v]===g2)||neigh[y].some(v=>owner[v]===g1);
+            if(!boundary)continue;
+
+            const ng1=groups[g1].slice(),ng2=groups[g2].slice();
+            ng1[p1]=y;ng2[p2]=x;
+
+            if(!connected(ng1)||!connected(ng2))continue;
+
+            const nc=territorialCost(ng1)+territorialCost(ng2);
+            if(nc+0.001<base){
+              groups[g1]=ng1;groups[g2]=ng2;
+              owner[x]=g2;owner[y]=g1;
+              improved=true;
+              break swapSearch;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return groups;
+}
+
+function startIndex(group,a,groupIndex=null){
+ if(groupIndex!==null&&manualStarts.has(groupIndex)){
+   const wanted=manualStarts.get(groupIndex);
+   const idx=a.findIndex(p=>p.id===wanted);
+   if(idx>=0&&group.includes(idx))return idx;
+ }
+ const st=$('startStrategy').value;if(st==='auto')return group[0];
+ let best=group[0];for(const i of group){
+  if(st==='highest'&&Number.isFinite(a[i].elev)&&(!Number.isFinite(a[best].elev)||a[i].elev>a[best].elev))best=i;
+  if(st==='lowest'&&Number.isFinite(a[i].elev)&&(!Number.isFinite(a[best].elev)||a[i].elev<a[best].elev))best=i;
+  if(st==='north'&&a[i].lat>a[best].lat)best=i;if(st==='south'&&a[i].lat<a[best].lat)best=i
+ }return best
+}
+function edgeCost(i,j,a,m){
+ const obj=$('objective').value;let c=obj==='shortest'?m.dist[i][j]:m.dur[i][j];if(!Number.isFinite(c))c=1e12;
+ if(['downhill','uphill','balanced'].includes(obj)){
+  const ei=a[i].elev,ej=a[j].elev;if(Number.isFinite(ei)&&Number.isFinite(ej)){
+   const w=Math.max(0,+$('hillWeight').value||0);
+   const uphill=Math.max(0,ej-ei),down=Math.max(0,ei-ej);
+   if(obj==='downhill')c+=uphill*w*60;
+   if(obj==='uphill')c+=down*w*60;
+   if(obj==='balanced')c+=uphill*w*20;
+  }
+ }return c
+}
+function routeCost(ord,a,m){let s=0;for(let z=0;z<ord.length-1;z++)s+=edgeCost(ord[z],ord[z+1],a,m);if($('returnStart').value==='yes'&&ord.length>1)s+=edgeCost(ord[ord.length-1],ord[0],a,m);return s}
+function optimizeLocal(group,a,m,groupIndex=null){
+  const start = startIndex(group,a,groupIndex);
+  const unvisited = new Set(group);
+  unvisited.delete(start);
+
+  let routeOrder = [start];
+  let current = start;
+
+  // Construção inicial por vizinho de menor custo.
+  while(unvisited.size){
+    let bestIndex = null;
+    let bestCost = Infinity;
+
+    for(const candidate of unvisited){
+      const cost = edgeCost(current,candidate,a,m);
+      if(cost < bestCost){
+        bestCost = cost;
+        bestIndex = candidate;
+      }
+    }
+
+    if(bestIndex === null) break;
+    routeOrder.push(bestIndex);
+    unvisited.delete(bestIndex);
+    current = bestIndex;
+  }
+
+  // Refinamento 2-opt preservando o ponto inicial.
+  let improved = true;
+  let loops = 0;
+
+  while(improved && loops < 30){
+    improved = false;
+    loops++;
+    const currentCost = routeCost(routeOrder,a,m);
+
+    search:
+    for(let i=1;i<routeOrder.length-1;i++){
+      for(let k=i+1;k<routeOrder.length;k++){
+        const candidateOrder = routeOrder
+          .slice(0,i)
+          .concat(routeOrder.slice(i,k+1).reverse())
+          .concat(routeOrder.slice(k+1));
+
+        const candidateCost = routeCost(candidateOrder,a,m);
+
+        if(candidateCost + 0.001 < currentCost){
+          routeOrder = candidateOrder;
+          improved = true;
+          break search;
+        }
+      }
+    }
+  }
+
+  if($('returnStart').value==='yes' && routeOrder.length>1){
+    routeOrder.push(routeOrder[0]);
+  }
+
+  return routeOrder;
+}
+
+function exactFixedStartPath(group,a,m,groupIndex=null){
+ if(group.length>14)return null;
+
+ const start=startIndex(group,a,groupIndex);
+ const others=group.filter(x=>x!==start);
+ const n=others.length;
+ if(n===0)return [start];
+
+ const size=1<<n;
+ const dp=Array.from({length:size},()=>Array(n).fill(Infinity));
+ const prev=Array.from({length:size},()=>Array(n).fill(-1));
+
+ for(let j=0;j<n;j++)dp[1<<j][j]=edgeCost(start,others[j],a,m);
+
+ for(let mask=1;mask<size;mask++){
+   for(let j=0;j<n;j++){
+     if(!(mask&(1<<j)))continue;
+     const pmask=mask^(1<<j);
+     if(pmask===0)continue;
+     for(let k=0;k<n;k++){
+       if(!(pmask&(1<<k)))continue;
+       const v=dp[pmask][k]+edgeCost(others[k],others[j],a,m);
+       if(v<dp[mask][j]){dp[mask][j]=v;prev[mask][j]=k}
+     }
+   }
+ }
+
+ const full=size-1;
+ let end=0,best=Infinity;
+ for(let j=0;j<n;j++){
+   let v=dp[full][j];
+   if($('returnStart').value==='yes')v+=edgeCost(others[j],start,a,m);
+   if(v<best){best=v;end=j}
+ }
+
+ const seq=[];
+ let mask=full,j=end;
+ while(j!==-1){
+   seq.push(others[j]);
+   const pj=prev[mask][j];
+   mask^=(1<<j);
+   j=pj;
+ }
+ seq.reverse();
+
+ const result=[start,...seq];
+ if($('returnStart').value==='yes')result.push(start);
+ return result;
+}
+
+function exactFreeOpenPath(group,a,m){
+ // Início e fim livres: encontra o menor caminho Hamiltoniano.
+ // Usado quando "Início = Automático" e não há retorno.
+ if(group.length>14)return null;
+ const n=group.length;
+ if(n<=1)return group.slice();
+
+ const size=1<<n;
+ const dp=Array.from({length:size},()=>Array(n).fill(Infinity));
+ const prev=Array.from({length:size},()=>Array(n).fill(-1));
+
+ // Qualquer ponto pode ser o primeiro, custo inicial zero.
+ for(let j=0;j<n;j++)dp[1<<j][j]=0;
+
+ for(let mask=1;mask<size;mask++){
+   for(let j=0;j<n;j++){
+     if(!(mask&(1<<j)))continue;
+     const pmask=mask^(1<<j);
+     if(pmask===0)continue;
+
+     for(let k=0;k<n;k++){
+       if(!(pmask&(1<<k)))continue;
+       const v=dp[pmask][k]+edgeCost(group[k],group[j],a,m);
+       if(v<dp[mask][j]){
+         dp[mask][j]=v;
+         prev[mask][j]=k;
+       }
+     }
+   }
+ }
+
+ const full=size-1;
+ let end=0,best=Infinity;
+ for(let j=0;j<n;j++){
+   if(dp[full][j]<best){best=dp[full][j];end=j}
+ }
+
+ const local=[];
+ let mask=full,j=end;
+ while(j!==-1){
+   local.push(j);
+   const pj=prev[mask][j];
+   mask^=(1<<j);
+   j=pj;
+ }
+ local.reverse();
+ return local.map(x=>group[x]);
+}
+
+function bestRouteOrder(group,a,m,groupIndex=null){
+ const hasManual=groupIndex!==null&&manualStarts.has(groupIndex);
+ const automatic=$('startStrategy').value==='auto'&&!hasManual;
+ const open=$('returnStart').value==='no';
+
+ // No automático aberto, começo e fim são realmente livres.
+ if(automatic&&open){
+   const exact=exactFreeOpenPath(group,a,m);
+   if(exact)return exact;
+
+   // Para grupos grandes: testa cada ponto como início e fica com a melhor rota.
+   let best=null,bestCost=Infinity;
+   for(const candidate of group){
+     const unvisited=new Set(group);unvisited.delete(candidate);
+     let route=[candidate],current=candidate;
+
+     while(unvisited.size){
+       let bj=null,bc=Infinity;
+       for(const j of unvisited){
+         const c=edgeCost(current,j,a,m);
+         if(c<bc){bc=c;bj=j}
+       }
+       route.push(bj);unvisited.delete(bj);current=bj;
+     }
+
+     // 2-opt com começo livre já escolhido nesta tentativa.
+     let improved=true,loops=0;
+     while(improved&&loops++<20){
+       improved=false;
+       const base=routeCost(route,a,m);
+       search:
+       for(let i=1;i<route.length-1;i++){
+         for(let k=i+1;k<route.length;k++){
+           const cand=route.slice(0,i).concat(route.slice(i,k+1).reverse(),route.slice(k+1));
+           if(routeCost(cand,a,m)+0.001<base){
+             route=cand;improved=true;break search;
+           }
+         }
+       }
+     }
+
+     const cost=routeCost(route,a,m);
+     if(cost<bestCost){bestCost=cost;best=route}
+   }
+   return best;
+ }
+
+ return exactFixedStartPath(group,a,m,groupIndex)||optimizeLocal(group,a,m,groupIndex);
+}
+
+
+async function drawRoute(order,a,ri){
+ const coords=order.map(i=>[a[i].lon,a[i].lat]);const d=await ors(
+   `/openrouteservice/v2/directions/${$('profile').value}/geojson`,
+   {
+     coordinates:coords,
+     instructions:false,
+     preference:$('objective').value==='shortest'?'shortest':'fastest',
+     elevation:true
+   }
+ );
+ const f=d.features?.[0];if(!f)throw Error('Directions sem geometria na rota '+(ri+1));
+ const color=COLORS[ri%COLORS.length];
+ const lyr=L.geoJSON(d,{style:{color,weight:5,opacity:.85}}).addTo(map);routeLayers.push(lyr);
+ const ownMarkers=[];
+ order.forEach((idx,pos)=>{const p=a[idx];const icon=L.divIcon({className:'',html:`<div class="routeNum" style="background:${color}">${pos+1}</div>`,iconSize:[26,26],iconAnchor:[13,13]});const marker=L.marker([p.lat,p.lon],{icon}).bindPopup(popup(p,pos+1,ri+1)).addTo(map);routeMarkers.push(marker);ownMarkers.push(marker)});
+ const s=f.properties?.summary||{};return {geo:d,distance:s.distance||0,duration:s.duration||0,layer:lyr,markers:ownMarkers,color}
+}
+
+function buildMasterRoute(a){
+  // Para até 14 pontos, usa solução exata com início/fim livres.
+  const all=a.map((_,i)=>i);
+  const exact=exactFreeOpenPath(all,a,matrix);
+  if(exact)return exact;
+
+  // Para conjuntos maiores, testa vários inícios e aplica 2-opt.
+  // Mantém agilidade para 20–50 pontos no navegador.
+  const candidates=[];
+  if(a.length<=20){
+    for(let i=0;i<a.length;i++)candidates.push(i);
+  }else{
+    // Amostra pontos extremos + alguns distribuídos.
+    let north=0,south=0,east=0,west=0;
+    for(let i=1;i<a.length;i++){
+      if(a[i].lat>a[north].lat)north=i;
+      if(a[i].lat<a[south].lat)south=i;
+      if(a[i].lon>a[east].lon)east=i;
+      if(a[i].lon<a[west].lon)west=i;
+    }
+    candidates.push(north,south,east,west);
+    const step=Math.max(1,Math.floor(a.length/8));
+    for(let i=0;i<a.length;i+=step)candidates.push(i);
+  }
+
+  const uniq=[...new Set(candidates)];
+  let bestRoute=null,bestCost=Infinity;
+
+  for(const start of uniq){
+    const unvisited=new Set(all);
+    unvisited.delete(start);
+    let route=[start],current=start;
+
+    while(unvisited.size){
+      let bj=null,bc=Infinity;
+      for(const j of unvisited){
+        const c=edgeCost(current,j,a,matrix);
+        if(c<bc){bc=c;bj=j}
+      }
+      route.push(bj);
+      unvisited.delete(bj);
+      current=bj;
+    }
+
+    // 2-opt aberto.
+    let improved=true,loops=0;
+    while(improved&&loops++<35){
+      improved=false;
+      let base=routeCost(route,a,matrix);
+
+      search:
+      for(let i=1;i<route.length-1;i++){
+        for(let k=i+1;k<route.length;k++){
+          const cand=route.slice(0,i).concat(route.slice(i,k+1).reverse(),route.slice(k+1));
+          const cc=routeCost(cand,a,matrix);
+          if(cc+0.001<base){
+            route=cand;
+            base=cc;
+            improved=true;
+            break search;
+          }
+        }
+      }
+    }
+
+    const cost=routeCost(route,a,matrix);
+    if(cost<bestCost){
+      bestCost=cost;
+      bestRoute=route;
+    }
+  }
+
+  // Também testa a ordem invertida (mesmo caminho, começo/fim trocados).
+  if(bestRoute){
+    const rev=bestRoute.slice().reverse();
+    if(routeCost(rev,a,matrix)<routeCost(bestRoute,a,matrix))bestRoute=rev;
+  }
+  return bestRoute;
+}
+
+function splitMasterBySizes(master,ss){
+  const out=[];
+  let pos=0;
+  for(const sz of ss){
+    out.push(master.slice(pos,pos+sz));
+    pos+=sz;
+  }
+  return out;
+}
+
+function splitMasterBalanced(master,a,k,criterion){
+  const n=master.length;
+  if(k<=1)return [master.slice()];
+  if(k>=n)return master.map(x=>[x]);
+
+  // Peso do deslocamento entre pontos consecutivos da rota-mãe.
+  const edgeWeight=[];
+  for(let i=0;i<n-1;i++){
+    const from=master[i],to=master[i+1];
+    let w;
+    if(criterion==='distance')w=matrix.dist?.[from]?.[to];
+    else w=matrix.dur?.[from]?.[to];
+    if(!Number.isFinite(w))w=criterion==='distance'?hav(a[from],a[to])*1000:hav(a[from],a[to])*720;
+    edgeWeight.push(w);
+  }
+
+  // Cada ponto recebe metade da aresta anterior + metade da próxima.
+  const pointWeight=Array(n).fill(0);
+  for(let i=0;i<n-1;i++){
+    const w=edgeWeight[i];
+    pointWeight[i]+=w/2;
+    pointWeight[i+1]+=w/2;
+  }
+
+  // Caso excepcional de pesos zero.
+  if(pointWeight.reduce((x,y)=>x+y,0)<=0){
+    const ss=sizes(n,k);
+    return splitMasterBySizes(master,ss);
+  }
+
+  // Particionamento dinâmico em k blocos contíguos,
+  // minimizando desvio quadrático do peso-alvo.
+  const prefix=[0];
+  for(const w of pointWeight)prefix.push(prefix.at(-1)+w);
+  const total=prefix[n],target=total/k;
+
+  const dp=Array.from({length:k+1},()=>Array(n+1).fill(Infinity));
+  const prev=Array.from({length:k+1},()=>Array(n+1).fill(-1));
+  dp[0][0]=0;
+
+  for(let g=1;g<=k;g++){
+    for(let end=g;end<=n;end++){
+      for(let cut=g-1;cut<end;cut++){
+        const seg=prefix[end]-prefix[cut];
+        const penalty=(seg-target)*(seg-target);
+        const v=dp[g-1][cut]+penalty;
+        if(v<dp[g][end]){
+          dp[g][end]=v;
+          prev[g][end]=cut;
+        }
+      }
+    }
+  }
+
+  const cuts=[];
+  let g=k,end=n;
+  while(g>0){
+    const cut=prev[g][end];
+    cuts.push([cut,end]);
+    end=cut;g--;
+  }
+  cuts.reverse();
+
+  return cuts.map(([s,e])=>master.slice(s,e));
+}
+
+function masterRouteSplit(a,k){
+  const master=buildMasterRoute(a);
+  if(!master||master.length!==a.length)throw Error('Não foi possível criar a rota total.');
+
+  // Distribuição manual sempre prevalece.
+  if($('distribution').value==='manual'){
+    const ss=sizes(a.length,k);
+    return {master,groups:splitMasterBySizes(master,ss)};
+  }
+
+  const criterion=$('splitBalance').value;
+  if(criterion==='count'){
+    const ss=sizes(a.length,k);
+    return {master,groups:splitMasterBySizes(master,ss)};
+  }
+
+  return {master,groups:splitMasterBalanced(master,a,k,criterion)};
+}
+
+async function run(){
+ clearRoutes();const a=pts.filter(p=>sel.has(p.id));if(a.length<2)throw Error('Selecione ao menos 2 pontos.');if(a.length>MAX)throw Error('Limite de 50 pontos.');
+ let k=Math.max(1,Math.min(10,parseInt($('routeCount').value)||1));if(k>a.length)throw Error('Número de rotas maior que o número de pontos.');
+ await getElevations(a);
+ if(['downhill','uphill','balanced'].includes($('objective').value)&&!a.some(p=>Number.isFinite(p.elev)))throw Error('O modo escolhido precisa de altitude, mas nenhuma altitude foi obtida.');
+ matrix=await getMatrix(a);
+
+ let groups,orders;
+
+ if($('divisionMethod').value==='master-split'){
+   stat(`Etapa 3/4 • Calculando uma rota total e dividindo em ${k} trecho(s)...`);
+   const mr=masterRouteSplit(a,k);
+   groups=mr.groups;
+   // Os grupos já são trechos ordenados da rota-mãe.
+   orders=groups.map(g=>g.slice());
+ }else{
+   const ss=sizes(a.length,k);
+   stat(`Etapa 3/4 • Criando ${k} território(s) contínuo(s): ${ss.join(' / ')}...`);
+   groups=balancedGroups(a,ss);
+   orders=groups.map((g,gi)=>bestRouteOrder(g,a,matrix,gi));
+ }
+ routes=[];let td=0,tt=0;
+ for(let i=0;i<orders.length;i++){stat(`Etapa 4/4 • Traçando rota ${i+1}/${orders.length}...`);const dr=await drawRoute(orders[i],a,i);routes.push({order:orders[i].map(j=>a[j]),...dr});td+=dr.distance;tt+=dr.duration}
+ if(routeLayers.length){let b=routeLayers[0].getBounds();for(let i=1;i<routeLayers.length;i++)b.extend(routeLayers[i].getBounds());map.fitBounds(b.pad(.05))}
+ $('mP').textContent=a.length;$('mKm').textContent=(td/1000).toFixed(1);$('mT').textContent=fmt(tt);renderRouteBox();
+ stat(`Concluído.\nDistribuição: ${routes.map(r=>r.order.length-($('returnStart').value==='yes'?1:0)).join(' / ')}\n${(td/1000).toFixed(1)} km • ${fmt(tt)}`);
+}
+function fmt(s){s=Math.round(s);const h=Math.floor(s/3600),m=Math.round((s%3600)/60);return h?`${h}h ${m}min`:`${m}min`}
+function renderRouteBox(){
+ const b=$('routesBox');b.innerHTML='';
+ routes.forEach((r,i)=>{
+   const d=document.createElement('div');d.className='rline';
+   const color=r.color||COLORS[i%COLORS.length],agent=r.assignedAgentName?` • ${esc(r.assignedAgentName)}`:'';
+   d.innerHTML=`<span class="sw" style="background:${color}"></span><span><b>Rota ${i+1}</b>${agent} • ${uniqueRoutePoints(r.order).length} pontos • ${(r.distance/1000).toFixed(1)} km • ${fmt(r.duration)}</span><button class="mini">zoom</button>`;
+   d.querySelector('button').onclick=()=>{if(r.layer)map.fitBounds(r.layer.getBounds().pad(.08));else if(routeLayers[i])map.fitBounds(routeLayers[i].getBounds().pad(.08))};
+   b.appendChild(d);
+ });
+ refreshAgentAssignments();renderIndependentRoutesList();
+}
+function renderIndependentRoutesList(){
+ const host=$('independentRoutesList');if(!host)return;
+ const independent=routes.map((r,index)=>({r,index})).filter(x=>x.r.independent);
+ host.innerHTML=independent.length?independent.map(({r,index})=>`<div class="independentItem"><span class="sw" style="background:${r.color||COLORS[index%COLORS.length]}"></span><span><b>Rota ${index+1} • ${esc(r.assignedAgentName||'SEM AGENTE')}</b><span class="meta">${uniqueRoutePoints(r.order).length} pontos • ${(Number(r.distance||0)/1000).toFixed(1)} km • ${fmt(r.duration)}</span></span><button class="mini independentZoom" data-ind-zoom="${index}">zoom</button><button class="mini independentDelete" data-ind-del="${index}">excluir</button></div>`).join(''):'<div class="note">Nenhuma rota independente criada ainda.</div>';
+ host.querySelectorAll('[data-ind-zoom]').forEach(b=>b.onclick=()=>{const r=routes[Number(b.dataset.indZoom)];if(r?.layer)map.fitBounds(r.layer.getBounds().pad(.08))});
+ host.querySelectorAll('[data-ind-del]').forEach(b=>b.onclick=()=>deleteIndependentRoute(Number(b.dataset.indDel)));
+}
+
+function deleteIndependentRoute(index){
+ const r=routes[index];if(!r?.independent)return;
+ if(r.layer){try{map.removeLayer(r.layer)}catch{} routeLayers=routeLayers.filter(x=>x!==r.layer)}
+ for(const marker of r.markers||[]){try{map.removeLayer(marker)}catch{} routeMarkers=routeMarkers.filter(x=>x!==marker)}
+ routes.splice(index,1);sel.clear();pts.forEach(style);updateIndependentMetrics();renderRouteBox();stat(`Rota removida. ${routes.length} rota(s) restante(s).`)
+}
+
+function updateIndependentMetrics(){
+ const td=routes.reduce((sum,r)=>sum+Number(r.distance||0),0),tt=routes.reduce((sum,r)=>sum+Number(r.duration||0),0),np=routes.reduce((sum,r)=>sum+uniqueRoutePoints(r.order).length,0);
+ $('mP').textContent=np||'—';$('mKm').textContent=routes.length?(td/1000).toFixed(1):'—';$('mT').textContent=routes.length?fmt(tt):'—';
+}
+
+async function addIndependentRoute(){
+ if($('workflowMode').value!=='independent')throw Error('Selecione o modo Rotas independentes.');
+ const agentId=$('independentAgent').value,agent=availableAgents.find(a=>a.id===agentId);
+ if(!agent)throw Error('Escolha um agente carregado do Firebase.');
+ const a=pts.filter(p=>sel.has(p.id));
+ if(a.length<2)throw Error('Selecione ao menos 2 pontos para esta rota.');
+ if(a.length>MAX)throw Error(`Limite de ${MAX} pontos por rota.`);
+ for(const p of a)if(pointAlreadyInIndependentRoute(p))throw Error(`${name(p)} já pertence a outra rota independente.`);
+ await getElevations(a);
+ if(['downhill','uphill','balanced'].includes($('objective').value)&&!a.some(p=>Number.isFinite(p.elev)))throw Error('O modo escolhido precisa de altitude, mas nenhuma altitude foi obtida.');
+ matrix=await getMatrix(a);
+ const group=a.map((_,i)=>i),order=bestRouteOrder(group,a,matrix,routes.length);
+ stat(`Traçando nova rota para ${agent.nome}...`);
+ const dr=await drawRoute(order,a,routes.length);
+ const r={order:order.map(i=>a[i]),...dr,independent:true,assignedAgentId:agent.id,assignedAgentName:agent.nome};
+ routes.push(r);sel.clear();pts.forEach(style);refresh();updateIndependentMetrics();renderRouteBox();
+ if(r.layer)map.fitBounds(r.layer.getBounds().pad(.08));
+ stat(`Rota ${routes.length} adicionada • ${agent.nome} • ${uniqueRoutePoints(r.order).length} pontos • ${(r.distance/1000).toFixed(1)} km. Selecione outro grupo para criar a próxima.`);
+}
+
+function clearRoutes(){
+ routeLayers.forEach(l=>map.removeLayer(l));routeMarkers.forEach(l=>map.removeLayer(l));
+ routeLayers=[];routeMarkers=[];routes=[];
+ $('routesBox').innerHTML='';$('mapsBox').innerHTML='';$('agentAssignments').innerHTML='';if($('routeLinks'))$('routeLinks').innerHTML='';$('agentPublish').style.display='none';
+ $('mP').textContent=$('mKm').textContent=$('mT').textContent='—';renderIndependentRoutesList();pts.forEach(style);
+}
+function clearSectors(){
+ sectorGroups=null;sectorSelectedPoints=null;manualStarts.clear();
+ pts.forEach(style);
+}
+
+async function createSectorsOnly(){
+ clearRoutes();clearSectors();
+ const a=pts.filter(p=>sel.has(p.id));
+ if(a.length<2)throw Error('Selecione ao menos 2 pontos.');
+ if(a.length>MAX)throw Error('Limite de 50 pontos.');
+ let k=Math.max(1,Math.min(10,parseInt($('routeCount').value)||1));
+ if(k>a.length)throw Error('Número de rotas maior que o número de pontos.');
+
+ await getElevations(a);
+ matrix=await getMatrix(a);
+ const ss=sizes(a.length,k);
+ const groups=balancedGroups(a,ss);
+
+ sectorGroups=groups;
+ sectorSelectedPoints=a;
+ manualStarts.clear();
+ a.forEach(style);
+
+ const b=$('routesBox');b.innerHTML='';
+ groups.forEach((g,i)=>{
+   const d=document.createElement('div');d.className='rline';
+   d.innerHTML=`<span class="sw" style="background:${COLORS[i%COLORS.length]}"></span><span><b>Setor ${i+1}</b> • ${g.length} pontos • escolha o início</span><span>—</span>`;
+   b.appendChild(d)
+ });
+ $('mP').textContent=a.length;
+ stat(`Setores criados. Clique em um ponto de cada cor para escolher o início (${groups.length} rota(s)).`);
+}
+
+async function optimizePreparedSectors(){
+ if(!sectorGroups||!sectorSelectedPoints)throw Error('Primeiro crie os setores.');
+ if(manualStarts.size<sectorGroups.length)throw Error(`Escolha o início de todas as rotas: ${manualStarts.size}/${sectorGroups.length}.`);
+
+ clearRoutes();
+ const a=sectorSelectedPoints;
+ const orders=sectorGroups.map((g,gi)=>bestRouteOrder(g,a,matrix,gi));
+
+ routes=[];let td=0,tt=0;
+ for(let i=0;i<orders.length;i++){
+   stat(`Traçando rota ${i+1}/${orders.length}...`);
+   const dr=await drawRoute(orders[i],a,i);
+   routes.push({order:orders[i].map(j=>a[j]),...dr});
+   td+=dr.distance;tt+=dr.duration;
+ }
+ if(routeLayers.length){
+   let b=routeLayers[0].getBounds();
+   for(let i=1;i<routeLayers.length;i++)b.extend(routeLayers[i].getBounds());
+   map.fitBounds(b.pad(.05))
+ }
+ $('mP').textContent=a.length;
+ $('mKm').textContent=(td/1000).toFixed(1);
+ $('mT').textContent=fmt(tt);
+ renderRouteBox();
+ stat(`Concluído. ${(td/1000).toFixed(1)} km • ${fmt(tt)}`);
+}
+
+function updateWorkflowUI(){
+ const mode=$('workflowMode').value,manual=mode==='manual-start',independent=mode==='independent';
+ $('manualFlowButtons').style.display=manual?'flex':'none';$('manualHint').style.display=manual?'block':'none';$('independentPanel').style.display=independent?'block':'none';$('run').style.display=(manual||independent)?'none':'block';
+ if(manual){$('divisionMethod').value='territory';$('divisionMethod').disabled=true}else{$('divisionMethod').disabled=false}
+ const master=!independent&&$('divisionMethod').value==='master-split';$('splitBalanceRow').style.display=master?'block':'none';
+ if(independent){$('routeCount').value=1;renderIndependentRoutesList();refreshIndependentAgentSelect()}
+}
+$('workflowMode').onchange=()=>{clearRoutes();clearSectors();updateWorkflowUI()};
+$('divisionMethod').onchange=()=>{clearRoutes();clearSectors();updateWorkflowUI()};
+updateWorkflowUI();
+
+$('clear').onclick=()=>{clearRoutes();clearSectors();};
+$('makeSectors').onclick=async()=>{try{await createSectorsOnly()}catch(e){console.error('V1.06 SETORES',e);stat('Erro: '+(e?.message||e),true)}};
+$('optimizeSectors').onclick=async()=>{try{await optimizePreparedSectors()}catch(e){console.error('V1.06 OTIMIZAÇÃO',e);stat('Erro: '+(e?.message||e),true)}};
+$('run').onclick=async()=>{try{await run()}catch(e){console.error('ROTEIRIZADOR V1.18:',e);stat('Erro: '+(e&&e.message?e.message:String(e)),true)}};
+$('loadIndependentAgents').onclick=loadAgentsFromFirebase;
+$('addIndependentRoute').onclick=async()=>{try{await addIndependentRoute()}catch(e){console.error('ROTAS INDEPENDENTES',e);stat('Erro: '+(e?.message||e),true)}};
+function mode(){const p=$('profile').value;return p.startsWith('foot')?'walking':p.startsWith('cycling')?'bicycling':'driving'}
+function gUrl(part){const q=new URLSearchParams({api:'1',origin:`${part[0].lat},${part[0].lon}`,destination:`${part.at(-1).lat},${part.at(-1).lon}`,travelmode:mode()});if(part.length>2)q.set('waypoints',part.slice(1,-1).map(p=>`${p.lat},${p.lon}`).join('|'));return 'https://www.google.com/maps/dir/?'+q}
+function splitMaps(r){const out=[],cap=11;for(let i=0;i<r.length-1;){const e=Math.min(i+cap,r.length);out.push(r.slice(i,e));if(e===r.length)break;i=e-1}return out}
+$('loadAgents').onclick=loadAgentsFromFirebase;
+$('downloadAgentHtmls').onclick=downloadAgentHtmlZip;
+$('downloadOperationHtml').onclick=downloadTeamOperationHtml;
+$('copyOperationLink').onclick=async()=>{const u=$('copyOperationLink').dataset.url;if(!u)return;try{await navigator.clipboard.writeText(u);stat('Link do HTML único copiado.')}catch(e){stat('Não foi possível copiar automaticamente.',true)}};
+$('maps').onclick=()=>{if(!routes.length){stat('Gere as rotas primeiro.',true);return}const box=$('mapsBox');box.innerHTML='';routes.forEach((r,ri)=>splitMaps(r.order).forEach((p,pi)=>{const b=document.createElement('button');b.style.margin='3px';b.textContent=`Google R${ri+1}${splitMaps(r.order).length>1?'.'+(pi+1):''}`;b.onclick=()=>window.open(gUrl(p),'_blank');box.appendChild(b)}));stat('Links do Google Maps preparados abaixo, preservando a ordem otimizada.')};
+$('copy').onclick=async()=>{if(!routes.length){stat('Gere as rotas primeiro.',true);return}const fs=chosen();let t='';routes.forEach((r,ri)=>{t+=`ROTA ${ri+1}\n`;r.order.forEach((p,i)=>t+=`${i+1}. ${name(p)}${Number.isFinite(p.elev)?` | ${Math.round(p.elev)} m`:''}${fs.length?' | '+fs.map(f=>`${f}: ${p.props[f]??''}`).join(' | '):''}\n`);t+='\n'});await navigator.clipboard.writeText(t);stat('Ordem das rotas copiada.')};
+$('export').onclick=()=>{if(!routes.length){stat('Gere as rotas primeiro.',true);return}const feats=[];routes.forEach((r,ri)=>{r.geo.features.forEach(f=>{f.properties={...(f.properties||{}),ROTA:ri+1};feats.push(f)});r.order.forEach((p,i)=>feats.push({type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:{...p.props,ROTA:ri+1,ORDEM:i+1,ALTITUDE_M:p.elev}}))});const fc={type:'FeatureCollection',features:feats};const blob=new Blob([JSON.stringify(fc,null,2)],{type:'application/geo+json'}),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='ROTAS_OTIMIZADAS_V1.geojson';a.click();URL.revokeObjectURL(u)};
+})();
+</script>
+</body>
+</html>
