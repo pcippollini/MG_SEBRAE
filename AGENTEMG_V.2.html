@@ -1217,8 +1217,59 @@ body.connected #sair{display:none!important}
     return String(props?.NROCNPJ_PAD ?? props?.CNPJ ?? "").replace(/\D/g,"");
   }
 
+  // Versão temporal da base GeoJSON atualmente carregada.
+  // É preenchida no loadGeoJson() a partir de metadados explícitos do arquivo
+  // ou, como fallback seguro, do cabeçalho HTTP Last-Modified.
+  let geoJsonVersion = 0;
+
+  function parseVersionTimestamp(value){
+    if(value === null || value === undefined || value === "") return 0;
+
+    const numeric = Number(value);
+    if(Number.isFinite(numeric) && numeric > 0){
+      // Aceita epoch em segundos ou milissegundos.
+      return numeric < 1e12 ? Math.round(numeric * 1000) : Math.round(numeric);
+    }
+
+    const parsed = Date.parse(String(value));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function resolveGeoJsonVersion(data,response){
+    // Se futuramente o GeoJSON trouxer versão explícita, ela ganha do cabeçalho HTTP.
+    const explicitCandidates = [
+      data?.updatedAt,
+      data?.updated_at,
+      data?.version,
+      data?.metadata?.updatedAt,
+      data?.metadata?.updated_at,
+      data?.metadata?.version
+    ];
+
+    for(const candidate of explicitCandidates){
+      const parsed = parseVersionTimestamp(candidate);
+      if(parsed > 0) return parsed;
+    }
+
+    const lastModified = response?.headers?.get?.("Last-Modified");
+    return parseVersionTimestamp(lastModified);
+  }
+
+  function validFirebaseStatus(cnpj){
+    const firebaseData = pointStatus.get(cnpj);
+    if(!firebaseData?.status) return null;
+
+    // Se a versão do GeoJSON não puder ser determinada, preserva exatamente
+    // o comportamento anterior: Firebase sobrepõe o GeoJSON.
+    if(!(geoJsonVersion > 0)) return firebaseData;
+
+    const firebaseTime = Number(firebaseData.hora || 0);
+    return firebaseTime > geoJsonVersion ? firebaseData : null;
+  }
+
   function statusFor(cnpj,props){
-    return normalizeStatus(pointStatus.get(cnpj)?.status || props?.STATUS_OPERACIONAL || props?.STATUS || "CARTEIRA");
+    const firebaseData = validFirebaseStatus(cnpj);
+    return normalizeStatus(firebaseData?.status || props?.STATUS_OPERACIONAL || props?.STATUS || "CARTEIRA");
   }
 
   function statusLabel(status){
@@ -1423,7 +1474,7 @@ body.connected #sair{display:none!important}
 
     const p = feature.properties || {};
     const [lng,lat] = feature.geometry.coordinates;
-    const statusData = pointStatus.get(cnpj);
+    const statusData = validFirebaseStatus(cnpj);
     const status = statusFor(cnpj,p);
     const distance = currentPosition ? haversine(currentPosition,{lat,lng}) : Infinity;
     const distanceText = Number.isFinite(distance) ? formatDistance(distance) : "GPS não ativo";
@@ -1525,9 +1576,7 @@ body.connected #sair{display:none!important}
   }
 
   function refreshUpdatedCount(){
-    const count = [...pointStatus.entries()].filter(([key,val]) =>
-      key !== "TEMP" && key !== "TESTE_MANUAL" && val?.status
-    ).length;
+    const count = [...featuresByCnpj.keys()].filter(cnpj => validFirebaseStatus(cnpj)?.status).length;
     el.totalAtualizados.textContent = count;
   }
 
@@ -2359,6 +2408,14 @@ body.connected #sair{display:none!important}
     const response = await fetch("./MAPA_INICIAL_TESTE_HTML.geojson",{cache:"no-store"});
     if(!response.ok) throw new Error(`GeoJSON HTTP ${response.status}`);
     const data = await response.json();
+
+    geoJsonVersion = resolveGeoJsonVersion(data,response);
+    if(geoJsonVersion > 0){
+      console.info("GeoJSON vigente desde:",new Date(geoJsonVersion).toLocaleString("pt-BR"));
+    }else{
+      console.warn("GeoJSON sem versão detectável; mantendo prioridade tradicional do Firebase.");
+    }
+
     const bounds = [];
 
     pointClusterGroup.clearLayers();
