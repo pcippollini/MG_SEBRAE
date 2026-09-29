@@ -551,6 +551,81 @@ body.connected #sair{display:none!important}
   .search-results{max-height:48dvh}
 }
 
+
+/* ===== AJUSTE 29/09/2026 — POPUP MOBILE / LEGIBILIDADE =====
+   Somente apresentação. Não altera Firebase, GeoJSON, GPS, status,
+   regra dos 100 m, rotas, busca, clusters ou demais regras operacionais. */
+.leaflet-popup-content{
+  font-size:18px;
+  line-height:1.42;
+}
+.popup-title{
+  font-size:20px;
+  line-height:1.25;
+  font-weight:900;
+  margin-bottom:8px;
+  color:#ffffff;
+}
+.popup-line{
+  margin:5px 0;
+  color:#d6e0f0;
+  font-size:18px;
+  line-height:1.42;
+  overflow-wrap:anywhere;
+}
+.popup-line strong{
+  color:#ffffff;
+  font-weight:900;
+}
+.popup-muted{
+  color:#b9c6dc;
+  font-size:15px;
+}
+.popup-route,
+.popup-save,
+.popup-street{
+  min-height:48px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  margin-top:10px;
+  padding:11px 12px;
+  border:0;
+  border-radius:10px;
+  text-align:center;
+  text-decoration:none;
+  font-size:18px;
+  line-height:1.2;
+  font-weight:900;
+  color:#ffffff !important;
+  opacity:1;
+}
+.popup-route{
+  background:#2563eb;
+  color:#ffffff !important;
+}
+.popup-save{
+  background:#16a34a;
+  color:#ffffff !important;
+}
+.popup-street{
+  background:#334155;
+  color:#ffffff !important;
+}
+.popup-route:visited,
+.popup-save:visited,
+.popup-street:visited{
+  color:#ffffff !important;
+}
+@media(max-width:430px){
+  .leaflet-popup-content{font-size:17px}
+  .popup-title{font-size:19px}
+  .popup-line{font-size:17px}
+  .popup-muted{font-size:14px}
+  .popup-route,.popup-save,.popup-street{font-size:17px;min-height:46px}
+}
+
   </style>
 
   <!-- Google Analytics GA4 -->
@@ -834,7 +909,7 @@ body.connected #sair{display:none!important}
 
     <div class="help-section">
       <div class="help-title">1. Como começar</div>
-      <div class="help-text">Ao abrir o mapa, informe seu nome no quadro central e toque em <strong>ENTRAR E ATIVAR GPS</strong>. Quando o navegador solicitar, permita o acesso à localização. Aguarde a mensagem <strong>CONECTADO</strong>.</div>
+      <div class="help-text">No primeiro acesso neste navegador/aparelho, informe seu nome no quadro central e toque em <strong>ENTRAR E ATIVAR GPS</strong>. O nome fica salvo localmente e aparecerá preenchido nos próximos acessos. Quando o navegador solicitar, permita o acesso à localização. Aguarde a mensagem <strong>CONECTADO</strong>.</div>
     </div>
     <div class="help-section">
       <div class="help-title">2. Tela adaptável</div>
