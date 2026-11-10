@@ -1235,10 +1235,14 @@ body.connected #sair{display:none!important}
     return String(props?.NROCNPJ_PAD ?? props?.CNPJ ?? "").replace(/\D/g,"");
   }
 
-  // Versão temporal da base GeoJSON atualmente carregada.
-  // É preenchida no loadGeoJson() a partir de metadados explícitos do arquivo
-  // ou, como fallback seguro, do cabeçalho HTTP Last-Modified.
+  // Atualização da base em uso: leitura na abertura e revalidação a cada 4 horas.
+  // O GeoJSON continua sendo exportado pelo QGIS com o MESMO nome de arquivo.
+  const GEOJSON_FILE = "./MAPA_INICIAL_TESTE_HTML.geojson";
+  const GEOJSON_VERIFY_MS = 4 * 60 * 60 * 1000;
   let geoJsonVersion = 0;
+  let geoJsonFingerprint = null;
+  let geoJsonLastChecked = 0;
+  let geoJsonCheckBusy = false;
 
   function parseVersionTimestamp(value){
     if(value === null || value === undefined || value === "") return 0;
@@ -1261,7 +1265,10 @@ body.connected #sair{display:none!important}
       data?.version,
       data?.metadata?.updatedAt,
       data?.metadata?.updated_at,
-      data?.metadata?.version
+      data?.metadata?.version,
+      // Campo virtual opcional do QGIS, caso seja adotado futuramente.
+      data?.features?.[0]?.properties?.DATA_ATUALIZACAO,
+      data?.features?.[0]?.properties?.DATA_BASE
     ];
 
     for(const candidate of explicitCandidates){
@@ -2422,43 +2429,133 @@ body.connected #sair{display:none!important}
     }
   }
 
-  async function loadGeoJson(){
-    const response = await fetch("./MAPA_INICIAL_TESTE_HTML.geojson",{cache:"no-store"});
-    if(!response.ok) throw new Error(`GeoJSON HTTP ${response.status}`);
-    const data = await response.json();
-
-    geoJsonVersion = resolveGeoJsonVersion(data,response);
-    if(geoJsonVersion > 0){
-      console.info("GeoJSON vigente desde:",new Date(geoJsonVersion).toLocaleString("pt-BR"));
-    }else{
-      console.warn("GeoJSON sem versão detectável; mantendo prioridade tradicional do Firebase.");
+  async function geoJsonContentFingerprint(text){
+    // Hash real do conteúdo: funciona mesmo quando o arquivo mantém o mesmo nome.
+    if(window.crypto?.subtle){
+      const bytes = new TextEncoder().encode(text);
+      const digest = await window.crypto.subtle.digest("SHA-256",bytes);
+      return Array.from(new Uint8Array(digest),b => b.toString(16).padStart(2,"0")).join("");
     }
+    // Compatibilidade com navegadores antigos que não disponibilizam Web Crypto.
+    let hash = 2166136261;
+    for(let i=0;i<text.length;i++){
+      hash ^= text.charCodeAt(i);
+      hash = Math.imul(hash,16777619);
+    }
+    return `${text.length}:${(hash>>>0).toString(16)}`;
+  }
 
-    const bounds = [];
+  function refreshRouteAfterGeoJsonUpdate(){
+    if(!activeRoute.length) return;
+    const previousRoute = activeRoute;
+    activeRoute = previousRoute.map(point => {
+      const feature = featuresByCnpj.get(point.cnpj);
+      if(!feature) return null;
+      const updated = pointData(point.cnpj,feature);
+      if(!updated || !isDisplayStatus(updated.status) ||
+         !activeRouteStatuses.has(updated.status) || !markersByCnpj.has(point.cnpj)) return null;
+      return {...point,...updated};
+    }).filter(Boolean);
 
-    pointClusterGroup.clearLayers();
-    featuresByCnpj.clear();
-    markersByCnpj.clear();
-    searchIndexByCnpj.clear();
+    if(!activeRoute.length){
+      clearRoute(false);
+      return;
+    }
+    // Mantém a ordem atual, mas atualiza coordenadas, nomes e distâncias.
+    activeRoute = attachLegDistances(activeRoute);
+    drawActiveRoute();
+    renderRoutePanel();
+  }
 
-    for(const feature of data.features || []){
-      if(feature?.geometry?.type !== "Point") continue;
-      const cnpj = normalizeCnpj(feature.properties || {});
-      if(!cnpj) continue;
-      const [lng,lat] = feature.geometry.coordinates || [];
-      if(!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) continue;
+  async function loadGeoJson({checkOnly=false}={}){
+    if(geoJsonCheckBusy) return false;
+    geoJsonCheckBusy = true;
+    try{
+      // A query variável evita que navegador/CDN sirva uma cópia antiga.
+      const url = `${GEOJSON_FILE}?verificacao=${Date.now()}`;
+      const response = await fetch(url,{cache:"no-store"});
+      if(!response.ok) throw new Error(`GeoJSON HTTP ${response.status}`);
+      const raw = await response.text();
+      const newFingerprint = await geoJsonContentFingerprint(raw);
+      const data = JSON.parse(raw);
+      if(!Array.isArray(data?.features)) throw new Error("GeoJSON sem lista de feições válida");
 
-      featuresByCnpj.set(cnpj,feature);
-      searchIndexByCnpj.set(cnpj,buildSearchIndexEntry(cnpj,feature));
-      bounds.push([lat,lng]);
-      if(isDisplayStatus(statusFor(cnpj,feature.properties || {}))){
-        createPointMarker(cnpj,feature);
+      const newVersion = resolveGeoJsonVersion(data,response);
+      geoJsonLastChecked = Date.now();
+
+      // Mesma base e mesma data de publicação: não redesenha nem altera a rota.
+      if(checkOnly && geoJsonFingerprint === newFingerprint && geoJsonVersion === newVersion){
+        console.info("Verificação de 4 horas: GeoJSON sem alterações.");
+        return false;
       }
-    }
 
-    el.totalPontos.textContent = featuresByCnpj.size;
-    if(bounds.length) map.fitBounds(bounds,{padding:[20,20],maxZoom:10});
-    setNotice("PRONTO","ok");
+      const alreadyLoaded = geoJsonFingerprint !== null;
+      const oldCenter = alreadyLoaded ? map.getCenter() : null;
+      const oldZoom = alreadyLoaded ? map.getZoom() : null;
+
+      // Aplicar a versão antes de criar os marcadores: é ela que define
+      // se prevalece o último status do Firebase ou o status oficial da base.
+      geoJsonVersion = newVersion;
+      geoJsonFingerprint = newFingerprint;
+      if(geoJsonVersion > 0){
+        console.info("GeoJSON vigente desde:",new Date(geoJsonVersion).toLocaleString("pt-BR"));
+      }else{
+        console.warn("GeoJSON sem data de versão HTTP ou no conteúdo. Firebase mantém prioridade sobre status da base.");
+      }
+
+      const bounds = [];
+      pointClusterGroup.clearLayers();
+      featuresByCnpj.clear();
+      markersByCnpj.clear();
+      searchIndexByCnpj.clear();
+
+      for(const feature of data.features){
+        if(feature?.geometry?.type !== "Point") continue;
+        const cnpj = normalizeCnpj(feature.properties || {});
+        if(!cnpj) continue;
+        const [lng,lat] = feature.geometry.coordinates || [];
+        if(!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) continue;
+
+        featuresByCnpj.set(cnpj,feature);
+        searchIndexByCnpj.set(cnpj,buildSearchIndexEntry(cnpj,feature));
+        bounds.push([lat,lng]);
+        if(isDisplayStatus(statusFor(cnpj,feature.properties || {}))){
+          createPointMarker(cnpj,feature);
+        }
+      }
+
+      el.totalPontos.textContent = featuresByCnpj.size;
+      refreshUpdatedCount();
+      if(alreadyLoaded){
+        // Atualização silenciosa: não desvia a câmera nem perde GPS/rota.
+        map.setView(oldCenter,oldZoom,{animate:false});
+        refreshRouteAfterGeoJsonUpdate();
+        if(selectedCnpj && !markersByCnpj.has(selectedCnpj)) hideActionPanel();
+        nextResult = null;
+        el.nextResultModal.classList.remove("show");
+        setNotice(`BASE ATUALIZADA • ${featuresByCnpj.size} PONTOS`,"ok");
+      }else{
+        if(bounds.length) map.fitBounds(bounds,{padding:[20,20],maxZoom:10});
+        setNotice("PRONTO","ok");
+      }
+      return true;
+    }finally{
+      geoJsonCheckBusy = false;
+    }
+  }
+
+  function startGeoJsonAutoCheck(){
+    // Uma única verificação a cada 4 horas enquanto a página estiver aberta.
+    const check=()=>loadGeoJson({checkOnly:true}).catch(error => {
+      console.error("Falha na verificação periódica do GeoJSON:",error);
+      setNotice("NÃO FOI POSSÍVEL VERIFICAR NOVA BASE", "err");
+    });
+    setInterval(check,GEOJSON_VERIFY_MS);
+    // Retorno de uma aba suspensa pelo celular: verifica apenas após 4h.
+    document.addEventListener("visibilitychange",()=>{
+      if(document.visibilityState === "visible" &&
+         Date.now()-geoJsonLastChecked >= GEOJSON_VERIFY_MS) check();
+    });
   }
 
   async function loadConfig(){
@@ -2884,7 +2981,7 @@ body.connected #sair{display:none!important}
   loadGeoJson().catch(error => {
     console.error(error);
     setNotice("Erro ao carregar o GeoJSON. Use o link do GitHub Pages.","err");
-  });
+  }).finally(startGeoJsonAutoCheck);
 
   setTimeout(() => el.nome.focus(),150);
 </script>
